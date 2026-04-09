@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  router-high:
+    build: .
+    container_name: cisco-high
+    environment:
+      - DEVICE_PROFILE=high_utilized
+      - DEVICE_HOSTNAME=r-high-1
+      - DEVICE_PORT=443
+    ports:
+      - "127.0.0.2:443:443"
+
+  router-low:
+    build: .
+    container_name: cisco-low
+    environment:
+      - DEVICE_PROFILE=low_utilized
+      - DEVICE_HOSTNAME=r-low-1
+      - DEVICE_PORT=443
+    ports:
+      - "127.0.0.3:443:443"
+
+  router-avg:
+    build: .
+    container_name: cisco-avg
+    environment:
+      - DEVICE_PROFILE=standard
+      - DEVICE_HOSTNAME=r-avg-1
+      - DEVICE_PORT=443
+    ports:
+      - "127.0.0.4:443:443"

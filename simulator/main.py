@@ -3,6 +3,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import devices
 import os
 import secrets
+import uvicorn
 
 app = FastAPI()
 security = HTTPBasic()
@@ -208,3 +209,8 @@ if VENDOR == "cisco":
     
 elif VENDOR == "juniper":
     app.include_router(juniper_router)
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    
