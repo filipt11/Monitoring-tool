@@ -7,7 +7,7 @@ import secrets
 app = FastAPI()
 security = HTTPBasic()
 
-# Set up global environments based on system environments defined in docker-compose file
+# Set up global environments based on system environments
 PROFILE = os.getenv("DEVICE_PROFILE", "standard").lower()
 IP = os.getenv("DEVICE_IP", "0.0.0.0")
 HOSTNAME = os.getenv("DEVICE_HOSTNAME", "s-cat-def-1")
@@ -19,13 +19,14 @@ PORT = os.getenv("DEVICE_PORT", 443)
 raw_https = os.getenv("DEVICE_IS_HTTPS", "false")
 HTTPS = raw_https.lower() in ("true", "1", "yes")
 
+
 # Create simulated device based on specified profile
 if PROFILE == "high_utilized":
     device = devices.HighUtilizedDevice(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
 elif PROFILE == "low_utilized":
     device = devices.LowUtilizedDevice(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
 else:
-    device = devices.RandomUtilizedDevice(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
+    device = devices.AverageUtilizedDevice(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
@@ -44,7 +45,7 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
     
 
-# Defining URL paths for Cisco Devices
+# Define URL paths for Cisco Devices
 cisco_router = APIRouter(prefix="/restconf/data")
 
 @cisco_router.get("/health")
@@ -53,8 +54,6 @@ async def health():
       "status:": "OK",
       "https_check" : device.https
       }
-
-@cisco_router.get
 
 @cisco_router.get("/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds")
 async def cpu_usage():
@@ -150,8 +149,6 @@ async def get_model():
   ]
 }
 
-
-
 @cisco_router.get("/Cisco-IOS-XE-native:native/hostname")
 async def get_hostname():
     return {
@@ -159,39 +156,42 @@ async def get_hostname():
     }
     
 @cisco_router.get("/ietf-interfaces:interfaces-state")
-async def get_interfaces():
-    interfaces = device.get_interfaces()
-    data = []
-    for interface in interfaces:
-            data.append({
-                    "name": interface["name"],
-                    "type": interface["type"],
-                    "admin-status": interface["admin-status"],
-                    "oper-status": interface["oper-status"],
-                    "last-change": "2026-03-07T15:37:09.39+00:00",
-                    "if-index": interface["if-index"],
-                    "phys-address": interface["phys-address"],
-                    "speed": interface["speed"],
-                    "statistics": {
-                    "discontinuity-time": "2026-03-06T19:34:19.276+00:00",
-                    "in-octets": "0",
-                    "in-unicast-pkts": "0",
-                    "in-broadcast-pkts": "0",
-                    "in-multicast-pkts": "0",
-                    "in-discards": 0,
-                    "in-errors": 0,
-                    "in-unknown-protos": 0,
-                    "out-octets": "200",
-                    "out-unicast-pkts": "2",
-                    "out-broadcast-pkts": "0",
-                    "out-multicast-pkts": "0",
-                    "out-discards": 0,
-                    "out-errors": 0
-                    }
-                })
+async def get_interfaces_state():
+    raw_interfaces = device.get_interfaces()
+    
+    interface_output = []
+    
+    for item in raw_interfaces:
+        interface_output.append({
+            "name": item["name"],
+            "type": item["type"],
+            "admin-status": item["admin-status"],
+            "oper-status": item["oper-status"],
+            "last-change": "2026-03-07T15:37:09.39+00:00",
+            "if-index": item["if-index"],
+            "phys-address": item["phys-address"],
+            "speed": item["speed"],
+            "statistics": {
+                "discontinuity-time": "2026-03-06T19:34:19.276+00:00",
+                "in-octets": item["in-octets"],
+                "out-octets": item["out-octets"],
+                "in-unicast-pkts": "0",
+                "in-broadcast-pkts": "0",
+                "in-multicast-pkts": "0",
+                "in-discards": 0,
+                "in-errors": 0,
+                "in-unknown-protos": 0,
+                "out-unicast-pkts": "0",
+                "out-broadcast-pkts": "0",
+                "out-multicast-pkts": "0",
+                "out-discards": 0,
+                "out-errors": 0
+            }
+        })
+
     return {
         "ietf-interfaces:interfaces-state": {
-            "interface": data
+            "interface": interface_output
         }
     }
   
@@ -199,7 +199,7 @@ async def get_interfaces():
 # --- Router dla Juniper ---
 juniper_router = APIRouter(prefix="/rpc/get-interface-information")
 
-# Choosing API Router based on device Vendor
+# Choose API Router based on device Vendor
 if VENDOR == "cisco":
     app.include_router(
       cisco_router,
