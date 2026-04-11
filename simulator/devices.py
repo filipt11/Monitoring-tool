@@ -108,7 +108,7 @@ class HighUtilizedDevice(BaseDevice):
         return logic.get_high_utilized_cpu()
     
     def get_used_memory(self):
-        return logic.get_high_utilized_ram()
+        return logic.get_high_utilized_ram(self.get_total_memory())
     
 
 class LowUtilizedDevice(BaseDevice):
@@ -119,7 +119,7 @@ class LowUtilizedDevice(BaseDevice):
         return logic.get_low_utilized_cpu()
     
     def get_used_memory(self):
-        return logic.get_low_utilized_ram()
+        return logic.get_low_utilized_ram(self.get_total_memory())
     
     def get_total_memory(self):
         """Override base class method to simulate lower total memory for device"""

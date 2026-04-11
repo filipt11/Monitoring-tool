@@ -35,11 +35,11 @@ def get_low_utilized_cpu():
     val = random.gauss(8, 3)
     
     # 5% chance for little spike
-    if random.random > 0.95:
+    if random.random() > 0.95:
         return random.randint(11, 25)
     
     # 1% chance for big spike
-    if random.random < 0.01:
+    if random.random() < 0.01:
         return random.randint(50, 100)
         
     return int(max(1, min(20, val)))
