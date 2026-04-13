@@ -23,11 +23,17 @@ HTTPS = raw_https.lower() in ("true", "1", "yes")
 
 # Create simulated device based on specified profile
 if PROFILE == "high_utilized":
-    device = devices.HighUtilizedDevice(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
+    device = devices.HighUtilizedDevice(
+        IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+    )
 elif PROFILE == "low_utilized":
-    device = devices.LowUtilizedDevice(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
+    device = devices.LowUtilizedDevice(
+        IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+    )
 else:
-    device = devices.AverageUtilizedDevice(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
+    device = devices.AverageUtilizedDevice(
+        IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+    )
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
@@ -36,7 +42,7 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
     """
     is_user_ok = secrets.compare_digest(credentials.username, USERNAME)
     is_pass_ok = secrets.compare_digest(credentials.password, PASSWORD)
-    
+
     if not (is_user_ok and is_pass_ok):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -44,173 +50,170 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
     return credentials.username
-    
+
 
 # Define URL paths for Cisco Devices
 cisco_router = APIRouter(prefix="/restconf/data")
 
+
 @cisco_router.get("/health")
 async def health():
-    return {
-      "status:": "OK",
-      "https_check" : device.https
-      }
+    return {"status:": "OK", "https_check": device.https}
 
-@cisco_router.get("/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds")
+
+@cisco_router.get(
+    "/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds"
+)
 async def cpu_usage():
-    return {
-  "Cisco-IOS-XE-process-cpu-oper:five-seconds": device.get_cpu()
-      }
+    return {"Cisco-IOS-XE-process-cpu-oper:five-seconds": device.get_cpu()}
+
 
 @cisco_router.get("/Cisco-IOS-XE-memory-oper:memory-statistics")
 async def memory_usage():
     total_memory = device.get_total_memory()
     used_memory = device.get_used_memory()
     free_memory = total_memory - used_memory
-    
+
     return {
-  "Cisco-IOS-XE-memory-oper:memory-statistics": {
-    "memory-statistic": [
-      {
-        "name": "Processor",
-        "total-memory": str(total_memory),
-        "used-memory": str(used_memory),
-        "free-memory": str(free_memory),
-        "lowest-usage": "470392804",
-        "highest-usage": "479335280"
-      },
-      {
-        "name": "reserve Processor",
-        "total-memory": "102404",
-        "used-memory": "92",
-        "free-memory": "102312",
-        "lowest-usage": "102312",
-        "highest-usage": "102312"
-      },
-      {
-        "name": "lsmpi_io",
-        "total-memory": "3149400",
-        "used-memory": "3148576",
-        "free-memory": "824",
-        "lowest-usage": "824",
-        "highest-usage": "412"
-      }
-    ]
-  }
+        "Cisco-IOS-XE-memory-oper:memory-statistics": {
+            "memory-statistic": [
+                {
+                    "name": "Processor",
+                    "total-memory": str(total_memory),
+                    "used-memory": str(used_memory),
+                    "free-memory": str(free_memory),
+                    "lowest-usage": "470392804",
+                    "highest-usage": "479335280",
+                },
+                {
+                    "name": "reserve Processor",
+                    "total-memory": "102404",
+                    "used-memory": "92",
+                    "free-memory": "102312",
+                    "lowest-usage": "102312",
+                    "highest-usage": "102312",
+                },
+                {
+                    "name": "lsmpi_io",
+                    "total-memory": "3149400",
+                    "used-memory": "3148576",
+                    "free-memory": "824",
+                    "lowest-usage": "824",
+                    "highest-usage": "412",
+                },
+            ]
+        }
     }
 
-@cisco_router.get("/Cisco-IOS-XE-device-hardware-oper:device-hardware-data/device-hardware/device-inventory")
+
+@cisco_router.get(
+    "/Cisco-IOS-XE-device-hardware-oper:device-hardware-data/device-hardware/device-inventory"
+)
 async def get_model():
     return {
-  "Cisco-IOS-XE-device-hardware-oper:device-inventory": [
-    {
-      "hw-type": "hw-type-emmc",
-      "hw-dev-index": 0,
-      "version": "V01",
-      "part-number": "C9KV-UADP-8P",
-      "serial-number": "98DVJUONW1X",
-      "hw-description": device.model,
-      "dev-name": "Switch 1",
-      "field-replaceable": False,
-      "hw-class": "hw-class-physical"
-    },
-    {
-      "hw-type": "hw-type-chassis",
-      "hw-dev-index": 1,
-      "version": "V01",
-      "part-number": "C9KV-UADP-8P",
-      "serial-number": "98DVJUONW1X",
-      "hw-description": device.model,
-      "dev-name": "Switch 1",
-      "field-replaceable": True,
-      "hw-class": "hw-class-physical"
-    },
-    {
-      "hw-type": "hw-type-dram",
-      "hw-dev-index": 2,
-      "version": "",
-      "part-number": "",
-      "serial-number": "",
-      "hw-description": "Physical Memory",
-      "dev-name": "Memory",
-      "field-replaceable": False,
-      "hw-class": "hw-class-physical"
-    },
-    {
-      "hw-type": "hw-type-cpu",
-      "hw-dev-index": 3,
-      "version": " 6",
-      "part-number": " GenuineIntel",
-      "serial-number": "",
-      "hw-description": " Intel(R) Xeon(R) Gold 6248R CPU @ 3.00",
-      "dev-name": "CPU",
-      "field-replaceable": False,
-      "hw-class": "hw-class-physical"
+        "Cisco-IOS-XE-device-hardware-oper:device-inventory": [
+            {
+                "hw-type": "hw-type-emmc",
+                "hw-dev-index": 0,
+                "version": "V01",
+                "part-number": "C9KV-UADP-8P",
+                "serial-number": "98DVJUONW1X",
+                "hw-description": device.model,
+                "dev-name": "Switch 1",
+                "field-replaceable": False,
+                "hw-class": "hw-class-physical",
+            },
+            {
+                "hw-type": "hw-type-chassis",
+                "hw-dev-index": 1,
+                "version": "V01",
+                "part-number": "C9KV-UADP-8P",
+                "serial-number": "98DVJUONW1X",
+                "hw-description": device.model,
+                "dev-name": "Switch 1",
+                "field-replaceable": True,
+                "hw-class": "hw-class-physical",
+            },
+            {
+                "hw-type": "hw-type-dram",
+                "hw-dev-index": 2,
+                "version": "",
+                "part-number": "",
+                "serial-number": "",
+                "hw-description": "Physical Memory",
+                "dev-name": "Memory",
+                "field-replaceable": False,
+                "hw-class": "hw-class-physical",
+            },
+            {
+                "hw-type": "hw-type-cpu",
+                "hw-dev-index": 3,
+                "version": " 6",
+                "part-number": " GenuineIntel",
+                "serial-number": "",
+                "hw-description": " Intel(R) Xeon(R) Gold 6248R CPU @ 3.00",
+                "dev-name": "CPU",
+                "field-replaceable": False,
+                "hw-class": "hw-class-physical",
+            },
+        ]
     }
-  ]
-}
+
 
 @cisco_router.get("/Cisco-IOS-XE-native:native/hostname")
 async def get_hostname():
-    return {
-        "Cisco-IOS-XE-native:hostname": device.hostname
-    }
-    
+    return {"Cisco-IOS-XE-native:hostname": device.hostname}
+
+
 @cisco_router.get("/ietf-interfaces:interfaces-state")
 async def get_interfaces_state():
     raw_interfaces = device.get_interfaces()
-    
-    interface_output = []
-    
-    for item in raw_interfaces:
-        interface_output.append({
-            "name": item["name"],
-            "type": item["type"],
-            "admin-status": item["admin-status"],
-            "oper-status": item["oper-status"],
-            "last-change": "2026-03-07T15:37:09.39+00:00",
-            "if-index": item["if-index"],
-            "phys-address": item["phys-address"],
-            "speed": item["speed"],
-            "statistics": {
-                "discontinuity-time": "2026-03-06T19:34:19.276+00:00",
-                "in-octets": item["in-octets"],
-                "out-octets": item["out-octets"],
-                "in-unicast-pkts": "0",
-                "in-broadcast-pkts": "0",
-                "in-multicast-pkts": "0",
-                "in-discards": 0,
-                "in-errors": 0,
-                "in-unknown-protos": 0,
-                "out-unicast-pkts": "0",
-                "out-broadcast-pkts": "0",
-                "out-multicast-pkts": "0",
-                "out-discards": 0,
-                "out-errors": 0
-            }
-        })
 
-    return {
-        "ietf-interfaces:interfaces-state": {
-            "interface": interface_output
-        }
-    }
-  
+    interface_output = []
+
+    for item in raw_interfaces:
+        interface_output.append(
+            {
+                "name": item["name"],
+                "type": item["type"],
+                "admin-status": item["admin-status"],
+                "oper-status": item["oper-status"],
+                "last-change": "2026-03-07T15:37:09.39+00:00",
+                "if-index": item["if-index"],
+                "phys-address": item["phys-address"],
+                "speed": item["speed"],
+                "statistics": {
+                    "discontinuity-time": "2026-03-06T19:34:19.276+00:00",
+                    "in-octets": item["in-octets"],
+                    "out-octets": item["out-octets"],
+                    "in-unicast-pkts": "0",
+                    "in-broadcast-pkts": "0",
+                    "in-multicast-pkts": "0",
+                    "in-discards": 0,
+                    "in-errors": 0,
+                    "in-unknown-protos": 0,
+                    "out-unicast-pkts": "0",
+                    "out-broadcast-pkts": "0",
+                    "out-multicast-pkts": "0",
+                    "out-discards": 0,
+                    "out-errors": 0,
+                },
+            }
+        )
+
+    return {"ietf-interfaces:interfaces-state": {"interface": interface_output}}
+
 
 # --- Router dla Juniper ---
 juniper_router = APIRouter(prefix="/rpc/get-interface-information")
 
 # Choose API Router based on device Vendor
 if VENDOR == "cisco":
-    app.include_router(
-      cisco_router,
-      dependencies=[Depends(authenticate)]
-      )
-    
+    app.include_router(cisco_router, dependencies=[Depends(authenticate)])
+
 elif VENDOR == "juniper":
     app.include_router(juniper_router)
 
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=PORT)
-    
