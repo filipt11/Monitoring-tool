@@ -212,8 +212,12 @@ if VENDOR == "cisco":
     app.include_router(cisco_router, dependencies=[Depends(authenticate)])
 
 elif VENDOR == "juniper":
-    app.include_router(juniper_router)
+    app.include_router(juniper_router, dependencies=[Depends(authenticate)])
+
+
+def main():
+    uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    main()

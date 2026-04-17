@@ -2,6 +2,7 @@ import config
 import cisco_polling
 import juniper_polling
 import models
+from loguru import logger
 
 
 def get_current_devices():
@@ -55,8 +56,6 @@ def get_current_devices():
         )
     )
 
-    # Inventory logs to be added there
-
     return devices
 
 
@@ -65,25 +64,41 @@ def poll_devices():
     device_list = get_current_devices()
     # DEBUG
     print(f"{device_list=}")
+
     for device in device_list:
+        device_data = {}
         if device.vendor == "cisco":
             # DEBUG
-            cpu, mem, mempct, if_index, in_octets, out_octets = (
-                cisco_polling.poll_cisco_device(device)
-            )
+            device_data = cisco_polling.poll_cisco_device(device)
+
         elif device.vendor == "juniper":
-            # DEBUG
-            cpu, mem, mempct, if_index, in_octets, out_octets = (
-                juniper_polling.poll_juniper_device(device)
-            )
+            pass
 
         # DEBUG
-        print(f"{cpu=} {mem=} {mempct=} {if_index=} {in_octets=} {out_octets=}")
+        print(f"--- DEBUG DATA FOR {device.hostname} ---")
+        print(device_data)
+
+        cpu = device_data.get("cpu")
+        mempct = device_data.get("memory_pct")
+        interfaces = device_data.get("interfaces", [])
+
+        print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
+        print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
+
+        # Debugowanie interfejsów w pętli
+        for iface in interfaces:
+            print(
+                f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
+            )
 
 
 def save_polled_data(device, data):
     pass
 
 
-if __name__ == "__main__":
+def main():
     poll_devices()
+
+
+if __name__ == "__main__":
+    main()

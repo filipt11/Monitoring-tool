@@ -28,11 +28,8 @@ class DeviceWithPolledData(Device):
 
 
 class InterfaceData(BaseModel):
-    """_summary_
+    """summary"""
 
-    Args:
-        BaseModel (_type_): _description_
-    """    
     name: str
     type: str
     speed_bps: int

@@ -1,8 +1,27 @@
 import requests
 from requests.auth import HTTPBasicAuth
+from loguru import logger
+import sys
+from models import Device
+
+logger.add(
+    sys.stdout,
+    format="{time} {level} {message}",
+    level="INFO",
+)
 
 
-def poll_cisco_device(device):
+def poll_cisco_device(device: Device) -> dict:
+    """Main polling function that polls Device and parse it's data"""
+
+    # Initialize default values
+    cpu_val = None
+    memory_val = None
+    total_memory = None
+    memory_pct = None
+    interfaces = []
+
+    # Build URLs using to poll device
     protocol = "https" if device.https else "http"
     base_url = f"{protocol}://{device.ip}:{device.port}"
 
@@ -14,85 +33,114 @@ def poll_cisco_device(device):
     full_memory_url = f"{base_url}{memory_path}"
     full_interface_url = f"{base_url}{interface_path}"
 
-    raw_cpu = fetch_data(full_cpu_url, device.username, device.password)
-    raw_memory = fetch_data(full_memory_url, device.username, device.password)
-    raw_interface = fetch_data(full_interface_url, device.username, device.password)
+    # Poll device and parse returned values
+    try:
+        raw_cpu = fetch_data(full_cpu_url, device.username, device.password)
+        if raw_cpu:
+            cpu_val = parse_cpu(raw_cpu)
+    except Exception as e:
+        logger.error(
+            f"Error during polling CPU value for device: {device.hostname} | {device.ip}: {e}"
+        )
 
-    cpu_val = parse_cpu(raw_cpu)
-    total_memory, memory_val = parse_memory(raw_memory)
-    if_index, in_octets, out_octets = parse_interfaces(raw_interface)
-    memory_pct = memory_val / total_memory * 100
+    try:
+        raw_memory = fetch_data(full_memory_url, device.username, device.password)
+        if raw_memory:
+            total_memory, memory_val = parse_memory(raw_memory)
+            if total_memory and total_memory > 0:
+                memory_pct = round((memory_val / total_memory) * 100, 2)
+    except Exception as e:
+        logger.error(
+            f"Error during polling Memory values for device: {device.hostname} | {device.ip}: {e}"
+        )
 
-    # JSON should be returned here probably?
-    return cpu_val, memory_val, memory_pct, if_index, in_octets, out_octets
+    try:
+        raw_interface = fetch_data(full_interface_url, device.username, device.password)
+        if raw_interface:
+            interfaces = parse_interfaces(raw_interface)
+    except Exception as e:
+        logger.error(
+            f"Error during polling Interface values for device: {device.hostname} | {device.ip}: {e}"
+        )
+
+    # Build returned JSON
+    result = {
+        "status": "up" if any([cpu_val, memory_val, interfaces]) else "down",
+        "cpu": cpu_val,
+        "total-memory": total_memory,
+        "memory_pct": memory_pct,
+        "interfaces": interfaces,
+    }
+
+    if result["status"] == "up":
+        logger.info(f"Successfully polled data for {device.hostname}")
+    else:
+        logger.error(f"Device {device.hostname} is unreachable or returned no data")
+
+    return result
 
 
-def fetch_data(url, username, password):
+def fetch_data(url: str, username: str, password: str) -> dict:
     headers = {
         "Accept": "application/yang-data+json",
         "Content-Type": "application/yang-data+json",
     }
 
-    try:
-        response = requests.get(
-            url,
-            auth=HTTPBasicAuth(username, password),
-            headers=headers,
-            verify=False,
-            timeout=10,
-        )
+    response = requests.get(
+        url,
+        auth=HTTPBasicAuth(username, password),
+        headers=headers,
+        verify=False,
+        timeout=10,
+    )
 
-        response.raise_for_status()
+    response.raise_for_status()
 
-        return response.json()
-
-    except Exception as e:
-        return {}
+    return response.json()
 
 
-def parse_cpu(raw_cpu):
-    try:
-        return int(raw_cpu["Cisco-IOS-XE-process-cpu-oper:five-seconds"])
-    except Exception as e:
-        # Polling logs to be added
-        return None
+def parse_cpu(raw_cpu: dict) -> int:
+    return int(raw_cpu["Cisco-IOS-XE-process-cpu-oper:five-seconds"])
 
 
-def parse_memory(raw_memory):
-    try:
-        stats = raw_memory.get("Cisco-IOS-XE-memory-oper:memory-statistics", {})
-        memory_list = stats.get("memory-statistic", [])
+def parse_memory(raw_memory: dict) -> tuple[int, int]:
+    """_summary_"""
 
-        for entry in memory_list:
-            if entry.get("name") == "Processor":
-                # JSON should be returned here probably?
-                # return int(entry.get("used-memory", 0))
-                used_memory = int(entry.get("used-memory", None))
-                total_memory = int(entry.get("total-memory", None))
-                return total_memory, used_memory
+    stats = raw_memory["Cisco-IOS-XE-memory-oper:memory-statistics"]
+    memory_list = stats["memory-statistic"]
 
-        return None
-    except Exception as e:
-        # Polling logs to be added
-        return None
+    for entry in memory_list:
+        if entry["name"] == "Processor":
+            used_memory = int(entry["used-memory"])
+            total_memory = int(entry["total-memory"])
+            return total_memory, used_memory
+
+    raise ValueError("Could not find 'Processor' entry in raw_memory")
 
 
-def parse_interfaces(raw_interfaces):
-    # JSON should be returned here probably?
-    stats = raw_interfaces.get("ietf-interfaces:interfaces-state", {})
-    interface_list = stats.get("interface", [])
-    response = {}
+def parse_interfaces(raw_interfaces: dict) -> list[dict]:
+    stats = raw_interfaces["ietf-interfaces:interfaces-state"]
+    interface_list = stats["interface"]
+
+    parsed_results = []
 
     for entry in interface_list:
         if entry.get("admin-status") == "up":
-            speed = entry.get("speed")
-            if_index = entry.get("if-index")
-            admin_status = entry.get("admin-status")
-            oper_status = entry.get("oper-status")
-            mac = entry.get("phys-address")
+            statistics = entry["statistics"]
 
-            statistics = entry.get("statistics", {})
-            in_octets = statistics.get("in-octets")
-            out_octets = statistics.get("out-octets")
+            if_data = {
+                "name": entry["name"],
+                "if_index": int(entry["if-index"]),
+                "in_octets": int(statistics["in-octets"]),
+                "out_octets": int(statistics["out-octets"]),
+                "speed": int(entry["speed"]),
+                "admin_status": entry["admin-status"],
+                "oper_status": entry["oper-status"],
+                "mac": entry.get("phys-address", "unknown"),
+            }
+            parsed_results.append(if_data)
 
-    return if_index, in_octets, out_octets
+    if not parsed_results:
+        raise ValueError("No active interfaces with statistics found")
+
+    return parsed_results
