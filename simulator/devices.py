@@ -57,6 +57,12 @@ class BaseDevice:
         Hostname: {self.hostname}
         model Address: {self.model}"""
 
+    def get_cpu(self):
+        return logic.get_average_utilized_cpu()
+
+    def get_used_memory(self):
+        return logic.get_average_utilized_ram(self.get_total_memory())
+
     def get_total_memory(self):
         return 762551372
 
@@ -188,9 +194,3 @@ class AverageUtilizedDevice(BaseDevice):
                 },
             ]
         )
-
-    def get_cpu(self):
-        return logic.get_average_utilized_cpu()
-
-    def get_used_memory(self):
-        return logic.get_average_utilized_ram(self.get_total_memory())

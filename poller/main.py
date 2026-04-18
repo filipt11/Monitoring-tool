@@ -1,69 +1,32 @@
-import config
+from config import engine, Base, Session
 import cisco_polling
 import juniper_polling
 import models
 from loguru import logger
+from data_loader import seed_devices
 
 
-def get_current_devices():
+def init_db():
+    try:
+        Base.metadata.create_all(engine)
+        logger.success("Successfully initialized Postgres DB")
+    except Exception as e:
+        logger.error(f"Database error: {e}")
+        raise ConnectionError
+
+
+def get_current_devices() -> list[models.Device]:
     """Connect to postgreSQL and gather newest devices data required to polling"""
-    devices = []
 
-    # Real connection to DB will be added
-
-    devices.append(
-        models.Device(
-            id=1,
-            ip="127.0.0.2",
-            profile="high_utilized",
-            hostname="r-high-1",
-            vendor="cisco",
-            model="Catalyst 9000",
-            username="admin",
-            password="123",
-            port=443,
-            https=False,
-        )
-    )
-
-    devices.append(
-        models.Device(
-            id=2,
-            ip="127.0.0.3",
-            profile="low_utilized",
-            hostname="r-low-1",
-            vendor="cisco",
-            model="Catalyst 9000",
-            username="admin",
-            password="123",
-            port=443,
-            https=False,
-        )
-    )
-
-    devices.append(
-        models.Device(
-            id=3,
-            ip="127.0.0.4",
-            profile="standard",
-            hostname="r-avg-1",
-            vendor="cisco",
-            model="Catalyst 9000",
-            username="admin",
-            password="123",
-            port=443,
-            https=False,
-        )
-    )
-
-    return devices
+    with Session() as session:
+        return session.query(models.Device).all()
 
 
 def poll_devices():
     """Main polling function"""
     device_list = get_current_devices()
     # DEBUG
-    print(f"{device_list=}")
+    # print(f"{device_list=}")
 
     for device in device_list:
         device_data = {}
@@ -75,21 +38,21 @@ def poll_devices():
             pass
 
         # DEBUG
-        print(f"--- DEBUG DATA FOR {device.hostname} ---")
-        print(device_data)
+        # print(f"--- DEBUG DATA FOR {device.hostname} ---")
+        # print(device_data)
 
         cpu = device_data.get("cpu")
         mempct = device_data.get("memory_pct")
         interfaces = device_data.get("interfaces", [])
 
-        print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
-        print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
+        # print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
+        # print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
 
         # Debugowanie interfejsów w pętli
-        for iface in interfaces:
-            print(
-                f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
-            )
+        # for iface in interfaces:
+        #     print(
+        #         f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
+        #     )
 
 
 def save_polled_data(device, data):
@@ -97,6 +60,13 @@ def save_polled_data(device, data):
 
 
 def main():
+    try:
+        init_db()
+    except ConnectionError as e:
+        logger.critical(f"Finishing proggram")
+        return False
+
+    seed_devices()
     poll_devices()
 
 

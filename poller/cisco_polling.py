@@ -1,14 +1,7 @@
 import requests
 from requests.auth import HTTPBasicAuth
 from loguru import logger
-import sys
 from models import Device
-
-logger.add(
-    sys.stdout,
-    format="{time} {level} {message}",
-    level="INFO",
-)
 
 
 def poll_cisco_device(device: Device) -> dict:

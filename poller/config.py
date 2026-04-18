@@ -1,4 +1,10 @@
-class Config:
-    """Allow Pydantic to read data from ORM objects"""
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-    from_attributes = True
+
+class Base(DeclarativeBase):
+    pass
+
+
+engine = create_engine("postgresql://admin:123@localhost:5432/inventory")
+Session = sessionmaker(bind=engine)

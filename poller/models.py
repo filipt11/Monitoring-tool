@@ -1,20 +1,41 @@
 from pydantic import BaseModel, Field, IPvAnyAddress
+from sqlalchemy import String, Integer, Boolean
+from sqlalchemy.orm import Mapped, mapped_column
+from config import Base
+
+# class Device(BaseModel):
+#     """Class representing device to be polled
+#     These objects are being selected from PostgreSQL"""
+
+#     # __tablename__ = "devices"
+
+#     id: int
+#     ip: IPvAnyAddress
+#     profile: str
+#     hostname: str
+#     vendor: str
+#     model: str
+#     username: str
+#     password: str
+#     port: int = Field(gt=0, lt=65536)
+#     https: bool = False
 
 
-class Device(BaseModel):
-    """Class representing device to be polled
-    These objects are being selected from PostgreSQL"""
+class Device(Base):
+    __tablename__ = "devices"
 
-    id: int
-    ip: IPvAnyAddress
-    profile: str
-    hostname: str
-    vendor: str
-    model: str
-    username: str
-    password: str
-    port: int = Field(gt=0, lt=65536)
-    https: bool = False
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    hostname: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    ip: Mapped[str] = mapped_column(String(64), nullable=False)
+    vendor: Mapped[str] = mapped_column(String(50), nullable=False)
+    model: Mapped[str] = mapped_column(String(100), nullable=True)
+    username: Mapped[str] = mapped_column(String(50), nullable=False)
+    password: Mapped[str] = mapped_column(String(100), nullable=False)
+    port: Mapped[int] = mapped_column(Integer)
+    https: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    def __repr__(self) -> str:
+        return f"<Device(hostname={self.hostname}, ip={self.ip}, vendor={self.vendor})>"
 
 
 class DeviceWithPolledData(Device):
