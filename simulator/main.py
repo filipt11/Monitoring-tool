@@ -38,8 +38,8 @@ else:
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
     """Function that secures endpoints
-    Credentials are being set up during container initialization
-    """
+    Credentials are being set up during container/server initialization."""
+
     is_user_ok = secrets.compare_digest(credentials.username, USERNAME)
     is_pass_ok = secrets.compare_digest(credentials.password, PASSWORD)
 
@@ -58,18 +58,24 @@ cisco_router = APIRouter(prefix="/restconf/data")
 
 @cisco_router.get("/health")
 async def health():
-    return {"status:": "OK", "https_check": device.https}
+    """Return status 'OK' if API started correctly."""
+
+    return {"status:": "OK"}
 
 
 @cisco_router.get(
-    "/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds"
+    "/Cisco-IOS-XE-process-cpu-oper{colon}cpu-usage/cpu-utilization/five-seconds"
 )
 async def cpu_usage():
+    """Return data regarding device CPU usage."""
+
     return {"Cisco-IOS-XE-process-cpu-oper:five-seconds": device.get_cpu()}
 
 
-@cisco_router.get("/Cisco-IOS-XE-memory-oper:memory-statistics")
+@cisco_router.get("/Cisco-IOS-XE-memory-oper{colon}memory-statistics")
 async def memory_usage():
+    """Return data regarding device Memory statistics."""
+
     total_memory = device.get_total_memory()
     used_memory = device.get_used_memory()
     free_memory = total_memory - used_memory
@@ -107,9 +113,11 @@ async def memory_usage():
 
 
 @cisco_router.get(
-    "/Cisco-IOS-XE-device-hardware-oper:device-hardware-data/device-hardware/device-inventory"
+    "/Cisco-IOS-XE-device-hardware-oper{colon}device-hardware-data/device-hardware/device-inventory"
 )
 async def get_model():
+    """Return data in JSON format containing data regarding device inventory."""
+
     return {
         "Cisco-IOS-XE-device-hardware-oper:device-inventory": [
             {
@@ -160,13 +168,17 @@ async def get_model():
     }
 
 
-@cisco_router.get("/Cisco-IOS-XE-native:native/hostname")
+@cisco_router.get("/Cisco-IOS-XE-native{colon}native/hostname")
 async def get_hostname():
+    """Return device current hostname."""
+
     return {"Cisco-IOS-XE-native:hostname": device.hostname}
 
 
-@cisco_router.get("/ietf-interfaces:interfaces-state")
+@cisco_router.get("/ietf-interfaces{colon}interfaces-state")
 async def get_interfaces_state():
+    """Return data regarding device interfaces statistics."""
+
     raw_interfaces = device.get_interfaces()
 
     interface_output = []
@@ -216,6 +228,8 @@ elif VENDOR == "juniper":
 
 
 def main():
+    """Start uvicorn server"""
+
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 

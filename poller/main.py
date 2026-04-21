@@ -37,22 +37,20 @@ def poll_devices():
         elif device.vendor == "juniper":
             pass
 
-        # DEBUG
-        # print(f"--- DEBUG DATA FOR {device.hostname} ---")
-        # print(device_data)
+        print(f"--- DEBUG DATA FOR {device.hostname} ---")
+        print(device_data)
 
         cpu = device_data.get("cpu")
         mempct = device_data.get("memory_pct")
         interfaces = device_data.get("interfaces", [])
 
-        # print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
-        # print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
+        print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
+        print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
 
-        # Debugowanie interfejsów w pętli
-        # for iface in interfaces:
-        #     print(
-        #         f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
-        #     )
+        for iface in interfaces:
+            print(
+                f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
+            )
 
 
 def save_polled_data(device, data):
@@ -71,4 +69,11 @@ def main():
 
 
 if __name__ == "__main__":
+    logger.add(
+        "poller/poller.log",
+        rotation="10 MB",
+        retention="10 days",
+        compression="tar",
+        level="INFO",
+    )
     main()

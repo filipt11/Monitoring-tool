@@ -2,6 +2,9 @@ import logic
 
 
 class BaseDevice:
+    """Class representing base device model.
+    By default methods return data as for average utilized device."""
+
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
     ):
@@ -51,23 +54,28 @@ class BaseDevice:
             },
         ]
 
-    def __str__(self):
-        return f"""        IP: {self.ip_address}
-        Vendor: {self.vendor}
-        Hostname: {self.hostname}
-        model Address: {self.model}"""
+    def __repr__(self):
+        return f"<BaseDevice {self.hostname} ({self.ip_address}) - {self.vendor} {self.model}>"
 
-    def get_cpu(self):
+    def get_cpu(self) -> int:
+        """Return raw device CPU usage value."""
+        
         return logic.get_average_utilized_cpu()
 
-    def get_used_memory(self):
+    def get_used_memory(self) -> int:
+        """Return raw device Memory usage value."""
+        
         return logic.get_average_utilized_ram(self.get_total_memory())
 
-    def get_total_memory(self):
+    def get_total_memory(self) -> int:
+        """Return device total memory
+        Base value can be overridden in subclasses."""
+
         return 762551372
 
-    def get_interfaces(self):
-        """Return list of device interfaces with updated counters value"""
+    def get_interfaces(self) -> list:
+        """Return list of device interfaces with updated counters value."""
+        
         updated_interfaces = []
 
         for iface in self.interfaces_list:
@@ -116,6 +124,9 @@ class BaseDevice:
 
 
 class HighUtilizedDevice(BaseDevice):
+    """Class representing higher utilized device
+    Methods regarding CPU and Memory usage generate higher values."""
+
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
     ):
@@ -123,14 +134,21 @@ class HighUtilizedDevice(BaseDevice):
             ip_address, vendor, hostname, model, username, password, port, https
         )
 
-    def get_cpu(self):
+    def get_cpu(self) -> int:
+        """Override base class method to return higher CPU usage values."""
+        
         return logic.get_high_utilized_cpu()
 
-    def get_used_memory(self):
+    def get_used_memory(self) -> int:
+        """Override base class method to return higher Memory usage values."""
+        
         return logic.get_high_utilized_ram(self.get_total_memory())
 
 
 class LowUtilizedDevice(BaseDevice):
+    """Class representing lower utilized device
+    Methods regarding CPU and Memory usage generate lower values."""
+
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
     ):
@@ -138,18 +156,25 @@ class LowUtilizedDevice(BaseDevice):
             ip_address, vendor, hostname, model, username, password, port, https
         )
 
-    def get_cpu(self):
+    def get_cpu(self) -> int:
+        """Override base class method to return lower CPU usage values."""
+        
         return logic.get_low_utilized_cpu()
 
-    def get_used_memory(self):
+    def get_used_memory(self) -> int:
+        """Override base class method to return lower Memory usage values."""
+        
         return logic.get_low_utilized_ram(self.get_total_memory())
 
-    def get_total_memory(self):
-        """Override base class method to simulate lower total memory for device"""
+    def get_total_memory(self) -> int:
+        """Override base class method to simulate lower total memory for device."""
+        
         return 381275686
 
 
 class AverageUtilizedDevice(BaseDevice):
+    """Class representaing average utilized device, extended for a few more interfaces."""
+
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
     ):
