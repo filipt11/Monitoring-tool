@@ -89,7 +89,7 @@ def increase_interface_counter(
     interval - time in seconds from last poll, by default set to 300 for 5 minutes polling
     """
     speed_bytes = declared_speed / 8
-    utilization = random.uniform(0.12, 0.50)
+    utilization = random.uniform(0.20, 0.40)
     increment = int(speed_bytes * utilization * interval)
 
     return previous_value + increment
@@ -105,7 +105,7 @@ def increase_interface_counter_for_higher_utilized(
     interval - time in seconds from last poll, by default set to 300 for 5 minutes polling
     """
     speed_bytes = declared_speed / 8
-    utilization = random.uniform(0.65, 0.95)
+    utilization = random.uniform(0.75, 0.95)
     increment = int(speed_bytes * utilization * interval)
 
     return previous_value + increment
