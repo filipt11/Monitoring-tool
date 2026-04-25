@@ -3,7 +3,7 @@ import random
 
 def get_high_utilized_cpu() -> int:
     """Simulate values of usage for permanently high utilized CPU with occasionally drops"""
-    
+
     val = random.gauss(85, 10)
 
     # 5% chance for 100% spike
@@ -19,7 +19,7 @@ def get_high_utilized_cpu() -> int:
 
 def get_average_utilized_cpu() -> int:
     """Simulate values of usage for average utilized CPU with occasionally devation"""
-    
+
     val = random.gauss(40, 7)
 
     # 5% chance for spike
@@ -35,7 +35,7 @@ def get_average_utilized_cpu() -> int:
 
 def get_low_utilized_cpu() -> int:
     """Simulate values of usage for low utilized CPU with occasionally spike"""
-    
+
     val = random.gauss(8, 3)
 
     # 5% chance for little spike
@@ -51,7 +51,7 @@ def get_low_utilized_cpu() -> int:
 
 def get_high_utilized_ram(total_memory: int) -> int:
     """Simulate values of usage for high utilized RAM"""
-    
+
     mu = total_memory * 0.7
     sigma = mu * 0.01
     val = random.gauss(mu, sigma)
@@ -61,7 +61,7 @@ def get_high_utilized_ram(total_memory: int) -> int:
 
 def get_average_utilized_ram(total_memory: int) -> int:
     """Simulate values of usage for average utilized RAM"""
-    
+
     mu = total_memory * 0.5
     sigma = mu * 0.01
     val = random.gauss(mu, sigma)
@@ -71,7 +71,7 @@ def get_average_utilized_ram(total_memory: int) -> int:
 
 def get_low_utilized_ram(total_memory: int) -> int:
     """Simulate values of usage for low utilized RAM"""
-    
+
     mu = total_memory * 0.3
     sigma = mu * 0.01
     val = random.gauss(mu, sigma)
@@ -88,6 +88,7 @@ def increase_interface_counter(
     declared_speed - interface speed
     interval - time in seconds from last poll, by default set to 300 for 5 minutes polling
     """
+
     speed_bytes = declared_speed / 8
     utilization = random.uniform(0.20, 0.40)
     increment = int(speed_bytes * utilization * interval)
@@ -104,6 +105,7 @@ def increase_interface_counter_for_higher_utilized(
     declared_speed - interface speed
     interval - time in seconds from last poll, by default set to 300 for 5 minutes polling
     """
+
     speed_bytes = declared_speed / 8
     utilization = random.uniform(0.75, 0.95)
     increment = int(speed_bytes * utilization * interval)

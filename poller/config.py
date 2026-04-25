@@ -1,10 +1,24 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from influxdb_client import InfluxDBClient
+from influxdb_client.client.write_api import SYNCHRONOUS
 
 
+# PostgreSQL config
 class Base(DeclarativeBase):
     pass
 
 
 engine = create_engine("postgresql://admin:123@localhost:5432/inventory")
 Session = sessionmaker(bind=engine)
+
+
+# InfluxDB config
+INFLUX_URL = "http://localhost:8086"
+INFLUX_TOKEN = "secret_token"
+INFLUX_ORG = "my_org"
+INFLUX_BUCKET = "network_metrics"
+
+influx_client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+
+write_api = influx_client.write_api(write_options=SYNCHRONOUS)

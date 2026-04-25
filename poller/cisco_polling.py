@@ -61,6 +61,7 @@ def poll_cisco_device(device: Device) -> dict:
         "status": "up" if any([cpu_val, memory_val, interfaces]) else "down",
         "cpu": cpu_val,
         "total-memory": total_memory,
+        "used-memory": memory_val,
         "memory_pct": memory_pct,
         "interfaces": interfaces,
     }

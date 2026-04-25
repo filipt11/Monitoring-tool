@@ -59,12 +59,12 @@ class BaseDevice:
 
     def get_cpu(self) -> int:
         """Return raw device CPU usage value."""
-        
+
         return logic.get_average_utilized_cpu()
 
     def get_used_memory(self) -> int:
         """Return raw device Memory usage value."""
-        
+
         return logic.get_average_utilized_ram(self.get_total_memory())
 
     def get_total_memory(self) -> int:
@@ -75,7 +75,7 @@ class BaseDevice:
 
     def get_interfaces(self) -> list:
         """Return list of device interfaces with updated counters value."""
-        
+
         updated_interfaces = []
 
         for iface in self.interfaces_list:
@@ -136,12 +136,12 @@ class HighUtilizedDevice(BaseDevice):
 
     def get_cpu(self) -> int:
         """Override base class method to return higher CPU usage values."""
-        
+
         return logic.get_high_utilized_cpu()
 
     def get_used_memory(self) -> int:
         """Override base class method to return higher Memory usage values."""
-        
+
         return logic.get_high_utilized_ram(self.get_total_memory())
 
 
@@ -158,17 +158,17 @@ class LowUtilizedDevice(BaseDevice):
 
     def get_cpu(self) -> int:
         """Override base class method to return lower CPU usage values."""
-        
+
         return logic.get_low_utilized_cpu()
 
     def get_used_memory(self) -> int:
         """Override base class method to return lower Memory usage values."""
-        
+
         return logic.get_low_utilized_ram(self.get_total_memory())
 
     def get_total_memory(self) -> int:
         """Override base class method to simulate lower total memory for device."""
-        
+
         return 381275686
 
 
