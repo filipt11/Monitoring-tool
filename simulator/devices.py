@@ -90,14 +90,18 @@ class BaseDevice:
             if status == "up" and speed > 0:
                 # Consider ports in range 20 to 30 as higher utilized IN ones
                 if iface["if-index"] not in range(20, 31):
-                    new_in = logic.increase_interface_counter(prev_in, speed)
-                    new_out = logic.increase_interface_counter(prev_out, speed * 0.7)
+                    new_in = logic.increase_interface_counter(
+                        prev_in, speed, f"{self.hostname}_{name}_in"
+                    )
+                    new_out = logic.increase_interface_counter(
+                        prev_out, speed * 0.7, f"{self.hostname}_{name}_out"
+                    )
                 else:
                     new_in = logic.increase_interface_counter_for_higher_utilized(
-                        prev_in, speed
+                        prev_in, speed, f"{self.hostname}_{name}_in"
                     )
                     new_out = logic.increase_interface_counter_for_higher_utilized(
-                        prev_out, speed * 0.05
+                        prev_out, speed * 0.05, f"{self.hostname}_{name}_out"
                     )
             else:
                 new_in = prev_in

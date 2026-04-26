@@ -1,4 +1,7 @@
 import random
+from time import time
+
+last_sim_times = {}
 
 
 def get_high_utilized_cpu() -> int:
@@ -79,8 +82,22 @@ def get_low_utilized_ram(total_memory: int) -> int:
     return int(max(0, min(total_memory, val)))
 
 
+def get_dynamic_interval(key: str) -> float:
+    """Calculate how much time passed since last polling"""
+
+    now = time()
+    prev_time = last_sim_times.get(key)
+
+    last_sim_times[key] = now
+
+    if prev_time is None:
+        return 0.0
+
+    return now - prev_time
+
+
 def increase_interface_counter(
-    previous_value: int, declared_speed: int, interval=300
+    previous_value: int, declared_speed: int, key: str
 ) -> int:
     """Simulate values of counter for average utilized interfaces
 
@@ -88,6 +105,14 @@ def increase_interface_counter(
     declared_speed - interface speed
     interval - time in seconds from last poll, by default set to 300 for 5 minutes polling
     """
+
+    if not hasattr(increase_interface_counter, "_last_times"):
+        increase_interface_counter._last_times = {}
+
+    now = time()
+    last_time = increase_interface_counter._last_times.get(key)
+    increase_interface_counter._last_times[key] = now
+    interval = now - last_time if last_time else 0
 
     speed_bytes = declared_speed / 8
     utilization = random.uniform(0.20, 0.40)
@@ -97,7 +122,7 @@ def increase_interface_counter(
 
 
 def increase_interface_counter_for_higher_utilized(
-    previous_value: int, declared_speed: int, interval=300
+    previous_value: int, declared_speed: int, key: str
 ) -> int:
     """Simulate values of counter for higher utilized interfaces
 
@@ -105,6 +130,15 @@ def increase_interface_counter_for_higher_utilized(
     declared_speed - interface speed
     interval - time in seconds from last poll, by default set to 300 for 5 minutes polling
     """
+
+    if not hasattr(increase_interface_counter_for_higher_utilized, "_last_times"):
+        increase_interface_counter_for_higher_utilized._last_times = {}
+
+    now = time()
+    last_time = increase_interface_counter_for_higher_utilized._last_times.get(key)
+    increase_interface_counter_for_higher_utilized._last_times[key] = now
+
+    interval = now - last_time if last_time else 0
 
     speed_bytes = declared_speed / 8
     utilization = random.uniform(0.75, 0.95)
