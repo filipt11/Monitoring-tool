@@ -15,7 +15,7 @@ def get_high_utilized_cpu() -> int:
 
     # 5% chance for drop
     if random.random() < 0.05:
-        return int(max(0,random.gauss(40, 30)))
+        return int(max(0, random.gauss(40, 30)))
 
     return int(max(70, min(100, val)))
 
@@ -47,7 +47,7 @@ def get_low_utilized_cpu() -> int:
 
     # 1% chance for big spike
     if random.random() < 0.01:
-        return min(100,int(max(0, random.gauss(70, 20))))
+        return min(100, int(max(0, random.gauss(70, 20))))
 
     return int(max(1, min(20, val)))
 

@@ -55,7 +55,7 @@ def poll_devices():
         elif device.vendor == "juniper":
             pass
 
-        #DEBUG START
+        # DEBUG START
 
         # cpu = device_data.get("cpu")
         # mempct = device_data.get("memory_pct")
@@ -70,7 +70,7 @@ def poll_devices():
         #     )
         # print(f"{device_data=}")
 
-        #DEBUG END
+        # DEBUG END
 
         try:
             has_data = any([device_data.get("cpu"), device_data.get("memory_pct")])

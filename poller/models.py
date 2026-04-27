@@ -17,10 +17,8 @@ class Device(Base):
     password: Mapped[str] = mapped_column(String(100), nullable=False)
     port: Mapped[int] = mapped_column(Integer)
     https: Mapped[bool] = mapped_column(Boolean, default=False)
-    
-    __table_args__ = (
-        UniqueConstraint('ip', 'port', name='_ip_port_uc'),
-    )
+
+    __table_args__ = (UniqueConstraint("ip", "port", name="_ip_port_uc"),)
 
     def __repr__(self) -> str:
         return f"<Device(hostname={self.hostname}, ip={self.ip}, vendor={self.vendor})>"

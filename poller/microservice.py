@@ -21,7 +21,6 @@ from pydantic import BaseModel
 from sys import stderr
 from sqlalchemy.exc import IntegrityError
 
-
 # Configure Logging
 logger.remove()
 logger.add(stderr, level="INFO")
@@ -32,6 +31,7 @@ PORT = 8000
 
 app = FastAPI()
 
+
 class DeviceCreate(BaseModel):
     ip: str
     port: int = 443
@@ -40,9 +40,10 @@ class DeviceCreate(BaseModel):
     password: str
     https: bool
 
+
 def init_db():
     """Initalizing Connecting with Postgres DB"""
-    
+
     try:
         Base.metadata.create_all(engine)
         logger.success("Successfully initialized Postgres DB")
@@ -51,29 +52,35 @@ def init_db():
         raise ConnectionError
 
 
-def model_cisco_device_info(ip: str, port: int, username: str, password: str, https: bool) -> tuple[str, str]:
+def model_cisco_device_info(
+    ip: str, port: int, username: str, password: str, https: bool
+) -> tuple[str, str]:
     """Try connect to device and perform basic modeling"""
 
     protocol = "https" if https else "http"
-    hostname_url = f"{protocol}://{ip}:{port}/restconf/data/Cisco-IOS-XE-native:native/hostname"
+    hostname_url = (
+        f"{protocol}://{ip}:{port}/restconf/data/Cisco-IOS-XE-native:native/hostname"
+    )
     model_url = f"{protocol}://{ip}:{port}/restconf/data/Cisco-IOS-XE-device-hardware-oper:device-hardware-data/device-hardware/device-inventory"
     hostname = "Unknown"
     model = "Unknown"
 
-    try: 
+    try:
         hostname_raw = fetch_data(hostname_url, username, password)
         model_raw = fetch_data(model_url, username, password)
-        
+
         hostname = hostname_raw.get("Cisco-IOS-XE-native:hostname", "Unknown")
-        inventory_list = model_raw.get("Cisco-IOS-XE-device-hardware-oper:device-inventory", [])
-        
+        inventory_list = model_raw.get(
+            "Cisco-IOS-XE-device-hardware-oper:device-inventory", []
+        )
+
         if inventory_list:
             model = inventory_list[0].get("hw-description", "Unknown").strip()
-            
+
     except Exception as e:
         logger.error(f"Error during modeling device: {ip}: {e}")
         raise ConnectionError(f"Error during modeling device: {ip}")
-    
+
     return hostname, model
 
 
@@ -88,7 +95,11 @@ async def health():
 async def add_device(device_in: DeviceCreate):
     try:
         hostname, model = model_cisco_device_info(
-            device_in.ip, device_in.port, device_in.username, device_in.password, device_in.https
+            device_in.ip,
+            device_in.port,
+            device_in.username,
+            device_in.password,
+            device_in.https,
         )
     except ConnectionError as e:
         # Return 400 if device not responds
@@ -105,7 +116,7 @@ async def add_device(device_in: DeviceCreate):
                     password=device_in.password,
                     hostname=hostname,
                     model=model,
-                    https=device_in.https
+                    https=device_in.https,
                 )
                 db.add(new_device)
 
@@ -118,7 +129,7 @@ async def add_device(device_in: DeviceCreate):
         logger.warning(f"Device already exists: {device_in.ip}:{device_in.port} | {e}")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Device: {device_in.ip}:{device_in.port} already exists in database."
+            detail=f"Device: {device_in.ip}:{device_in.port} already exists in database.",
         )
 
     except Exception as e:
@@ -126,13 +137,13 @@ async def add_device(device_in: DeviceCreate):
         logger.error(f"Database error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Internal database error occurred."
+            detail="Internal database error occurred.",
         )
 
 
 def main():
     """Connect to DB and start uvicorn server"""
-    
+
     init_db()
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 
