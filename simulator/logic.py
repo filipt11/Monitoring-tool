@@ -15,9 +15,9 @@ def get_high_utilized_cpu() -> int:
 
     # 5% chance for drop
     if random.random() < 0.05:
-        return random.gauss(40, 30)
+        return int(max(0,random.gauss(40, 30)))
 
-    return int(max(70, min(99, val)))
+    return int(max(70, min(100, val)))
 
 
 def get_average_utilized_cpu() -> int:
@@ -31,7 +31,7 @@ def get_average_utilized_cpu() -> int:
 
     # 5% chance for drop
     if random.random() < 0.05:
-        return random.gauss(20, 20)
+        return int(max(0, random.gauss(20, 20)))
 
     return int(max(20, min(60, val)))
 
@@ -47,7 +47,7 @@ def get_low_utilized_cpu() -> int:
 
     # 1% chance for big spike
     if random.random() < 0.01:
-        return random.gauss(70, 20)
+        return min(100,int(max(0, random.gauss(70, 20))))
 
     return int(max(1, min(20, val)))
 
@@ -103,7 +103,7 @@ def increase_interface_counter(
 
     previous_value - previous value of counter
     declared_speed - interface speed
-    interval - time in seconds from last poll, by default set to 300 for 5 minutes polling
+    key - identifier of deivce and its interface with optional in/out sufix(for example: r-high-1_Vlan2_in)
     """
 
     if not hasattr(increase_interface_counter, "_last_times"):
@@ -128,7 +128,7 @@ def increase_interface_counter_for_higher_utilized(
 
     previous_value - previous value of counter
     declared_speed - interface speed
-    interval - time in seconds from last poll, by default set to 300 for 5 minutes polling
+    key - identifier of deivce and its interface with optional in/out sufix(for example: r-high-1_Vlan2_in)
     """
 
     if not hasattr(increase_interface_counter_for_higher_utilized, "_last_times"):

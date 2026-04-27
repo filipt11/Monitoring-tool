@@ -44,7 +44,7 @@ def poll_devices():
         cached_device_list = get_current_devices()
     except Exception as e:
         logger.warning(
-            "Can not establish connection with Postges DB, using cahced device list for polling"
+            "Can not establish connection with Postges DB, using cached device list for polling"
         )
 
     for device in cached_device_list:
@@ -55,7 +55,7 @@ def poll_devices():
         elif device.vendor == "juniper":
             pass
 
-        # DEBUG START
+        #DEBUG START
 
         # cpu = device_data.get("cpu")
         # mempct = device_data.get("memory_pct")
@@ -70,7 +70,7 @@ def poll_devices():
         #     )
         # print(f"{device_data=}")
 
-        # DEBUG END
+        #DEBUG END
 
         try:
             has_data = any([device_data.get("cpu"), device_data.get("memory_pct")])
@@ -160,9 +160,10 @@ def save_polled_interface_data(
         p = (
             Point("interface_statistics")
             .tag("hostname", device_hostname)
-            .tag("id", device_id)
+            .tag("device_id", device_id)
             .tag("ip", device_ip)
             .tag("if_name", iface.get("name"))
+            .tag("if_index", iface.get("if_index"))
         )
 
         # Mapujemy statusy na liczby (1 = up, 0 = down)
@@ -242,7 +243,7 @@ def main():
 
     while True:
         poll_devices()
-        sleep(300)
+        sleep(10)
 
 
 if __name__ == "__main__":
