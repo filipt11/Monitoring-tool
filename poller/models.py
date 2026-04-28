@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, IPvAnyAddress
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import String, Integer, Boolean, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from config import Base
@@ -26,7 +26,7 @@ class Device(Base):
 
 class DeviceWithPolledData(BaseModel):
     """Class represinting polled devices with its data
-    These objects are being saved to InfluxDB"""
+    These objects are being saved to InfluxDB."""
 
     id: int
     hostname: str
@@ -53,3 +53,32 @@ class InterfaceData(BaseModel):
     out_bps: Optional[float] = None
     utilization_in: Optional[float] = None
     utilization_out: Optional[float] = None
+
+
+class DeviceCreate(BaseModel):
+    ip: str
+    port: int
+    vendor: str
+    username: str
+    password: str
+    https: bool
+
+
+class DeviceOut(BaseModel):
+    id: int
+    ip: str
+    hostname: str
+    vendor: str
+    model: str
+    port: int
+    vendor: str
+    https: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DeviceUpdate(BaseModel):
+    port: Optional[int] = Field(None, ge=1, le=65535)
+    username: Optional[str] = None
+    password: Optional[str] = None
+    https: Optional[bool] = None

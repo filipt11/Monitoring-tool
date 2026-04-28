@@ -2,6 +2,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
+from loguru import logger
+
+# Specify polling interval
+POLLING_INERVAL = 60
 
 
 # PostgreSQL config
@@ -11,6 +15,17 @@ class Base(DeclarativeBase):
 
 engine = create_engine("postgresql://admin:123@localhost:5432/inventory")
 Session = sessionmaker(bind=engine)
+
+
+def init_db():
+    """Initalizing Connection with Postgres DB"""
+
+    try:
+        Base.metadata.create_all(engine)
+        logger.success("Successfully initialized Postgres DB")
+    except Exception as e:
+        logger.error(f"Database error: {e}")
+        raise ConnectionError
 
 
 # InfluxDB config

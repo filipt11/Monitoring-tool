@@ -6,6 +6,8 @@ from config import (
     INFLUX_ORG,
     INFLUX_BUCKET,
     write_api,
+    init_db,
+    POLLING_INERVAL,
 )
 import cisco_polling
 import juniper_polling
@@ -18,15 +20,6 @@ from time import sleep, time
 
 cached_device_list = []
 last_polls = {}
-
-
-def init_db():
-    try:
-        Base.metadata.create_all(engine)
-        logger.success("Successfully initialized Postgres DB")
-    except Exception as e:
-        logger.error(f"Database error: {e}")
-        raise ConnectionError
 
 
 def get_current_devices() -> list[Device]:
@@ -156,7 +149,7 @@ def save_polled_interface_data(
     points = []
 
     for iface in interfaces_raw:
-        # Tworzymy podstawowy punkt z tagami
+        # Create basic point with tags
         p = (
             Point("interface_statistics")
             .tag("hostname", device_hostname)
@@ -166,7 +159,7 @@ def save_polled_interface_data(
             .tag("if_index", iface.get("if_index"))
         )
 
-        # Mapujemy statusy na liczby (1 = up, 0 = down)
+        # Mapping admin/oper statuses to numbers
         admin_up = 1 if iface.get("admin_status") == "up" else 0
         oper_up = 1 if iface.get("oper_status") == "up" else 0
 
@@ -176,7 +169,7 @@ def save_polled_interface_data(
         p.field("admin_status", admin_up)
         p.field("oper_status", oper_up)
 
-        # Warunek: jeśli admin jest 'up', zapisujemy resztę metryk
+        # If admin status is up, finding rest of metrics
         if admin_up == 1:
             in_octets = int(iface.get("in_octets", 0))
             out_octets = int(iface.get("out_octets", 0))
@@ -189,7 +182,6 @@ def save_polled_interface_data(
             in_bps, in_util = calculate_utilization(
                 device_hostname, if_name, "in", in_octets, speed
             )
-            # Liczymy dla wyjścia (OUT)
             out_bps, out_util = calculate_utilization(
                 device_hostname, if_name, "out", out_octets, speed
             )
@@ -243,7 +235,7 @@ def main():
 
     while True:
         poll_devices()
-        sleep(10)
+        sleep(POLLING_INERVAL)
 
 
 if __name__ == "__main__":

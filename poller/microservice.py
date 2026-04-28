@@ -6,9 +6,10 @@ from config import (
     INFLUX_ORG,
     INFLUX_BUCKET,
     write_api,
+    init_db,
 )
 from loguru import logger
-from models import Device
+from models import Device, DeviceCreate, DeviceOut, DeviceUpdate
 from fastapi import APIRouter, FastAPI, Depends, HTTPException, status
 import uvicorn
 from influxdb_client import Point
@@ -17,9 +18,10 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import requests
 from requests.auth import HTTPBasicAuth
 from cisco_polling import fetch_data
-from pydantic import BaseModel
 from sys import stderr
 from sqlalchemy.exc import IntegrityError
+from fastapi_pagination import Page, add_pagination, paginate
+from fastapi_pagination.ext.sqlalchemy import paginate
 
 # Configure Logging
 logger.remove()
@@ -30,26 +32,7 @@ logger.add("discovery.log", rotation="10 MB", retention="10 days", level="INFO")
 PORT = 8000
 
 app = FastAPI()
-
-
-class DeviceCreate(BaseModel):
-    ip: str
-    port: int = 443
-    vendor: str
-    username: str
-    password: str
-    https: bool
-
-
-def init_db():
-    """Initalizing Connecting with Postgres DB"""
-
-    try:
-        Base.metadata.create_all(engine)
-        logger.success("Successfully initialized Postgres DB")
-    except Exception as e:
-        logger.error(f"Database error: {e}")
-        raise ConnectionError
+add_pagination(app)
 
 
 def model_cisco_device_info(
@@ -121,7 +104,7 @@ async def add_device(device_in: DeviceCreate):
                 db.add(new_device)
 
             db.refresh(new_device)
-            logger.info(f"Successfully created device: {hostname} | {device_in.ip}")
+            logger.success(f"Successfully created device: {hostname} | {device_in.ip}")
             return {"status": "created", "device": new_device}
 
     except IntegrityError as e:
@@ -139,6 +122,108 @@ async def add_device(device_in: DeviceCreate):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal database error occurred.",
         )
+
+
+@app.delete("/api/device/{id}", status_code=200)
+async def delete_device(id: int):
+    try:
+        with Session() as db:
+            device = db.query(Device).filter(Device.id == id).first()
+            if not device:
+                logger.warning(f"Attempted to delete non-existing device with ID: {id}")
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Not found device with ID: {id}.",
+                )
+
+            db.delete(device)
+            db.commit()
+
+            logger.success(f"Successfully deleted device with ID: {id}")
+            return {"status": "deleted", "message": "Successfully deleted device"}
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        logger.error(f"Database error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal database error occurred.",
+        )
+
+
+@app.post("/api/rediscover/{id}")
+async def rediscover_device(id: int):
+    try:
+        with Session() as db:
+            device = db.query(Device).filter(Device.id == id).first()
+
+            if not device:
+                logger.warning(
+                    f"Attempted to rediscover non-existing device with ID: {id}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Not found device with ID: {id}.",
+                )
+
+            hostname, model = model_cisco_device_info(
+                device.ip, device.port, device.username, device.password, device.https
+            )
+
+            device.hostname = hostname
+            device.model = model
+
+            db.commit()
+            logger.success(
+                f"Successfully rediscovered device: {hostname} | {device.ip}"
+            )
+            return {"status": "updated", "device": device}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Rediscover failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal database error occurred.")
+
+
+@app.get("/api/device/{id}", response_model=DeviceOut)
+async def get_device(id: int):
+    with Session() as db:
+        device = db.query(Device).filter(Device.id == id).first()
+        if not device:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Not found device with ID: {id} ",
+            )
+        return device
+
+
+@app.get("/api/devices", response_model=Page[DeviceOut])
+async def get_devices():
+    with Session() as db:
+        query = db.query(Device).order_by(Device.id.asc())
+        return paginate(db, query)
+
+
+@app.patch("/api/device/{id}", response_model=DeviceOut)
+async def update_device(id: int, device_update: DeviceUpdate):
+    with Session() as db:
+        with db.begin():
+            device = db.query(Device).filter(Device.id == id).first()
+
+            if not device:
+                raise HTTPException(status_code=404, detail="Device not found")
+
+            update_data = device_update.model_dump(exclude_unset=True)
+
+            for key, value in update_data.items():
+                setattr(device, key, value)
+
+        db.refresh(device)
+        logger.info(f"Successfully updated device: {device.hostname} |  {device.ip}")
+        return device
 
 
 def main():

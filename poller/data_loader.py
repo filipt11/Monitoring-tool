@@ -48,7 +48,7 @@ def seed_devices():
             if not exists:
                 new_dev = models.Device(**dev_data)
                 session.add(new_dev)
-                logger.info(f"Device has been created: {dev_data['hostname']}")
+                logger.success(f"Device has been created: {dev_data['hostname']}")
             else:
                 logger.info(f"Device already exists: {dev_data['hostname']}")
 
