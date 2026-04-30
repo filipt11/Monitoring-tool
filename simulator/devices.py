@@ -2,8 +2,7 @@ import logic
 
 
 class BaseDevice:
-    """Class representing base device model.
-    By default methods return data as for average utilized device."""
+    """Class representing base device model"""
 
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
@@ -17,42 +16,7 @@ class BaseDevice:
         self.port = port
         self.https = https
         self.interface_counters = {}
-
-        # Define common interfaces for all devices
-        self.interfaces_list = [
-            {
-                "name": "Vlan2",
-                "type": "iana-if-type:propVirtual",
-                "admin-status": "up",
-                "if-index": 4,
-                "phys-address": "00:50:56:bf:29:d2",
-                "speed": "2000000000",
-            },
-            {
-                "name": "GigabitEthernet1/0/2",
-                "type": "iana-if-type:ethernetCsmacd",
-                "admin-status": "up",
-                "if-index": 21,
-                "phys-address": "00:60:5a:bf:19:c4",
-                "speed": "1000000000",
-            },
-            {
-                "name": "GigabitEthernet2/0/4.14",
-                "type": "iana-if-type:ethernetCsmacd",
-                "admin-status": "down",
-                "if-index": 7,
-                "phys-address": "00:78:5a:ac:39:d2",
-                "speed": "1000000000",
-            },
-            {
-                "name": "Loopback1",
-                "type": "iana-if-type:softwareLoopback",
-                "admin-status": "up",
-                "if-index": 11,
-                "phys-address": "00:50:56:bf:29:d2",
-                "speed": "0",
-            },
-        ]
+        self.interfaces_list = []
 
     def __repr__(self):
         return f"<BaseDevice {self.hostname} ({self.ip_address}) - {self.vendor} {self.model}>"
@@ -74,10 +38,7 @@ class BaseDevice:
         return 762551372
 
     def get_interfaces(self) -> list:
-        """Return list of device interfaces with updated counters value."""
-
         updated_interfaces = []
-
         for iface in self.interfaces_list:
             name = iface["name"]
             speed = int(iface["speed"])
@@ -127,8 +88,58 @@ class BaseDevice:
         return updated_interfaces
 
 
-class HighUtilizedDevice(BaseDevice):
-    """Class representing higher utilized device
+# Cisco devices
+class BaseCiscoDevice(BaseDevice):
+    """Class representing base Cisco device model
+    Simulating data compliant with RESTCONF protocol format using by Cisco IOS XE devices
+    By default methods return data as for average utilized device."""
+
+    def __init__(
+        self, ip_address, vendor, hostname, model, username, password, port, https
+    ):
+        super().__init__(
+            ip_address, vendor, hostname, model, username, password, port, https
+        )
+
+        # Define common interfaces for all Cisco devices
+        self.interfaces_list = [
+            {
+                "name": "Vlan2",
+                "type": "iana-if-type:propVirtual",
+                "admin-status": "up",
+                "if-index": 4,
+                "phys-address": "00:50:56:bf:29:d2",
+                "speed": "2000000000",
+            },
+            {
+                "name": "GigabitEthernet1/0/2",
+                "type": "iana-if-type:ethernetCsmacd",
+                "admin-status": "up",
+                "if-index": 21,
+                "phys-address": "00:60:5a:bf:19:c4",
+                "speed": "1000000000",
+            },
+            {
+                "name": "GigabitEthernet2/0/4.14",
+                "type": "iana-if-type:ethernetCsmacd",
+                "admin-status": "down",
+                "if-index": 7,
+                "phys-address": "00:78:5a:ac:39:d2",
+                "speed": "1000000000",
+            },
+            {
+                "name": "Loopback1",
+                "type": "iana-if-type:softwareLoopback",
+                "admin-status": "up",
+                "if-index": 11,
+                "phys-address": "00:50:56:bf:29:d2",
+                "speed": "0",
+            },
+        ]
+
+
+class HighUtilizedCiscoDevice(BaseCiscoDevice):
+    """Class representing higher utilized Cisco device
     Methods regarding CPU and Memory usage generate higher values."""
 
     def __init__(
@@ -149,8 +160,8 @@ class HighUtilizedDevice(BaseDevice):
         return logic.get_high_utilized_ram(self.get_total_memory())
 
 
-class LowUtilizedDevice(BaseDevice):
-    """Class representing lower utilized device
+class LowUtilizedCiscoDevice(BaseCiscoDevice):
+    """Class representing lower utilized Cisco device
     Methods regarding CPU and Memory usage generate lower values."""
 
     def __init__(
@@ -176,8 +187,8 @@ class LowUtilizedDevice(BaseDevice):
         return 381275686
 
 
-class AverageUtilizedDevice(BaseDevice):
-    """Class representaing average utilized device, extended for a few more interfaces."""
+class AverageUtilizedCiscoDevice(BaseCiscoDevice):
+    """Class representaing average utilized Cisco device, extended for a few more interfaces."""
 
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
@@ -223,3 +234,49 @@ class AverageUtilizedDevice(BaseDevice):
                 },
             ]
         )
+
+
+# Juniper devices
+class BaseJuniperDevice(BaseDevice):
+    def __init__(
+        self, ip_address, vendor, hostname, model, username, password, port, https
+    ):
+        super().__init__(
+            ip_address, vendor, hostname, model, username, password, port, https
+        )
+
+        # Define common interfaces for all Juniper devices
+        self.interfaces_list = [
+            {
+                "name": "ge-0/0/0",
+                "type": "ethernetCsmacd",
+                "admin-status": "up",
+                "if-index": "3",
+                "speed": "4000000000",
+                "phys-address": "00:f3:85:32:ab:80",
+            },
+            {
+                "name": "ge-0/0/1",
+                "type": "ethernetCsmacd",
+                "admin-status": "up",
+                "if-index": "23",
+                "speed": "2000000000",
+                "phys-address": "00:6b:85:22:e4:01",
+            },
+            {
+                "name": "em1.0",
+                "type": "management",
+                "admin-status": "up",
+                "if-index": "12",
+                "speed": "100000000",
+                "phys-address": "00:31:56:ac:4f:01",
+            },
+            {
+                "name": "lo0.0",
+                "type": "softwareLoopback",
+                "admin-status": "up",
+                "if-index": "4",
+                "speed": "0",
+                "phys-address": "00:05:85:22:ab:01",
+            },
+        ]

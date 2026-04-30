@@ -7,6 +7,9 @@ from loguru import logger
 # Specify polling interval
 POLLING_INERVAL = 60
 
+# Specify microservice API port
+MICROSERVICE_PORT = 8000
+
 
 # PostgreSQL config
 class Base(DeclarativeBase):

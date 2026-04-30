@@ -15,7 +15,7 @@ def get_high_utilized_cpu() -> int:
 
     # 5% chance for drop
     if random.random() < 0.05:
-        return int(max(0, random.gauss(40, 30)))
+        return int(max(5, random.gauss(40, 30)))
 
     return int(max(70, min(100, val)))
 
@@ -31,7 +31,7 @@ def get_average_utilized_cpu() -> int:
 
     # 5% chance for drop
     if random.random() < 0.05:
-        return int(max(0, random.gauss(20, 20)))
+        return int(max(5, random.gauss(20, 20)))
 
     return int(max(20, min(60, val)))
 
@@ -106,14 +106,7 @@ def increase_interface_counter(
     key - identifier of deivce and its interface with optional in/out sufix(for example: r-high-1_Vlan2_in)
     """
 
-    if not hasattr(increase_interface_counter, "_last_times"):
-        increase_interface_counter._last_times = {}
-
-    now = time()
-    last_time = increase_interface_counter._last_times.get(key)
-    increase_interface_counter._last_times[key] = now
-    interval = now - last_time if last_time else 0
-
+    interval = get_dynamic_interval(key)
     speed_bytes = declared_speed / 8
     utilization = random.uniform(0.20, 0.40)
     increment = int(speed_bytes * utilization * interval)
@@ -131,15 +124,7 @@ def increase_interface_counter_for_higher_utilized(
     key - identifier of deivce and its interface with optional in/out sufix(for example: r-high-1_Vlan2_in)
     """
 
-    if not hasattr(increase_interface_counter_for_higher_utilized, "_last_times"):
-        increase_interface_counter_for_higher_utilized._last_times = {}
-
-    now = time()
-    last_time = increase_interface_counter_for_higher_utilized._last_times.get(key)
-    increase_interface_counter_for_higher_utilized._last_times[key] = now
-
-    interval = now - last_time if last_time else 0
-
+    interval = get_dynamic_interval(key)
     speed_bytes = declared_speed / 8
     utilization = random.uniform(0.75, 0.95)
     increment = int(speed_bytes * utilization * interval)

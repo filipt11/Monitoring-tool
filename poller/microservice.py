@@ -7,6 +7,7 @@ from config import (
     INFLUX_BUCKET,
     write_api,
     init_db,
+    MICROSERVICE_PORT,
 )
 from loguru import logger
 from models import Device, DeviceCreate, DeviceOut, DeviceUpdate
@@ -22,14 +23,6 @@ from sys import stderr
 from sqlalchemy.exc import IntegrityError
 from fastapi_pagination import Page, add_pagination, paginate
 from fastapi_pagination.ext.sqlalchemy import paginate
-
-# Configure Logging
-logger.remove()
-logger.add(stderr, level="INFO")
-logger.add("discovery.log", rotation="10 MB", retention="10 days", level="INFO")
-
-# Define microservice port
-PORT = 8000
 
 app = FastAPI()
 add_pagination(app)
@@ -229,9 +222,21 @@ async def update_device(id: int, device_update: DeviceUpdate):
 def main():
     """Connect to DB and start uvicorn server"""
 
-    init_db()
-    uvicorn.run(app, host="0.0.0.0", port=PORT)
+    try:
+        init_db()
+    except ConnectionError as e:
+        logger.critical(f"Finishing proggram")
+        return False
+
+    uvicorn.run(app, host="0.0.0.0", port=MICROSERVICE_PORT)
 
 
 if __name__ == "__main__":
+    # Configure Logging
+    logger.remove()
+    logger.add(stderr, level="INFO")
+    logger.add(
+        "poller/discovery.log", rotation="10 MB", retention="10 days", level="INFO"
+    )
+
     main()

@@ -50,18 +50,18 @@ def poll_devices():
 
         # DEBUG START
 
-        # cpu = device_data.get("cpu")
-        # mempct = device_data.get("memory_pct")
-        # interfaces = device_data.get("interfaces", [])
-        # print(f"--- DEBUG DATA FOR {device.hostname} ---")
-        # print(device_data)
-        # print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
-        # print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
-        # for iface in interfaces:
-        #     print(
-        #         f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
-        #     )
-        # print(f"{device_data=}")
+        cpu = device_data.get("cpu")
+        mempct = device_data.get("memory_pct")
+        interfaces = device_data.get("interfaces", [])
+        print(f"--- DEBUG DATA FOR {device.hostname} ---")
+        print(device_data)
+        print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
+        print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
+        for iface in interfaces:
+            print(
+                f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
+            )
+        print(f"{device_data=}")
 
         # DEBUG END
 
@@ -210,6 +210,12 @@ def calculate_utilization(hostname, if_name, direction, current_octets, speed_bp
         time_delta = current_time - prev_time
 
         if time_delta <= 0:
+            return None, None
+
+        # Handle counters reset
+        if current_octets < prev_octets:
+            logger.warning(f"Counter reset detected for {key} Skipping this sample")
+            last_polls[key] = (current_time, current_octets)
             return None, None
 
         octets_delta = current_octets - prev_octets

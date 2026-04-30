@@ -21,19 +21,20 @@ raw_https = os.getenv("DEVICE_IS_HTTPS", "false")
 HTTPS = raw_https.lower() in ("true", "1", "yes")
 
 
-# Create simulated device based on specified profile
-if PROFILE == "high_utilized":
-    device = devices.HighUtilizedDevice(
-        IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-    )
-elif PROFILE == "low_utilized":
-    device = devices.LowUtilizedDevice(
-        IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-    )
-else:
-    device = devices.AverageUtilizedDevice(
-        IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-    )
+# Create simulated device based on vendor and specified profile
+if VENDOR == "cisco":
+    if PROFILE == "high_utilized":
+        device = devices.HighUtilizedCiscoDevice(
+            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+        )
+    elif PROFILE == "low_utilized":
+        device = devices.LowUtilizedCiscoDevice(
+            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+        )
+    else:
+        device = devices.AverageUtilizedCiscoDevice(
+            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+        )
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
@@ -216,8 +217,89 @@ async def get_interfaces_state():
     return {"ietf-interfaces:interfaces-state": {"interface": interface_output}}
 
 
-# --- Router dla Juniper ---
-juniper_router = APIRouter(prefix="/rpc/get-interface-information")
+# Define URL paths for Juniper devices
+juniper_router = APIRouter(prefix="/rpc")
+
+
+@juniper_router.post("/get-interface-information")
+async def get_software_information():
+    pass
+
+
+@juniper_router.post("/get-route-engine-information")
+async def get_software_information():
+    return {
+        "route-engine-information": [
+            {
+                "route-engine": [
+                    {
+                        "slot": [{"data": "0"}],
+                        "mastership-state": [{"data": "master"}],
+                        "mastership-priority": [{"data": "master (default)"}],
+                        "status": [{"data": "OK"}],
+                        "memory-dram-size": [{"data": "1993 MB"}],
+                        "memory-installed-size": [{"data": "(2048 MB installed)"}],
+                        "memory-buffer-utilization": [{"data": "59"}],
+                        "cpu-user": [{"data": "0"}],
+                        "cpu-background": [{"data": "0"}],
+                        "cpu-system": [{"data": "1"}],
+                        "cpu-interrupt": [{"data": "0"}],
+                        "cpu-idle": [{"data": "98"}],
+                        "cpu-user1": [{"data": "1"}],
+                        "cpu-background1": [{"data": "0"}],
+                        "cpu-system1": [{"data": "2"}],
+                        "cpu-interrupt1": [{"data": "0"}],
+                        "cpu-idle1": [{"data": "97"}],
+                        "cpu-user2": [{"data": "1"}],
+                        "cpu-background2": [{"data": "0"}],
+                        "cpu-system2": [{"data": "2"}],
+                        "cpu-interrupt2": [{"data": "0"}],
+                        "cpu-idle2": [{"data": "97"}],
+                        "cpu-user3": [{"data": "2"}],
+                        "cpu-background3": [{"data": "0"}],
+                        "cpu-system3": [{"data": "2"}],
+                        "cpu-interrupt3": [{"data": "0"}],
+                        "cpu-idle3": [{"data": "97"}],
+                        "model": [{"data": "RE-VMX"}],
+                        "start-time": [
+                            {
+                                "data": "2026-04-29 14:08:40 UTC",
+                                "attributes": {"junos:seconds": "1777471720"},
+                            }
+                        ],
+                        "up-time": [
+                            {
+                                "data": "29 minutes, 21 seconds",
+                                "attributes": {"junos:seconds": "1761"},
+                            }
+                        ],
+                        "last-reboot-reason": [
+                            {"data": "Router rebooted after a normal shutdown."}
+                        ],
+                        "load-average-one": [{"data": "2.50"}],
+                        "load-average-five": [{"data": "1.42"}],
+                        "load-average-fifteen": [{"data": "0.93"}],
+                    }
+                ]
+            }
+        ]
+    }
+
+
+@juniper_router.post("/get-system-information")
+async def get_software_information():
+    return {
+        "system-information": [
+            {
+                "host-name": [{"data": "vMX-addr-0"}],
+                "hardware-model": [{"data": "vmx"}],
+                "os-name": [{"data": "junos"}],
+                "os-version": [{"data": "25.2R2.11"}],
+                "serial-number": [{"data": "VM69F21129F0"}],
+            }
+        ]
+    }
+
 
 # Choose API Router based on device Vendor
 if VENDOR == "cisco":
