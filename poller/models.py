@@ -72,6 +72,8 @@ class DeviceOut(BaseModel):
     model: str
     port: int
     vendor: str
+    username: str
+    password: str
     https: bool
 
     model_config = ConfigDict(from_attributes=True)

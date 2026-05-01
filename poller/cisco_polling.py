@@ -5,7 +5,7 @@ from models import Device
 
 
 def poll_cisco_device(device: Device) -> dict:
-    """Main polling function that polls Device and parse it's data"""
+    """Main polling function that polls Cisco Device and parse it's data"""
 
     # Initialize default values
     cpu_val = None
@@ -98,7 +98,10 @@ def parse_cpu(raw_cpu: dict) -> int:
 
 
 def parse_memory(raw_memory: dict) -> tuple[int, int]:
-    """_summary_"""
+    """
+    Returns:
+        (total_memory, used_memory)
+    """
 
     stats = raw_memory["Cisco-IOS-XE-memory-oper:memory-statistics"]
     memory_list = stats["memory-statistic"]

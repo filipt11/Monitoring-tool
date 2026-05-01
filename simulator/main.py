@@ -254,7 +254,7 @@ async def get_interface_information():
                 }
             ],
             "oper-status": [{"data": item["oper-status"]}],
-            "local-index": [{"data": item["if-index"]}],
+            "local-index": [{"data": str(item["if-index"])}],
             "snmp-index": [{"data": str(int(item["if-index"]) + 220)}],
             "if-type": [{"data": item["type"]}],
             "mtu": [{"data": "1514"}],
@@ -297,7 +297,6 @@ async def get_interface_information():
             ],
             "traffic-statistics": [
                 {
-                    "attributes": {"junos:style": "brief"},
                     "input-bps": [{"data": "0"}],
                     "input-pps": [{"data": "0"}],
                     "output-bps": [{"data": "0"}],
@@ -317,7 +316,7 @@ async def get_interface_information():
                     "errored-blocks-seconds": [{"data": "0"}],
                 }
             ],
-            "interface-transmit-statistics": [{"data": "Disabled"}],
+            "interface-transmit-statistics": [{"data": "Enabled"}],
             "logical-interface": [
                 {
                     "name": [{"data": f"{item['name']}.0"}],
@@ -325,9 +324,10 @@ async def get_interface_information():
                     "snmp-index": [{"data": str(int(item["if-index"]) + 200)}],
                     "traffic-statistics": [
                         {
-                            "attributes": {"junos:style": "brief"},
-                            "input-packets": [{"data": item["in-octets"]}],
-                            "output-packets": [{"data": item["out-octets"]}],
+                            "input-bytes": [{"data": item["in-octets"]}],
+                            "output-bytes": [{"data": item["out-octets"]}],
+                            "input-packets": [{"data": "0"}],
+                            "output-packets": [{"data": "0"}],
                         }
                     ],
                 }

@@ -9,8 +9,8 @@ from config import (
     init_db,
     POLLING_INERVAL,
 )
-import cisco_polling
-import juniper_polling
+from cisco_polling import poll_cisco_device
+from juniper_polling import poll_juniper_device
 from models import Device, DeviceWithPolledData, InterfaceData
 from loguru import logger
 from data_loader import seed_devices
@@ -43,25 +43,24 @@ def poll_devices():
     for device in cached_device_list:
         device_data = {}
         if device.vendor == "cisco":
-            device_data = cisco_polling.poll_cisco_device(device)
+            device_data = poll_cisco_device(device)
 
         elif device.vendor == "juniper":
-            pass
+            device_data = poll_juniper_device(device)
 
         # DEBUG START
 
-        # cpu = device_data.get("cpu")
-        # mempct = device_data.get("memory_pct")
-        # interfaces = device_data.get("interfaces", [])
-        # print(f"--- DEBUG DATA FOR {device.hostname} ---")
-        # print(device_data)
-        # print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
-        # print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
-        # for iface in interfaces:
-        #     print(
-        #         f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
-        #     )
-        # print(f"{device_data=}")
+        cpu = device_data.get("cpu")
+        mempct = device_data.get("memory_pct")
+        interfaces = device_data.get("interfaces", [])
+        print(f"--- DEBUG DATA FOR {device.hostname} ---")
+        print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
+        print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
+        for iface in interfaces:
+            print(
+                f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
+            )
+        print(f"{device_data=}")
 
         # DEBUG END
 
