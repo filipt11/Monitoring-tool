@@ -35,6 +35,19 @@ if VENDOR == "cisco":
         device = devices.AverageUtilizedCiscoDevice(
             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
         )
+elif VENDOR == "juniper":
+    if PROFILE == "high_utilized":
+        device = devices.HighUtilizedJuniperDevice(
+            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+        )
+    elif PROFILE == "low_utilized":
+        device = devices.LowUtilizedJuniperDevice(
+            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+        )
+    else:
+        device = devices.AverageUtilizedJuniperDevice(
+            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+        )
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
@@ -222,12 +235,123 @@ juniper_router = APIRouter(prefix="/rpc")
 
 
 @juniper_router.post("/get-interface-information")
-async def get_software_information():
-    pass
+async def get_interface_information():
+    raw_interfaces = device.get_interfaces()
+
+    physical_interfaces_output = []
+
+    for item in raw_interfaces:
+        speed = int(item["speed"])
+        speed_mbps = int(speed // 10**6)
+        speed_formatted = f"{speed_mbps}mbps"
+
+        ifd = {
+            "name": [{"data": item["name"]}],
+            "admin-status": [
+                {
+                    "data": item["admin-status"],
+                    "attributes": {"junos:format": "Enabled"},
+                }
+            ],
+            "oper-status": [{"data": item["oper-status"]}],
+            "local-index": [{"data": item["if-index"]}],
+            "snmp-index": [{"data": str(int(item["if-index"]) + 220)}],
+            "if-type": [{"data": item["type"]}],
+            "mtu": [{"data": "1514"}],
+            "sonet-mode": [{"data": "LAN-PHY"}],
+            "mru": [{"data": "1522"}],
+            "source-filtering": [{"data": "disabled"}],
+            "speed": [{"data": speed_formatted}],
+            "eth-switch-error": [{"data": "none"}],
+            "remote-bounce": [{"data": "none"}],
+            "bpdu-error": [{"data": "none"}],
+            "ld-pdu-error": [{"data": "none"}],
+            "l2pt-error": [{"data": "none"}],
+            "loopback": [{"data": "disabled"}],
+            "if-flow-control": [{"data": "enabled"}],
+            "if-auto-negotiation": [{"data": "enabled"}],
+            "if-remote-fault": [{"data": "online"}],
+            "pad-to-minimum-frame-size": [{"data": "Disabled"}],
+            "if-device-flags": [
+                {"ifdf-present": [{"data": [None]}], "ifdf-running": [{"data": [None]}]}
+            ],
+            "if-config-flags": [
+                {
+                    "iff-hardware-down": [{"data": [None]}],
+                    "iff-snmp-traps": [{"data": [None]}],
+                    "internal-flags": [{"data": [None]}],
+                }
+            ],
+            "if-media-flags": [{"ifmf-none": [{"data": [None]}]}],
+            "physical-interface-cos-information": [
+                {
+                    "physical-interface-cos-hw-max-queues": [{"data": "8"}],
+                    "physical-interface-cos-use-max-queues": [{"data": "8"}],
+                }
+            ],
+            "current-physical-address": [
+                {"data": item.get("phys-address", "00:50:56:be:c8:e0")}
+            ],
+            "hardware-physical-address": [
+                {"data": item.get("phys-address", "00:50:56:be:c8:e0")}
+            ],
+            "traffic-statistics": [
+                {
+                    "attributes": {"junos:style": "brief"},
+                    "input-bps": [{"data": "0"}],
+                    "input-pps": [{"data": "0"}],
+                    "output-bps": [{"data": "0"}],
+                    "output-pps": [{"data": "0"}],
+                }
+            ],
+            "active-alarms": [
+                {"interface-alarms": [{"ethernet-alarm-link-down": [{"data": [None]}]}]}
+            ],
+            "active-defects": [
+                {"interface-alarms": [{"ethernet-alarm-link-down": [{"data": [None]}]}]}
+            ],
+            "ethernet-pcs-statistics": [
+                {
+                    "attributes": {"junos:style": "verbose"},
+                    "bit-error-seconds": [{"data": "0"}],
+                    "errored-blocks-seconds": [{"data": "0"}],
+                }
+            ],
+            "interface-transmit-statistics": [{"data": "Disabled"}],
+            "logical-interface": [
+                {
+                    "name": [{"data": f"{item['name']}.0"}],
+                    "local-index": [{"data": str(int(item["if-index"]) + 100)}],
+                    "snmp-index": [{"data": str(int(item["if-index"]) + 200)}],
+                    "traffic-statistics": [
+                        {
+                            "attributes": {"junos:style": "brief"},
+                            "input-packets": [{"data": item["in-octets"]}],
+                            "output-packets": [{"data": item["out-octets"]}],
+                        }
+                    ],
+                }
+            ],
+        }
+
+        physical_interfaces_output.append(ifd)
+
+    return {
+        "interface-information": [{"physical-interface": physical_interfaces_output}]
+    }
 
 
 @juniper_router.post("/get-route-engine-information")
-async def get_software_information():
+async def get_route_engine_information():
+
+    cpu_idle = int(100 - device.get_cpu())
+    total_memory = device.get_total_memory()
+    used_memory = device.get_used_memory()
+    memory_MB = total_memory // (1024**2)
+    formatted_memory = f"({memory_MB} MB installed)"
+    memory_utilization = int((used_memory / total_memory) * 100)
+    dram = f"{memory_MB - 7} MB"
+
     return {
         "route-engine-information": [
             {
@@ -237,14 +361,16 @@ async def get_software_information():
                         "mastership-state": [{"data": "master"}],
                         "mastership-priority": [{"data": "master (default)"}],
                         "status": [{"data": "OK"}],
-                        "memory-dram-size": [{"data": "1993 MB"}],
-                        "memory-installed-size": [{"data": "(2048 MB installed)"}],
-                        "memory-buffer-utilization": [{"data": "59"}],
+                        "memory-dram-size": [{"data": dram}],
+                        "memory-installed-size": [{"data": formatted_memory}],
+                        "memory-buffer-utilization": [
+                            {"data": str(memory_utilization)}
+                        ],
                         "cpu-user": [{"data": "0"}],
                         "cpu-background": [{"data": "0"}],
                         "cpu-system": [{"data": "1"}],
                         "cpu-interrupt": [{"data": "0"}],
-                        "cpu-idle": [{"data": "98"}],
+                        "cpu-idle": [{"data": str(cpu_idle)}],
                         "cpu-user1": [{"data": "1"}],
                         "cpu-background1": [{"data": "0"}],
                         "cpu-system1": [{"data": "2"}],
@@ -287,12 +413,12 @@ async def get_software_information():
 
 
 @juniper_router.post("/get-system-information")
-async def get_software_information():
+async def get_system_information():
     return {
         "system-information": [
             {
-                "host-name": [{"data": "vMX-addr-0"}],
-                "hardware-model": [{"data": "vmx"}],
+                "host-name": [{"data": device.hostname}],
+                "hardware-model": [{"data": device.model}],
                 "os-name": [{"data": "junos"}],
                 "os-version": [{"data": "25.2R2.11"}],
                 "serial-number": [{"data": "VM69F21129F0"}],

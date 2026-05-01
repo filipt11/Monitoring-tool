@@ -50,18 +50,18 @@ def poll_devices():
 
         # DEBUG START
 
-        cpu = device_data.get("cpu")
-        mempct = device_data.get("memory_pct")
-        interfaces = device_data.get("interfaces", [])
-        print(f"--- DEBUG DATA FOR {device.hostname} ---")
-        print(device_data)
-        print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
-        print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
-        for iface in interfaces:
-            print(
-                f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
-            )
-        print(f"{device_data=}")
+        # cpu = device_data.get("cpu")
+        # mempct = device_data.get("memory_pct")
+        # interfaces = device_data.get("interfaces", [])
+        # print(f"--- DEBUG DATA FOR {device.hostname} ---")
+        # print(device_data)
+        # print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
+        # print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
+        # for iface in interfaces:
+        #     print(
+        #         f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
+        #     )
+        # print(f"{device_data=}")
 
         # DEBUG END
 

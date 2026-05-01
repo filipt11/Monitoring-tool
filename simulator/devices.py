@@ -38,54 +38,7 @@ class BaseDevice:
         return 762551372
 
     def get_interfaces(self) -> list:
-        updated_interfaces = []
-        for iface in self.interfaces_list:
-            name = iface["name"]
-            speed = int(iface["speed"])
-            status = iface["admin-status"]
-
-            prev_in = self.interface_counters.get(f"{name}_in", 0)
-            prev_out = self.interface_counters.get(f"{name}_out", 0)
-
-            # Omitt inactive ports
-            if status == "up" and speed > 0:
-                # Consider ports in range 20 to 30 as higher utilized IN ones
-                if iface["if-index"] not in range(20, 31):
-                    new_in = logic.increase_interface_counter(
-                        prev_in, speed, f"{self.hostname}_{name}_in"
-                    )
-                    new_out = logic.increase_interface_counter(
-                        prev_out, speed * 0.7, f"{self.hostname}_{name}_out"
-                    )
-                else:
-                    new_in = logic.increase_interface_counter_for_higher_utilized(
-                        prev_in, speed, f"{self.hostname}_{name}_in"
-                    )
-                    new_out = logic.increase_interface_counter_for_higher_utilized(
-                        prev_out, speed * 0.05, f"{self.hostname}_{name}_out"
-                    )
-            else:
-                new_in = prev_in
-                new_out = prev_out
-
-            self.interface_counters[f"{name}_in"] = new_in
-            self.interface_counters[f"{name}_out"] = new_out
-
-            updated_interfaces.append(
-                {
-                    "name": name,
-                    "type": iface["type"],
-                    "admin-status": status,
-                    "oper-status": status,
-                    "if-index": iface["if-index"],
-                    "phys-address": iface["phys-address"],
-                    "speed": str(speed),
-                    "in-octets": str(new_in),
-                    "out-octets": str(new_out),
-                }
-            )
-
-        return updated_interfaces
+        pass
 
 
 # Cisco devices
@@ -136,6 +89,56 @@ class BaseCiscoDevice(BaseDevice):
                 "speed": "0",
             },
         ]
+
+    def get_interfaces(self) -> list:
+        updated_interfaces = []
+        for iface in self.interfaces_list:
+            name = iface["name"]
+            speed = int(iface["speed"])
+            status = iface["admin-status"]
+
+            prev_in = self.interface_counters.get(f"{name}_in", 0)
+            prev_out = self.interface_counters.get(f"{name}_out", 0)
+
+            # Omitt inactive ports
+            if status == "up" and speed > 0:
+                # Consider ports in range 20 to 30 as higher utilized IN ones
+                if iface["if-index"] not in range(20, 31):
+                    new_in = logic.increase_interface_counter(
+                        prev_in, speed, f"{self.hostname}_{name}_in"
+                    )
+                    new_out = logic.increase_interface_counter(
+                        prev_out, speed * 0.7, f"{self.hostname}_{name}_out"
+                    )
+                else:
+                    new_in = logic.increase_interface_counter_for_higher_utilized(
+                        prev_in, speed, f"{self.hostname}_{name}_in"
+                    )
+                    new_out = logic.increase_interface_counter_for_higher_utilized(
+                        prev_out, speed * 0.05, f"{self.hostname}_{name}_out"
+                    )
+            else:
+                new_in = prev_in
+                new_out = prev_out
+
+            self.interface_counters[f"{name}_in"] = new_in
+            self.interface_counters[f"{name}_out"] = new_out
+
+            updated_interfaces.append(
+                {
+                    "name": name,
+                    "type": iface["type"],
+                    "admin-status": status,
+                    "oper-status": status,
+                    "if-index": iface["if-index"],
+                    "phys-address": iface["phys-address"],
+                    "speed": str(speed),
+                    "in-octets": str(new_in),
+                    "out-octets": str(new_out),
+                }
+            )
+
+        return updated_interfaces
 
 
 class HighUtilizedCiscoDevice(BaseCiscoDevice):
@@ -249,7 +252,7 @@ class BaseJuniperDevice(BaseDevice):
         self.interfaces_list = [
             {
                 "name": "ge-0/0/0",
-                "type": "ethernetCsmacd",
+                "type": "Ethernet",
                 "admin-status": "up",
                 "if-index": "3",
                 "speed": "4000000000",
@@ -257,26 +260,150 @@ class BaseJuniperDevice(BaseDevice):
             },
             {
                 "name": "ge-0/0/1",
-                "type": "ethernetCsmacd",
+                "type": "Ethernet",
                 "admin-status": "up",
                 "if-index": "23",
                 "speed": "2000000000",
                 "phys-address": "00:6b:85:22:e4:01",
             },
             {
-                "name": "em1.0",
-                "type": "management",
+                "name": "em1",
+                "type": "Ethernet",
                 "admin-status": "up",
                 "if-index": "12",
                 "speed": "100000000",
                 "phys-address": "00:31:56:ac:4f:01",
             },
             {
-                "name": "lo0.0",
-                "type": "softwareLoopback",
+                "name": "lo0",
+                "type": "Loopback",
                 "admin-status": "up",
                 "if-index": "4",
                 "speed": "0",
                 "phys-address": "00:05:85:22:ab:01",
             },
         ]
+
+    # TBD - przerobic logike pod Junipera
+    def get_interfaces(self) -> list:
+        updated_interfaces = []
+        for iface in self.interfaces_list:
+            name = iface["name"]
+            speed = int(iface["speed"])
+            status = iface["admin-status"]
+
+            prev_in = self.interface_counters.get(f"{name}_in", 0)
+            prev_out = self.interface_counters.get(f"{name}_out", 0)
+
+            # Omitt inactive ports
+            if status == "up" and speed > 0:
+                # Consider ports in range 20 to 30 as higher utilized IN ones
+                if iface["if-index"] not in range(20, 31):
+                    new_in = logic.increase_interface_counter(
+                        prev_in, speed, f"{self.hostname}_{name}_in"
+                    )
+                    new_out = logic.increase_interface_counter(
+                        prev_out, speed * 0.7, f"{self.hostname}_{name}_out"
+                    )
+                else:
+                    new_in = logic.increase_interface_counter_for_higher_utilized(
+                        prev_in, speed, f"{self.hostname}_{name}_in"
+                    )
+                    new_out = logic.increase_interface_counter_for_higher_utilized(
+                        prev_out, speed * 0.05, f"{self.hostname}_{name}_out"
+                    )
+            else:
+                new_in = prev_in
+                new_out = prev_out
+
+            self.interface_counters[f"{name}_in"] = new_in
+            self.interface_counters[f"{name}_out"] = new_out
+
+            updated_interfaces.append(
+                {
+                    "name": name,
+                    "type": iface["type"],
+                    "admin-status": status,
+                    "oper-status": status,
+                    "if-index": iface["if-index"],
+                    "phys-address": iface["phys-address"],
+                    "speed": str(speed),
+                    "in-octets": str(new_in),
+                    "out-octets": str(new_out),
+                }
+            )
+
+        return updated_interfaces
+
+
+class HighUtilizedJuniperDevice(BaseJuniperDevice):
+    def __init__(
+        self, ip_address, vendor, hostname, model, username, password, port, https
+    ):
+        super().__init__(
+            ip_address, vendor, hostname, model, username, password, port, https
+        )
+
+    def get_cpu(self) -> int:
+        return logic.get_high_utilized_cpu
+
+    def get_used_memory(self) -> int:
+        return logic.get_high_utilized_ram
+
+
+class LowUtilizedJuniperDevice(BaseJuniperDevice):
+    def __init__(
+        self, ip_address, vendor, hostname, model, username, password, port, https
+    ):
+        super().__init__(
+            ip_address, vendor, hostname, model, username, password, port, https
+        )
+
+    def get_cpu(self) -> int:
+        return logic.get_low_utilized_cpu
+
+    def get_total_memory(self) -> int:
+        """Cut total memory by half for lower utilized device"""
+        return int(super().get_total_memory() / 2)
+
+    def get_used_memory(self) -> int:
+        return logic.get_low_utilized_ram
+
+
+class AverageUtilizedJuniperDevice(BaseJuniperDevice):
+    def __init__(
+        self, ip_address, vendor, hostname, model, username, password, port, https
+    ):
+        super().__init__(
+            ip_address, vendor, hostname, model, username, password, port, https
+        )
+
+        # Extend interface list for device using this profile
+        self.interfaces_list.extend(
+            [
+                {
+                    "name": "ge-2/0/0",
+                    "type": "Ethernet",
+                    "admin-status": "up",
+                    "if-index": "25",
+                    "speed": "8000000000",
+                    "phys-address": "00:a3:e5:72:12:70",
+                },
+                {
+                    "name": "irb1",
+                    "type": "VxLAN-Tunnel-Endpoint",
+                    "admin-status": "down",
+                    "if-index": "11",
+                    "speed": "2000000000",
+                    "phys-address": "00:65:a5:ee:4f:21",
+                },
+                {
+                    "name": "em2",
+                    "type": "Ethernet",
+                    "admin-status": "up",
+                    "if-index": "17",
+                    "speed": "100000000",
+                    "phys-address": "00:a4:51:cf:7f:22",
+                },
+            ]
+        )
