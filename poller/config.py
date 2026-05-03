@@ -7,6 +7,9 @@ from loguru import logger
 # Specify polling interval
 POLLING_INERVAL = 60
 
+# Specify max number of devices polled in once
+MAX_DEVICES = 50
+
 # Specify microservice API port
 MICROSERVICE_PORT = 8000
 

@@ -349,7 +349,7 @@ async def get_route_engine_information():
     used_memory = device.get_used_memory()
     memory_MB = total_memory // (1024**2)
     formatted_memory = f"({memory_MB} MB installed)"
-    memory_utilization = int((used_memory / total_memory) * 100)
+    memory_utilization = (used_memory / total_memory) * 100
     dram = f"{memory_MB - 7} MB"
 
     return {

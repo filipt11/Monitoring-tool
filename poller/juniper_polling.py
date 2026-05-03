@@ -1,12 +1,12 @@
-import requests
-from requests.auth import HTTPBasicAuth
 from loguru import logger
 from models import Device
 from re import search
+import httpx
+import asyncio
 
 
-def poll_juniper_device(device: Device) -> dict:
-    """Main polling function that polls Juniper Device and parse it's data"""
+async def poll_juniper_device_async(device: Device, client: httpx.AsyncClient) -> dict:
+    """Main polling function that polls Juniper Device and parse its data asynchronously"""
 
     # Initialize default values
     cpu_val = None
@@ -15,7 +15,7 @@ def poll_juniper_device(device: Device) -> dict:
     memory_pct = None
     interfaces = []
 
-    # Build URLs using to poll device
+    # Buld URLs using to poll device
     protocol = "https" if device.https else "http"
     base_url = f"{protocol}://{device.ip}:{device.port}"
 
@@ -25,31 +25,39 @@ def poll_juniper_device(device: Device) -> dict:
     full_route_engine_url = f"{base_url}{route_engine_path}"
     full_interface_url = f"{base_url}{interface_path}"
 
-    # Poll device and parse returned values
-    try:
-        raw_route_engine = fetch_data(
-            full_route_engine_url, device.username, device.password
-        )
-        if raw_route_engine:
+    tasks = [
+        fetch_juniper_data_async(
+            client, full_route_engine_url, device.username, device.password
+        ),
+        fetch_juniper_data_async(
+            client, full_interface_url, device.username, device.password
+        ),
+    ]
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    raw_route_engine = results[0] if not isinstance(results[0], Exception) else None
+    if isinstance(results[0], Exception):
+        logger.error(f"Error fetching Route Engine for {device.hostname}: {results[0]}")
+
+    raw_interfaces = results[1] if not isinstance(results[1], Exception) else None
+    if isinstance(results[1], Exception):
+        logger.error(f"Error fetching Interfaces for {device.hostname}: {results[1]}")
+
+    if raw_route_engine:
+        try:
             cpu_val = parse_cpu(raw_route_engine)
             total_memory, memory_val, memory_pct = parse_memory(raw_route_engine)
-    except Exception as e:
-        logger.error(
-            f"Error during polling CPU/Memory value for device: {device.hostname} | {device.ip}: {e}"
-        )
+        except Exception as e:
+            logger.error(f"Error parsing CPU/Mem for {device.hostname}: {e}")
 
-    try:
-        raw_interfaces = fetch_data(
-            full_interface_url, device.username, device.password
-        )
-        if raw_interfaces:
+    if raw_interfaces:
+        try:
             interfaces = parse_interfaces(raw_interfaces)
-    except Exception as e:
-        logger.error(
-            f"Error during polling Interface values for device: {device.hostname} | {device.ip}: {e}"
-        )
+        except Exception as e:
+            logger.error(f"Error parsing Interfaces for {device.hostname}: {e}")
 
-    # Build returned JSON
+    # Build final JSON
     result = {
         "status": "up" if any([cpu_val, memory_val, interfaces]) else "down",
         "cpu": cpu_val,
@@ -60,27 +68,27 @@ def poll_juniper_device(device: Device) -> dict:
     }
 
     if result["status"] == "up":
-        logger.info(f"Successfully polled data for {device.hostname}")
+        logger.info(f"Successfully polled data for Juniper: {device.hostname}")
     else:
         logger.error(f"Device {device.hostname} is unreachable or returned no data")
 
     return result
 
 
-def fetch_data(url: str, username: str, password: str) -> dict:
+async def fetch_juniper_data_async(
+    client: httpx.AsyncClient, url: str, username: str, password: str
+) -> dict:
     headers = {"Accept": "application/json"}
 
-    response = requests.post(
+    response = await client.post(
         url,
-        auth=HTTPBasicAuth(username, password),
+        auth=httpx.BasicAuth(username, password),
         headers=headers,
         data="",
-        verify=False,
         timeout=10,
     )
 
     response.raise_for_status()
-
     return response.json()
 
 

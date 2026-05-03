@@ -37,24 +37,6 @@ class DeviceWithPolledData(BaseModel):
     memory_usage_pct: Optional[float] = Field(None, ge=0, le=100)
 
 
-class InterfaceData(BaseModel):
-    """summary"""
-
-    name: str
-    type: str
-    speed_bps: int
-    admin_status: str
-    oper_status: str
-    # Counters
-    in_octets: Optional[int] = None
-    out_octets: Optional[int] = None
-    # Calculated speed
-    in_bps: Optional[float] = None
-    out_bps: Optional[float] = None
-    utilization_in: Optional[float] = None
-    utilization_out: Optional[float] = None
-
-
 class DeviceCreate(BaseModel):
     ip: str
     port: int
@@ -70,7 +52,7 @@ class DeviceOut(BaseModel):
     hostname: str
     vendor: str
     model: str
-    port: int
+    port: int = Field(None, ge=1, le=65535)
     vendor: str
     username: str
     password: str

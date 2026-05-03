@@ -13,8 +13,8 @@ def get_high_utilized_cpu() -> int:
     if random.random() > 0.95:
         return 100
 
-    # 5% chance for drop
-    if random.random() < 0.05:
+    # 3% chance for drop
+    if random.random() < 0.03:
         return int(max(5, random.gauss(40, 30)))
 
     return int(max(70, min(100, val)))
@@ -29,8 +29,8 @@ def get_average_utilized_cpu() -> int:
     if random.random() > 0.95:
         return random.randint(60, 100)
 
-    # 5% chance for drop
-    if random.random() < 0.05:
+    # 3% chance for drop
+    if random.random() < 0.03:
         return int(max(5, random.gauss(20, 20)))
 
     return int(max(20, min(60, val)))

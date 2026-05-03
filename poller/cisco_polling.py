@@ -1,10 +1,10 @@
-import requests
-from requests.auth import HTTPBasicAuth
 from loguru import logger
 from models import Device
+import httpx
+import asyncio
 
 
-def poll_cisco_device(device: Device) -> dict:
+async def poll_cisco_device_async(device: Device, client: httpx.AsyncClient) -> dict:
     """Main polling function that polls Cisco Device and parse it's data"""
 
     # Initialize default values
@@ -26,37 +26,35 @@ def poll_cisco_device(device: Device) -> dict:
     full_memory_url = f"{base_url}{memory_path}"
     full_interface_url = f"{base_url}{interface_path}"
 
-    # Poll device and parse returned values
-    try:
-        raw_cpu = fetch_data(full_cpu_url, device.username, device.password)
-        if raw_cpu:
-            cpu_val = parse_cpu(raw_cpu)
-    except Exception as e:
-        logger.error(
-            f"Error during polling CPU value for device: {device.hostname} | {device.ip}: {e}"
-        )
+    tasks = [
+        fetch_cisco_data_async(client, full_cpu_url, device.username, device.password),
+        fetch_cisco_data_async(
+            client, full_memory_url, device.username, device.password
+        ),
+        fetch_cisco_data_async(
+            client, full_interface_url, device.username, device.password
+        ),
+    ]
 
-    try:
-        raw_memory = fetch_data(full_memory_url, device.username, device.password)
-        if raw_memory:
-            total_memory, memory_val = parse_memory(raw_memory)
-            if total_memory and total_memory > 0:
-                memory_pct = round((memory_val / total_memory) * 100, 2)
-    except Exception as e:
-        logger.error(
-            f"Error during polling Memory values for device: {device.hostname} | {device.ip}: {e}"
-        )
+    # gather zwraca listę: [raw_cpu, raw_memory, raw_interfaces]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    try:
-        raw_interface = fetch_data(full_interface_url, device.username, device.password)
-        if raw_interface:
-            interfaces = parse_interfaces(raw_interface)
-    except Exception as e:
-        logger.error(
-            f"Error during polling Interface values for device: {device.hostname} | {device.ip}: {e}"
-        )
+    # Rozpakowujemy wyniki (sprawdzając czy nie są wyjątkami)
+    raw_cpu = results[0] if not isinstance(results[0], Exception) else None
+    raw_memory = results[1] if not isinstance(results[1], Exception) else None
+    raw_interface = results[2] if not isinstance(results[2], Exception) else None
 
-    # Build returned JSON
+    # Teraz musisz wywołać swoje funkcje PARSE (one są synchroniczne i to jest OK)
+    cpu_val = parse_cpu(raw_cpu) if raw_cpu else None
+
+    total_memory, memory_val, memory_pct = None, None, None
+    if raw_memory:
+        total_memory, memory_val = parse_memory(raw_memory)
+        if total_memory > 0:
+            memory_pct = round((memory_val / total_memory) * 100, 2)
+
+    interfaces = parse_interfaces(raw_interface) if raw_interface else []
+
     result = {
         "status": "up" if any([cpu_val, memory_val, interfaces]) else "down",
         "cpu": cpu_val,
@@ -66,30 +64,33 @@ def poll_cisco_device(device: Device) -> dict:
         "interfaces": interfaces,
     }
 
+    # Logowanie statusu
     if result["status"] == "up":
         logger.info(f"Successfully polled data for {device.hostname}")
     else:
-        logger.error(f"Device {device.hostname} is unreachable or returned no data")
+        logger.error(
+            f"Device {device.hostname} | {device.ip} is unreachable or returned no data"
+        )
 
     return result
 
 
-def fetch_data(url: str, username: str, password: str) -> dict:
+async def fetch_cisco_data_async(
+    client: httpx.AsyncClient, url: str, username: str, password: str
+) -> dict:
     headers = {
         "Accept": "application/yang-data+json",
         "Content-Type": "application/yang-data+json",
     }
 
-    response = requests.get(
+    response = await client.get(
         url,
-        auth=HTTPBasicAuth(username, password),
+        auth=httpx.BasicAuth(username, password),
         headers=headers,
-        verify=False,
         timeout=10,
     )
 
     response.raise_for_status()
-
     return response.json()
 
 

@@ -1,25 +1,26 @@
 from config import (
-    engine,
-    Base,
     Session,
-    influx_client,
     INFLUX_ORG,
     INFLUX_BUCKET,
     write_api,
     init_db,
     POLLING_INERVAL,
+    MAX_DEVICES,
 )
-from cisco_polling import poll_cisco_device
-from juniper_polling import poll_juniper_device
-from models import Device, DeviceWithPolledData, InterfaceData
+from cisco_polling import poll_cisco_device_async
+from juniper_polling import poll_juniper_device_async
+from models import Device, DeviceWithPolledData
 from loguru import logger
 from data_loader import seed_devices
 from influxdb_client import Point
-from influxdb_client.client.write_api import SYNCHRONOUS
-from time import sleep, time
+from time import time
+import asyncio
+import httpx
+import signal
 
 cached_device_list = []
 last_polls = {}
+semaphore = asyncio.Semaphore(MAX_DEVICES)
 
 
 def get_current_devices() -> list[Device]:
@@ -29,51 +30,23 @@ def get_current_devices() -> list[Device]:
         return session.query(Device).all()
 
 
-def poll_devices():
-    """Main polling function"""
-
-    global cached_device_list
-    try:
-        cached_device_list = get_current_devices()
-    except Exception as e:
-        logger.warning(
-            "Can not establish connection with Postges DB, using cached device list for polling"
-        )
-
-    for device in cached_device_list:
-        device_data = {}
-        if device.vendor == "cisco":
-            device_data = poll_cisco_device(device)
-
-        elif device.vendor == "juniper":
-            device_data = poll_juniper_device(device)
-
-        # DEBUG START
-
-        cpu = device_data.get("cpu")
-        mempct = device_data.get("memory_pct")
-        interfaces = device_data.get("interfaces", [])
-        print(f"--- DEBUG DATA FOR {device.hostname} ---")
-        print(f"Szybki podgląd: CPU: {cpu}%, RAM: {mempct}%")
-        print(f"Liczba aktywnych interfejsów: {len(interfaces)}")
-        for iface in interfaces:
-            print(
-                f"  -> Port: {iface['name']} | In: {iface['in_octets']} | Out: {iface['out_octets']}"
-            )
-        print(f"{device_data=}")
-
-        # DEBUG END
-
+async def poll_single_device(device: Device, client):
+    async with semaphore:
         try:
+            if device.vendor == "juniper":
+                device_data = await poll_juniper_device_async(device, client)
+            elif device.vendor == "cisco":
+                device_data = await poll_cisco_device_async(device, client)
+            else:
+                return
+
             has_data = any([device_data.get("cpu"), device_data.get("memory_pct")])
 
             if not has_data:
-                logger.warning(
-                    f"Skipping full data save for {device.hostname} - device unreachable"
-                )
-                save_polled_device_data(device, status=0)
-
+                # Saving only down status
+                await asyncio.to_thread(save_polled_device_data, device, status=0)
             else:
+                # Validate object before saving
                 polled_device = DeviceWithPolledData(
                     id=device.id,
                     hostname=device.hostname,
@@ -83,28 +56,38 @@ def poll_devices():
                     memory_usage=device_data.get("used-memory"),
                     memory_usage_pct=device_data.get("memory_pct"),
                 )
-
-                save_polled_device_data(polled_device, status=1)
-
-        except Exception as e:
-            logger.error(
-                f"Error during saving data for device: {device.hostname} | {device.ip}: {e}"
-            )
-
-        try:
-            interfaces_list = device_data.get("interfaces", [])
-
-            if not interfaces_list:
-                logger.warning(f"No interface data found for {device.hostname}")
-            else:
-                save_polled_interface_data(
-                    device.id, device.hostname, device.ip, interfaces_list
+                # Save device data
+                await asyncio.to_thread(
+                    save_polled_device_data, polled_device, status=1
                 )
 
+                # Save interfaces data
+                interfaces = device_data.get("interfaces", [])
+                if interfaces:
+                    await asyncio.to_thread(
+                        save_polled_interface_data,
+                        device.id,
+                        device.hostname,
+                        device.ip,
+                        interfaces,
+                    )
+
         except Exception as e:
-            logger.error(
-                f"Error during saving interface data for {device.hostname} | {device.ip}: {e}"
-            )
+            logger.error(f"Failed {device.hostname}: {e}")
+
+
+async def poll_devices_main():
+    global cached_device_list
+    try:
+        cached_device_list = get_current_devices()
+    except Exception as e:
+        logger.warning(
+            "Can not establish connection with Postges DB, using cached device list for polling"
+        )
+
+    async with httpx.AsyncClient(verify=False) as client:
+        tasks = [poll_single_device(d, client) for d in cached_device_list]
+        await asyncio.gather(*tasks)
 
 
 def save_polled_device_data(device: DeviceWithPolledData, status: int):
@@ -229,21 +212,36 @@ def calculate_utilization(hostname, if_name, direction, current_octets, speed_bp
     return None, None
 
 
-def main():
-    try:
-        init_db()
-    except ConnectionError as e:
-        logger.critical(f"Finishing proggram")
-        return False
+def handle_exit(sig, frame):
+    signame = signal.Signals(sig).name
+    logger.warning(f"Received signal: {signame}")
+    raise SystemExit
 
+
+async def main():
+    """"""
+    try:
+        # Init Postgres DB
+        init_db()
+    except Exception as e:
+        logger.critical(f"Finishing proggram {e}")
+        return
+
+    # Add example devices to DB
     seed_devices()
 
+    # Start polling devices
     while True:
-        poll_devices()
-        sleep(POLLING_INERVAL)
+        await poll_devices_main()
+        await asyncio.sleep(POLLING_INERVAL)
 
 
 if __name__ == "__main__":
+    # Handling exit signals
+    signal.signal(signal.SIGTERM, handle_exit)
+    signal.signal(signal.SIGINT, handle_exit)
+
+    # Configure logger
     logger.add(
         "poller/poller.log",
         rotation="10 MB",
@@ -251,4 +249,9 @@ if __name__ == "__main__":
         compression="tar",
         level="INFO",
     )
-    main()
+    try:
+        asyncio.run(main())
+    except SystemExit:
+        logger.warning("Closing proggram...")
+    finally:
+        pass
