@@ -3,6 +3,7 @@ from sqlalchemy import String, Integer, Boolean, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from config import Base
 from typing import Optional
+from typing import TypedDict
 
 
 class Device(Base):
@@ -52,8 +53,7 @@ class DeviceOut(BaseModel):
     hostname: str
     vendor: str
     model: str
-    port: int = Field(None, ge=1, le=65535)
-    vendor: str
+    port: int | None = Field(default=None, ge=1, le=65535)
     username: str
     password: str
     https: bool
@@ -66,3 +66,23 @@ class DeviceUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     https: Optional[bool] = None
+
+
+class PollingResult(TypedDict):
+    status: str
+    cpu: int | None
+    total_memory: int | None
+    used_memory: int | None
+    memory_pct: float | None
+    interfaces: list[InterfaceData]
+
+
+class InterfaceData(TypedDict):
+    name: str
+    if_index: int
+    in_octets: int
+    out_octets: int
+    speed: int
+    admin_status: str
+    oper_status: str
+    mac: str

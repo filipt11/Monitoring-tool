@@ -22,32 +22,46 @@ HTTPS = raw_https.lower() in ("true", "1", "yes")
 
 
 # Create simulated device based on vendor and specified profile
-if VENDOR == "cisco":
-    if PROFILE == "high_utilized":
-        device = devices.HighUtilizedCiscoDevice(
-            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-        )
-    elif PROFILE == "low_utilized":
-        device = devices.LowUtilizedCiscoDevice(
-            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-        )
-    else:
-        device = devices.AverageUtilizedCiscoDevice(
-            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-        )
-elif VENDOR == "juniper":
-    if PROFILE == "high_utilized":
-        device = devices.HighUtilizedJuniperDevice(
-            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-        )
-    elif PROFILE == "low_utilized":
-        device = devices.LowUtilizedJuniperDevice(
-            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-        )
-    else:
-        device = devices.AverageUtilizedJuniperDevice(
-            IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-        )
+device: devices.BaseDevice
+
+# if VENDOR == "cisco":
+#     if PROFILE == "high_utilized":
+#         device = devices.HighUtilizedCiscoDevice(
+#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+#         )
+#     elif PROFILE == "low_utilized":
+#         device = devices.LowUtilizedCiscoDevice(
+#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+#         )
+#     else:
+#         device = devices.AverageUtilizedCiscoDevice(
+#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+#         )
+# elif VENDOR == "juniper":
+#     if PROFILE == "high_utilized":
+#         device = devices.HighUtilizedJuniperDevice(
+#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+#         )
+#     elif PROFILE == "low_utilized":
+#         device = devices.LowUtilizedJuniperDevice(
+#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+#         )
+#     else:
+#         device = devices.AverageUtilizedJuniperDevice(
+#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
+#         )
+
+device_mapping = {
+    ("cisco", "high_utilized"): devices.HighUtilizedCiscoDevice,
+    ("cisco", "low_utilized"): devices.LowUtilizedCiscoDevice,
+    ("cisco", "average_utilized"): devices.AverageUtilizedCiscoDevice,
+    ("juniper", "high_utilized"): devices.HighUtilizedJuniperDevice,
+    ("juniper", "low_utilized"): devices.LowUtilizedJuniperDevice,
+    ("juniper", "average_utilized"): devices.AverageUtilizedJuniperDevice,
+}
+
+device_class = device_mapping.get((VENDOR, PROFILE), devices.AverageUtilizedCiscoDevice)
+device = device_class(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):

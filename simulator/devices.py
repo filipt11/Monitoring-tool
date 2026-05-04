@@ -291,10 +291,10 @@ class HighUtilizedJuniperDevice(BaseJuniperDevice):
         )
 
     def get_cpu(self) -> int:
-        return logic.get_high_utilized_cpu
+        return logic.get_high_utilized_cpu()
 
     def get_used_memory(self) -> int:
-        return logic.get_high_utilized_ram
+        return logic.get_high_utilized_ram(self.get_total_memory())
 
 
 class LowUtilizedJuniperDevice(BaseJuniperDevice):
@@ -306,14 +306,14 @@ class LowUtilizedJuniperDevice(BaseJuniperDevice):
         )
 
     def get_cpu(self) -> int:
-        return logic.get_low_utilized_cpu
+        return logic.get_low_utilized_cpu()
 
     def get_total_memory(self) -> int:
         """Cut total memory by half for lower utilized device"""
         return int(super().get_total_memory() / 2)
 
     def get_used_memory(self) -> int:
-        return logic.get_low_utilized_ram
+        return logic.get_low_utilized_ram(self.get_total_memory())
 
 
 class AverageUtilizedJuniperDevice(BaseJuniperDevice):

@@ -17,9 +17,10 @@ from time import time
 import asyncio
 import httpx
 import signal
+from typing import cast
 
 cached_device_list = []
-last_polls = {}
+last_polls: dict[str, int] = {}
 semaphore = asyncio.Semaphore(MAX_DEVICES)
 
 
@@ -44,7 +45,11 @@ async def poll_single_device(device: Device, client):
 
             if not has_data:
                 # Saving only down status
-                await asyncio.to_thread(save_polled_device_data, device, status=0)
+                await asyncio.to_thread(
+                    save_polled_device_data,
+                    cast(DeviceWithPolledData, device),
+                    status=0,
+                )
             else:
                 # Validate object before saving
                 polled_device = DeviceWithPolledData(
@@ -52,8 +57,8 @@ async def poll_single_device(device: Device, client):
                     hostname=device.hostname,
                     ip=device.ip,
                     cpu_usage=device_data.get("cpu"),
-                    memory_total=device_data.get("total-memory"),
-                    memory_usage=device_data.get("used-memory"),
+                    memory_total=device_data.get("total_memory"),
+                    memory_usage=device_data.get("used_memory"),
                     memory_usage_pct=device_data.get("memory_pct"),
                 )
                 # Save device data

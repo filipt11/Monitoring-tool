@@ -11,7 +11,7 @@ from cisco_polling import fetch_cisco_data_async
 from juniper_polling import fetch_juniper_data_async
 from sys import stderr
 from sqlalchemy.exc import IntegrityError
-from fastapi_pagination import Page, add_pagination, paginate
+from fastapi_pagination import Page, add_pagination
 from fastapi_pagination.ext.sqlalchemy import paginate
 import httpx
 import asyncio

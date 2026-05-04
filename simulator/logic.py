@@ -1,7 +1,7 @@
 import random
 from time import time
 
-last_sim_times = {}
+last_sim_times: dict[str, float] = {}
 
 
 def get_high_utilized_cpu() -> int:
@@ -97,7 +97,7 @@ def get_dynamic_interval(key: str) -> float:
 
 
 def increase_interface_counter(
-    previous_value: int, declared_speed: int, key: str
+    previous_value: int, declared_speed: int | float, key: str
 ) -> int:
     """Simulate values of counter for average utilized interfaces
 
@@ -115,7 +115,7 @@ def increase_interface_counter(
 
 
 def increase_interface_counter_for_higher_utilized(
-    previous_value: int, declared_speed: int, key: str
+    previous_value: int, declared_speed: int | float, key: str
 ) -> int:
     """Simulate values of counter for higher utilized interfaces
 

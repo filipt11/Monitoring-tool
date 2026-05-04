@@ -1,11 +1,14 @@
 from loguru import logger
-from models import Device
+from models import Device, PollingResult, InterfaceData
 from re import search
 import httpx
 import asyncio
+from typing import Any
 
 
-async def poll_juniper_device_async(device: Device, client: httpx.AsyncClient) -> dict:
+async def poll_juniper_device_async(
+    device: Device, client: httpx.AsyncClient
+) -> PollingResult:
     """Main polling function that polls Juniper Device and parse its data asynchronously"""
 
     # Initialize default values
@@ -36,33 +39,32 @@ async def poll_juniper_device_async(device: Device, client: httpx.AsyncClient) -
 
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    raw_route_engine = results[0] if not isinstance(results[0], Exception) else None
-    if isinstance(results[0], Exception):
-        logger.error(f"Error fetching Route Engine for {device.hostname}: {results[0]}")
-
-    raw_interfaces = results[1] if not isinstance(results[1], Exception) else None
-    if isinstance(results[1], Exception):
-        logger.error(f"Error fetching Interfaces for {device.hostname}: {results[1]}")
+    raw_route_engine = results[0] if not isinstance(results[0], BaseException) else None
+    raw_interfaces = results[1] if not isinstance(results[1], BaseException) else None
 
     if raw_route_engine:
         try:
             cpu_val = parse_cpu(raw_route_engine)
             total_memory, memory_val, memory_pct = parse_memory(raw_route_engine)
         except Exception as e:
-            logger.error(f"Error parsing CPU/Mem for {device.hostname}: {e}")
+            logger.error(
+                f"Error parsing CPU/Mem for {device.hostname} | {device.ip}: {e}"
+            )
 
     if raw_interfaces:
         try:
             interfaces = parse_interfaces(raw_interfaces)
         except Exception as e:
-            logger.error(f"Error parsing Interfaces for {device.hostname}: {e}")
+            logger.error(
+                f"Error parsing Interfaces for {device.hostname} | {device.ip}: {e}"
+            )
 
     # Build final JSON
-    result = {
+    result: PollingResult = {
         "status": "up" if any([cpu_val, memory_val, interfaces]) else "down",
         "cpu": cpu_val,
-        "total-memory": total_memory,
-        "used-memory": memory_val,
+        "total_memory": total_memory,
+        "used_memory": memory_val,
         "memory_pct": memory_pct,
         "interfaces": interfaces,
     }
@@ -70,21 +72,23 @@ async def poll_juniper_device_async(device: Device, client: httpx.AsyncClient) -
     if result["status"] == "up":
         logger.info(f"Successfully polled data for Juniper: {device.hostname}")
     else:
-        logger.error(f"Device {device.hostname} is unreachable or returned no data")
+        logger.error(
+            f"Device {device.hostname} | {device.ip} is unreachable or returned no data"
+        )
 
     return result
 
 
 async def fetch_juniper_data_async(
     client: httpx.AsyncClient, url: str, username: str, password: str
-) -> dict:
+) -> dict[Any, Any]:
     headers = {"Accept": "application/json"}
 
     response = await client.post(
         url,
         auth=httpx.BasicAuth(username, password),
         headers=headers,
-        data="",
+        data={},
         timeout=10,
     )
 
@@ -92,7 +96,7 @@ async def fetch_juniper_data_async(
     return response.json()
 
 
-def parse_cpu(raw_route_engine: dict) -> int:
+def parse_cpu(raw_route_engine: dict[str, Any]) -> int:
     re_info = raw_route_engine["route-engine-information"][0]
     route_engine = re_info["route-engine"][0]
 
@@ -102,19 +106,25 @@ def parse_cpu(raw_route_engine: dict) -> int:
     return 100 - idle_val
 
 
-def parse_memory(raw_route_engine: dict) -> tuple[int, int, float]:
+def parse_memory(raw_route_engine: dict[str, Any]) -> tuple[int, int, float]:
     re_data = raw_route_engine["route-engine-information"][0]["route-engine"][0]
     total_raw = re_data["memory-installed-size"][0]["data"]
     util_pct_raw = re_data["memory-buffer-utilization"][0]["data"]
 
-    total_memory = int(search(r"\d+", total_raw).group()) * 1024**2
+    match = search(r"\d+", total_raw)
+    if match:
+        total_memory = int(match.group()) * 1024**2
+    else:
+        total_memory = 0
+        logger.warning(f"Could not parse memory from: {total_raw}")
+
     used_memory_pct = float(util_pct_raw)
     used_memory = int((used_memory_pct / 100) * total_memory)
 
     return total_memory, used_memory, used_memory_pct
 
 
-def parse_interfaces(raw_interfaces: dict) -> list[dict]:
+def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
     phys_interfaces = raw_interfaces["interface-information"][0]["physical-interface"]
     parsed_results = []
 
@@ -139,7 +149,7 @@ def parse_interfaces(raw_interfaces: dict) -> list[dict]:
             logical_if = phys.get("logical-interface", [{}])[0]
             stats = logical_if.get("traffic-statistics", [{}])[0]
 
-            if_data = {
+            if_data: InterfaceData = {
                 "name": name,
                 "if_index": int(get_junos_val(phys, "local-index", "0")),
                 "in_octets": int(get_junos_val(stats, "input-bytes", "0")),

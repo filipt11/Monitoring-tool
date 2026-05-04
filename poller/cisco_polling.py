@@ -1,10 +1,13 @@
 from loguru import logger
-from models import Device
+from models import Device, PollingResult, InterfaceData
 import httpx
 import asyncio
+from typing import Any
 
 
-async def poll_cisco_device_async(device: Device, client: httpx.AsyncClient) -> dict:
+async def poll_cisco_device_async(
+    device: Device, client: httpx.AsyncClient
+) -> PollingResult:
     """Main polling function that polls Cisco Device and parse it's data"""
 
     # Initialize default values
@@ -36,35 +39,46 @@ async def poll_cisco_device_async(device: Device, client: httpx.AsyncClient) -> 
         ),
     ]
 
-    # gather zwraca listę: [raw_cpu, raw_memory, raw_interfaces]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Rozpakowujemy wyniki (sprawdzając czy nie są wyjątkami)
-    raw_cpu = results[0] if not isinstance(results[0], Exception) else None
-    raw_memory = results[1] if not isinstance(results[1], Exception) else None
-    raw_interface = results[2] if not isinstance(results[2], Exception) else None
+    raw_cpu = results[0] if not isinstance(results[0], BaseException) else None
+    raw_memory = results[1] if not isinstance(results[1], BaseException) else None
+    raw_interfaces = results[2] if not isinstance(results[2], BaseException) else None
 
-    # Teraz musisz wywołać swoje funkcje PARSE (one są synchroniczne i to jest OK)
-    cpu_val = parse_cpu(raw_cpu) if raw_cpu else None
+    if raw_cpu:
+        try:
+            cpu_val = parse_cpu(raw_cpu)
+        except Exception as e:
+            logger.error(f"Error parsing CPU for {device.hostname} | {device.ip}: {e}")
 
-    total_memory, memory_val, memory_pct = None, None, None
     if raw_memory:
-        total_memory, memory_val = parse_memory(raw_memory)
-        if total_memory > 0:
-            memory_pct = round((memory_val / total_memory) * 100, 2)
+        try:
+            total_memory, memory_val = parse_memory(raw_memory)
+            if total_memory > 0:
+                memory_pct = round((memory_val / total_memory) * 100, 2)
 
-    interfaces = parse_interfaces(raw_interface) if raw_interface else []
+        except Exception as e:
+            logger.error(
+                f"Error parsing Memory for {device.hostname} | {device.ip}: {e}"
+            )
 
-    result = {
+    if raw_interfaces:
+        try:
+            interfaces = parse_interfaces(raw_interfaces)
+        except Exception as e:
+            logger.error(
+                f"Error parsing Interfaces for {device.hostname} | {device.ip}: {e}"
+            )
+
+    result: PollingResult = {
         "status": "up" if any([cpu_val, memory_val, interfaces]) else "down",
         "cpu": cpu_val,
-        "total-memory": total_memory,
-        "used-memory": memory_val,
+        "total_memory": total_memory,
+        "used_memory": memory_val,
         "memory_pct": memory_pct,
         "interfaces": interfaces,
     }
 
-    # Logowanie statusu
     if result["status"] == "up":
         logger.info(f"Successfully polled data for {device.hostname}")
     else:
@@ -77,7 +91,7 @@ async def poll_cisco_device_async(device: Device, client: httpx.AsyncClient) -> 
 
 async def fetch_cisco_data_async(
     client: httpx.AsyncClient, url: str, username: str, password: str
-) -> dict:
+) -> dict[Any, Any]:
     headers = {
         "Accept": "application/yang-data+json",
         "Content-Type": "application/yang-data+json",
@@ -94,11 +108,11 @@ async def fetch_cisco_data_async(
     return response.json()
 
 
-def parse_cpu(raw_cpu: dict) -> int:
+def parse_cpu(raw_cpu: dict[str, Any]) -> int:
     return int(raw_cpu["Cisco-IOS-XE-process-cpu-oper:five-seconds"])
 
 
-def parse_memory(raw_memory: dict) -> tuple[int, int]:
+def parse_memory(raw_memory: dict[str, Any]) -> tuple[int, int]:
     """
     Returns:
         (total_memory, used_memory)
@@ -116,17 +130,17 @@ def parse_memory(raw_memory: dict) -> tuple[int, int]:
     raise ValueError("Could not find 'Processor' entry in raw_memory")
 
 
-def parse_interfaces(raw_interfaces: dict) -> list[dict]:
+def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
     stats = raw_interfaces["ietf-interfaces:interfaces-state"]
     interface_list = stats["interface"]
 
-    parsed_results = []
+    parsed_results: list[InterfaceData] = []
 
     for entry in interface_list:
         if entry.get("admin-status") == "up":
             statistics = entry["statistics"]
 
-            if_data = {
+            if_data: InterfaceData = {
                 "name": entry["name"],
                 "if_index": int(entry["if-index"]),
                 "in_octets": int(statistics["in-octets"]),
