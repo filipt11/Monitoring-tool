@@ -88,6 +88,25 @@ if __name__ == "__main__":
         env["PYTHONUNBUFFERED"] = "1"
         env["PYTHONPATH"] = str(poller_dir)
 
-        start_background_process(python_exe, poller_dir / "api.py", api_log, env=env)
+        # Zapisujemy obiekt procesu do zmiennej
+        api_process = start_background_process(python_exe, poller_dir / "api.py", api_log, env=env)
 
-    print("Gotowe. Użyj `tail -f poller/api.log` aby przeglądać API logi.")
+        poller_process = start_background_process(python_exe, poller_dir / "main.py", None, env=env)
+
+        print("\nAplikacja działa. Wciśnij Ctrl+C, aby bezpiecznie zamknąć wszystko...\n")
+        try:
+            # Utrzymuje skrypt run.py przy życiu, dopóki użytkownik nie przerwie go przez Ctrl+C
+            api_process.wait()
+            poller_process.wait()
+        except KeyboardInterrupt:
+            print("\nZamykanie procesów w tle...")
+            api_process.terminate()
+            poller_process.terminate()
+            
+            if not args.no_docker:
+                print("Zamykanie kontenerów Docker...")
+                # Opcjonalnie: automatyczne gaszenie dockera przy wyjściu
+                subprocess.run(["docker-compose", "down"], cwd=simulator_dir, capture_output=True)
+                subprocess.run(["docker-compose", "down"], cwd=poller_dir, capture_output=True)
+                
+            print("Wszystko zostało wyłączone.")
