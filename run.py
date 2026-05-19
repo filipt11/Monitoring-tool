@@ -3,10 +3,13 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-
+from loguru import logger
 
 def run_command(cmd, cwd=None, env=None, check=True):
-    print(f"Uruchamianie: {' '.join(cmd)} w {cwd}")
+    if cwd is not None:
+        logger.info(f"Executing: {' '.join(cmd)} in {cwd}")
+    else:
+        logger.info(f"Executing: {' '.join(cmd)}")
     subprocess.run(cmd, cwd=cwd, env=env, check=check)
 
 
@@ -15,15 +18,15 @@ def run_compose(directory: Path, compose_file="docker-compose.yml", build=False)
     if build:
         command.insert(3, "--build")
     run_command(command, cwd=directory)
-    print(f"Pomyślnie uruchomiono docker-compose w {directory}")
+    logger.success(f"Sucessfully executed docker-compose in {directory}")
 
 
 def create_venv(venv_dir: Path):
     if venv_dir.exists():
-        print(f"Wirtualne środowisko już istnieje: {venv_dir}")
+        logger.info(f"Virtual Env already exists: {venv_dir}")
         return
     run_command([sys.executable, "-m", "venv", str(venv_dir)])
-    print(f"Utworzono venv w {venv_dir}")
+    logger.info(f"Created venv in {venv_dir}")
 
 
 def get_venv_python(venv_dir: Path) -> str:
@@ -34,9 +37,9 @@ def get_venv_python(venv_dir: Path) -> str:
 
 def install_requirements(python_exe: str, requirements_file: Path):
     if not requirements_file.exists():
-        raise FileNotFoundError(f"Brak pliku requirements: {requirements_file}")
+        raise FileNotFoundError(f"missing requirments file: {requirements_file}")
     run_command([python_exe, "-m", "pip", "install", "-r", str(requirements_file)])
-    print("Zainstalowano zależności w venv")
+    logger.success("Dependencies have been installed in venv")
 
 
 def start_background_process(python_exe: str, script_path: Path, log_path: Path | None, env: dict | None = None):
@@ -54,20 +57,10 @@ def start_background_process(python_exe: str, script_path: Path, log_path: Path 
         stderr=stderr,
         env=env,
     )
-    print(f"Uruchomiono {script_path.name} jako PID {process.pid}, logi: {log_path}")
     return process
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Uruchomienie symulatora, pollera i aplikacji lokalnie")
-    parser.add_argument("--build", action="store_true", help="Buduje obrazy Docker przed startem")
-    parser.add_argument("--no-docker", action="store_true", help="Pomija uruchamianie docker-compose")
-    parser.add_argument("--no-apps", action="store_true", help="Pomija uruchamianie main.py i api.py")
-    return parser.parse_args()
-
-
 if __name__ == "__main__":
-    args = parse_args()
     root_dir = Path(__file__).resolve().parent
 
     simulator_dir = root_dir / "simulator"
@@ -75,38 +68,30 @@ if __name__ == "__main__":
     venv_dir = poller_dir / "venv"
     api_log = poller_dir / "api.log"
 
-    if not args.no_docker:
-        run_compose(simulator_dir, build=args.build)
-        run_compose(poller_dir, build=args.build)
-
+    run_compose(simulator_dir, build=False)
+    run_compose(poller_dir, build=False)
+    
     create_venv(venv_dir)
     python_exe = get_venv_python(venv_dir)
     install_requirements(python_exe, poller_dir / "requirements.txt")
 
-    if not args.no_apps:
-        env = os.environ.copy()
-        env["PYTHONUNBUFFERED"] = "1"
-        env["PYTHONPATH"] = str(poller_dir)
 
-        # Zapisujemy obiekt procesu do zmiennej
-        api_process = start_background_process(python_exe, poller_dir / "api.py", api_log, env=env)
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    env["PYTHONPATH"] = str(poller_dir)
 
-        poller_process = start_background_process(python_exe, poller_dir / "main.py", None, env=env)
+    api_process = start_background_process(python_exe, poller_dir / "api.py", api_log, env=env)
+    poller_process = start_background_process(python_exe, poller_dir / "main.py", None, env=env)
 
-        print("\nAplikacja działa. Wciśnij Ctrl+C, aby bezpiecznie zamknąć wszystko...\n")
-        try:
-            # Utrzymuje skrypt run.py przy życiu, dopóki użytkownik nie przerwie go przez Ctrl+C
-            api_process.wait()
-            poller_process.wait()
-        except KeyboardInterrupt:
-            print("\nZamykanie procesów w tle...")
-            api_process.terminate()
-            poller_process.terminate()
+    try:
+        api_process.wait()
+        poller_process.wait()
+    except KeyboardInterrupt:
+        api_process.terminate()
+        poller_process.terminate()
             
-            if not args.no_docker:
-                print("Zamykanie kontenerów Docker...")
-                # Opcjonalnie: automatyczne gaszenie dockera przy wyjściu
-                subprocess.run(["docker-compose", "down"], cwd=simulator_dir, capture_output=True)
-                subprocess.run(["docker-compose", "down"], cwd=poller_dir, capture_output=True)
+        logger.info("Stopping Docker containers...")
+        subprocess.run(["docker-compose", "down"], cwd=simulator_dir, capture_output=True)
+        subprocess.run(["docker-compose", "down"], cwd=poller_dir, capture_output=True)
                 
-            print("Wszystko zostało wyłączone.")
+        logger.info("Application has been stopped")
