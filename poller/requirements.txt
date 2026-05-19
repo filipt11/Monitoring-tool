@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+influxdb-client
+httpx
+loguru
+fastapi-pagination
+pydantic
+typing_extensions

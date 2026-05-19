@@ -31,7 +31,7 @@ def get_current_devices() -> list[Device]:
         return session.query(Device).all()
 
 
-async def poll_single_device(device: Device, client):
+async def poll_single_device(device: Device, client) -> None:
     async with semaphore:
         try:
             if device.vendor == "juniper":
@@ -81,7 +81,7 @@ async def poll_single_device(device: Device, client):
             logger.error(f"Failed {device.hostname}: {e}")
 
 
-async def poll_devices_main():
+async def poll_devices_main() -> None:
     global cached_device_list
     try:
         cached_device_list = get_current_devices()
@@ -95,7 +95,7 @@ async def poll_devices_main():
         await asyncio.gather(*tasks)
 
 
-def save_polled_device_data(device: DeviceWithPolledData, status: int):
+def save_polled_device_data(device: DeviceWithPolledData, status: int) -> None:
     point = (
         Point("device_statistics")
         .tag("hostname", device.hostname)
@@ -132,7 +132,7 @@ def save_polled_device_data(device: DeviceWithPolledData, status: int):
 
 def save_polled_interface_data(
     device_id: int, device_hostname: str, device_ip: str, interfaces_raw: list
-):
+) -> None:
     points = []
 
     for iface in interfaces_raw:
@@ -248,7 +248,7 @@ if __name__ == "__main__":
 
     # Configure logger
     logger.add(
-        "poller/poller.log",
+        "poller.log",
         rotation="10 MB",
         retention="10 days",
         compression="tar",

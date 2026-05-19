@@ -67,16 +67,6 @@ class DeviceUpdate(BaseModel):
     password: Optional[str] = None
     https: Optional[bool] = None
 
-
-class PollingResult(TypedDict):
-    status: str
-    cpu: int | None
-    total_memory: int | None
-    used_memory: int | None
-    memory_pct: float | None
-    interfaces: list[InterfaceData]
-
-
 class InterfaceData(TypedDict):
     name: str
     if_index: int
@@ -86,3 +76,11 @@ class InterfaceData(TypedDict):
     admin_status: str
     oper_status: str
     mac: str
+
+class PollingResult(TypedDict):
+    status: str
+    cpu: int | None
+    total_memory: int | None
+    used_memory: int | None
+    memory_pct: float | None
+    interfaces: list[InterfaceData]
