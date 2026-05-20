@@ -1,9 +1,21 @@
-import argparse
 import os
 import subprocess
 import sys
 from pathlib import Path
-from loguru import logger
+import logging
+
+# 1. Konfiguracja podstawowa (odpowiednik domyślnego zachowania loguru)
+logging.basicConfig(
+    level=logging.INFO,  # Poziom logowania (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    format="%(asctime)s | %(levelname)-8s | %(filename)s:%(lineno)d - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.StreamHandler(sys.stdout)  # Wypisywanie do konsoli
+    ]
+)
+
+# 2. Utworzenie instancji loggera
+logger = logging.getLogger("MonitoringTool")
 
 def run_command(cmd, cwd=None, env=None, check=True):
     if cwd is not None:
@@ -18,7 +30,7 @@ def run_compose(directory: Path, compose_file="docker-compose.yml", build=False)
     if build:
         command.insert(3, "--build")
     run_command(command, cwd=directory)
-    logger.success(f"Sucessfully executed docker-compose in {directory}")
+    logger.info(f"Sucessfully executed docker-compose in {directory}")
 
 
 def create_venv(venv_dir: Path):
@@ -39,7 +51,7 @@ def install_requirements(python_exe: str, requirements_file: Path):
     if not requirements_file.exists():
         raise FileNotFoundError(f"missing requirments file: {requirements_file}")
     run_command([python_exe, "-m", "pip", "install", "-r", str(requirements_file)])
-    logger.success("Dependencies have been installed in venv")
+    logger.info("Dependencies have been installed in venv")
 
 
 def start_background_process(python_exe: str, script_path: Path, log_path: Path | None, env: dict | None = None):
