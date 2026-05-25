@@ -17,23 +17,29 @@ from time import time
 import asyncio
 import httpx
 import signal
-from typing import cast
+from typing import cast, Any
 
-cached_device_list = []
-last_polls: dict[str, int] = {}
+# Initialize list used for caching devices
+cached_device_list: list[Device] = []
+# Initialize dict used for cache last polled interfaces data
+last_polls: dict[str, tuple[float, int]] = {}
+# Initialize sempahore with max device size
 semaphore = asyncio.Semaphore(MAX_DEVICES)
 
 
 def get_current_devices() -> list[Device]:
-    """Connect to postgreSQL and gather newest devices data required to polling"""
+    """Connect to postgreSQL and gather newest devices data required to polling."""
 
     with Session() as session:
         return session.query(Device).all()
 
 
 async def poll_single_device(device: Device, client) -> None:
+    """Poll and save data from single device."""
+
     async with semaphore:
         try:
+            # Run correct function based on device vendor
             if device.vendor == "juniper":
                 device_data = await poll_juniper_device_async(device, client)
             elif device.vendor == "cisco":
@@ -82,6 +88,9 @@ async def poll_single_device(device: Device, client) -> None:
 
 
 async def poll_devices_main() -> None:
+    """Run polling and data saving functions on each device."""
+
+    # Try to gather current device list from DB, if error occurs uses chached list
     global cached_device_list
     try:
         cached_device_list = get_current_devices()
@@ -90,12 +99,15 @@ async def poll_devices_main() -> None:
             "Can not establish connection with Postges DB, using cached device list for polling"
         )
 
+    # Poll devices and save data
     async with httpx.AsyncClient(verify=False) as client:
         tasks = [poll_single_device(d, client) for d in cached_device_list]
         await asyncio.gather(*tasks)
 
 
 def save_polled_device_data(device: DeviceWithPolledData, status: int) -> None:
+    """Save polled device data."""
+
     point = (
         Point("device_statistics")
         .tag("hostname", device.hostname)
@@ -103,8 +115,10 @@ def save_polled_device_data(device: DeviceWithPolledData, status: int) -> None:
         .tag("id", device.id)
     )
 
+    # Save status for each device
     point.field("status", int(status))
 
+    # If device is up, save rest of the data
     if status == 1:
         if device.cpu_usage is not None:
             point.field("cpu_usage", int(device.cpu_usage))
@@ -133,6 +147,8 @@ def save_polled_device_data(device: DeviceWithPolledData, status: int) -> None:
 def save_polled_interface_data(
     device_id: int, device_hostname: str, device_ip: str, interfaces_raw: list
 ) -> None:
+    """Save polled interfaces data."""
+
     points = []
 
     for iface in interfaces_raw:
@@ -146,7 +162,7 @@ def save_polled_interface_data(
             .tag("if_index", iface.get("if_index"))
         )
 
-        # Mapping admin/oper statuses to numbers
+        # Map admin/oper statuses to numbers
         admin_up = 1 if iface.get("admin_status") == "up" else 0
         oper_up = 1 if iface.get("oper_status") == "up" else 0
 
@@ -156,7 +172,7 @@ def save_polled_interface_data(
         p.field("admin_status", admin_up)
         p.field("oper_status", oper_up)
 
-        # If admin status is up, finding rest of metrics
+        # If admin status is up, find rest of metrics
         if admin_up == 1:
             in_octets = int(iface.get("in_octets", 0))
             out_octets = int(iface.get("out_octets", 0))
@@ -173,11 +189,11 @@ def save_polled_interface_data(
                 device_hostname, if_name, "out", out_octets, speed
             )
 
-            if in_bps is not None:
+            if in_bps is not None and in_util is not None:
                 p.field("in_bps", float(in_bps))
                 p.field("in_util_pct", float(in_util))
 
-            if out_bps is not None:
+            if out_bps is not None and out_util is not None:
                 p.field("out_bps", float(out_bps))
                 p.field("out_util_pct", float(out_util))
 
@@ -188,7 +204,11 @@ def save_polled_interface_data(
         logger.info(f"Saved {len(points)} interfaces for {device_hostname}")
 
 
-def calculate_utilization(hostname, if_name, direction, current_octets, speed_bps):
+def calculate_utilization(
+    hostname: str, if_name: str, direction: str, current_octets: int, speed_bps: int
+) -> tuple[float | None, float | None]:
+    """Calculate interface utilization based on previous and current counters values."""
+
     key = f"{hostname}_{if_name}_{direction}"
     current_time = time()
 
@@ -217,14 +237,17 @@ def calculate_utilization(hostname, if_name, direction, current_octets, speed_bp
     return None, None
 
 
-def handle_exit(sig, frame):
+def handle_exit(sig: Any, frame: Any) -> None:
+    """Handle system signals"""
+
     signame = signal.Signals(sig).name
     logger.warning(f"Received signal: {signame}")
     raise SystemExit
 
 
 async def main():
-    """"""
+    """Starting DB connection, initialize example devices and poll devices in infinity loop"""
+
     try:
         # Init Postgres DB
         init_db()

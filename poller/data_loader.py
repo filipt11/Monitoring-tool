@@ -4,6 +4,8 @@ from loguru import logger
 
 
 def seed_devices():
+    """Create and save default devices to DB."""
+
     initial_devices = [
         {
             "ip": "127.0.0.1",
@@ -35,7 +37,7 @@ def seed_devices():
             "port": 8003,
             "https": False,
         },
-                {
+        {
             "ip": "127.0.0.1",
             "hostname": "r-junos-avg-1",
             "vendor": "juniper",

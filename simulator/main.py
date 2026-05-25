@@ -24,33 +24,6 @@ HTTPS = raw_https.lower() in ("true", "1", "yes")
 # Create simulated device based on vendor and specified profile
 device: devices.BaseDevice
 
-# if VENDOR == "cisco":
-#     if PROFILE == "high_utilized":
-#         device = devices.HighUtilizedCiscoDevice(
-#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-#         )
-#     elif PROFILE == "low_utilized":
-#         device = devices.LowUtilizedCiscoDevice(
-#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-#         )
-#     else:
-#         device = devices.AverageUtilizedCiscoDevice(
-#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-#         )
-# elif VENDOR == "juniper":
-#     if PROFILE == "high_utilized":
-#         device = devices.HighUtilizedJuniperDevice(
-#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-#         )
-#     elif PROFILE == "low_utilized":
-#         device = devices.LowUtilizedJuniperDevice(
-#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-#         )
-#     else:
-#         device = devices.AverageUtilizedJuniperDevice(
-#             IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS
-#         )
-
 device_mapping = {
     ("cisco", "high_utilized"): devices.HighUtilizedCiscoDevice,
     ("cisco", "low_utilized"): devices.LowUtilizedCiscoDevice,
@@ -65,8 +38,7 @@ device = device_class(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTT
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
-    """Function that secures endpoints
-    Credentials are being set up during container/server initialization."""
+    """Validate HTTP Basic credentials for all simulator endpoints."""
 
     is_user_ok = secrets.compare_digest(credentials.username, USERNAME)
     is_pass_ok = secrets.compare_digest(credentials.password, PASSWORD)
@@ -250,6 +222,8 @@ juniper_router = APIRouter(prefix="/rpc")
 
 @juniper_router.post("/get-interface-information")
 async def get_interface_information():
+    """Return simulated Juniper interface information including traffic statistics."""
+
     raw_interfaces = device.get_interfaces()
 
     physical_interfaces_output = []
@@ -357,6 +331,7 @@ async def get_interface_information():
 
 @juniper_router.post("/get-route-engine-information")
 async def get_route_engine_information():
+    """Return simulated Juniper route engine CPU and memory statistics."""
 
     cpu_idle = int(100 - device.get_cpu())
     total_memory = device.get_total_memory()
@@ -428,6 +403,8 @@ async def get_route_engine_information():
 
 @juniper_router.post("/get-system-information")
 async def get_system_information():
+    """Return simulated Juniper system information including hostname and model."""
+
     return {
         "system-information": [
             {
@@ -450,7 +427,7 @@ elif VENDOR == "juniper":
 
 
 def main():
-    """Start uvicorn server"""
+    """Start the simulator FastAPI server with uvicorn."""
 
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 

@@ -9,7 +9,7 @@ from typing import Any
 async def poll_juniper_device_async(
     device: Device, client: httpx.AsyncClient
 ) -> PollingResult:
-    """Main polling function that polls Juniper Device and parse its data asynchronously"""
+    """Poll a Juniper device and return parsed CPU, memory and interface metrics."""
 
     # Initialize default values
     cpu_val = None
@@ -18,7 +18,7 @@ async def poll_juniper_device_async(
     memory_pct = None
     interfaces = []
 
-    # Buld URLs using to poll device
+    # Build URLs used to poll Juniper RPC endpoints
     protocol = "https" if device.https else "http"
     base_url = f"{protocol}://{device.ip}:{device.port}"
 
@@ -82,6 +82,8 @@ async def poll_juniper_device_async(
 async def fetch_juniper_data_async(
     client: httpx.AsyncClient, url: str, username: str, password: str
 ) -> dict[Any, Any]:
+    """Fetch JSON data from a Juniper RPC endpoint using basic auth."""
+
     headers = {"Accept": "application/json"}
 
     response = await client.post(
@@ -97,6 +99,8 @@ async def fetch_juniper_data_async(
 
 
 def parse_cpu(raw_route_engine: dict[str, Any]) -> int:
+    """Extract CPU usage percentage from Juniper route-engine information."""
+
     re_info = raw_route_engine["route-engine-information"][0]
     route_engine = re_info["route-engine"][0]
 
@@ -107,6 +111,8 @@ def parse_cpu(raw_route_engine: dict[str, Any]) -> int:
 
 
 def parse_memory(raw_route_engine: dict[str, Any]) -> tuple[int, int, float]:
+    """Extract total memory, used memory, and utilization percentage from Juniper route-engine information."""
+
     re_data = raw_route_engine["route-engine-information"][0]["route-engine"][0]
     total_raw = re_data["memory-installed-size"][0]["data"]
     util_pct_raw = re_data["memory-buffer-utilization"][0]["data"]
@@ -125,6 +131,8 @@ def parse_memory(raw_route_engine: dict[str, Any]) -> tuple[int, int, float]:
 
 
 def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
+    """Parse interface state data and return statistics for active physical interfaces."""
+
     phys_interfaces = raw_interfaces["interface-information"][0]["physical-interface"]
     parsed_results = []
 
@@ -141,6 +149,8 @@ def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
 
         if admin_status == "up":
             name = get_junos_val(phys, "name", "unknown")
+
+            # Only include interfaces that are administratively up
 
             speed_raw = get_junos_val(phys, "speed", "0")
             speed_match = search(r"\d+", speed_raw)

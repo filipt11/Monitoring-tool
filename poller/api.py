@@ -1,7 +1,7 @@
 from config import (
     Session,
     init_db,
-    MICROSERVICE_PORT,
+    API_PORT,
 )
 from loguru import logger
 from models import Device, DeviceCreate, DeviceOut, DeviceUpdate
@@ -22,6 +22,7 @@ app_lifespan_data = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Create and manage HTTP client for API lifespan."""
     client = httpx.AsyncClient(verify=False, timeout=10.0)
     app_lifespan_data["http_client"] = client
     yield
@@ -40,7 +41,7 @@ async def model_cisco_device_info(
     https: bool,
     client: httpx.AsyncClient,
 ) -> tuple[str, str]:
-    """Try connect to device and perform basic modeling"""
+    """Retrieve hostname and model information from Cisco device."""
 
     protocol = "https" if https else "http"
     hostname_url = (
@@ -81,7 +82,7 @@ async def model_juniper_device_info(
     https: bool,
     client: httpx.AsyncClient,
 ) -> tuple[str, str]:
-    """Try connect to device and perform basic modeling"""
+    """Retrieve hostname and model information from Juniper device."""
 
     protocol = "https" if https else "http"
     system_url = f"{protocol}://{ip}:{port}/rpc/get-system-information"
@@ -110,6 +111,8 @@ async def health():
 
 @app.post("/api/device", status_code=201)
 async def add_device(device_in: DeviceCreate):
+    """Add new device to database after validating connectivity and retrieving device information."""
+
     client = app_lifespan_data["http_client"]
     try:
         if device_in.vendor.lower() == "cisco":
@@ -172,6 +175,8 @@ async def add_device(device_in: DeviceCreate):
 
 @app.delete("/api/device/{id}", status_code=200)
 async def delete_device(id: int):
+    """Delete device from database by ID."""
+
     try:
         with Session() as db:
             device = db.query(Device).filter(Device.id == id).first()
@@ -201,6 +206,8 @@ async def delete_device(id: int):
 
 @app.post("/api/rediscover/{id}")
 async def rediscover_device(id: int):
+    """Update device hostname and model information through rediscovery."""
+
     client = app_lifespan_data["http_client"]
     new_hostname, new_model = "Unknown", "Unknown"
     try:
@@ -262,6 +269,8 @@ async def rediscover_device(id: int):
 
 @app.get("/api/device/{id}", response_model=DeviceOut)
 async def get_device(id: int):
+    """Retrieve device information by ID."""
+
     with Session() as db:
         device = db.query(Device).filter(Device.id == id).first()
         if not device:
@@ -274,6 +283,8 @@ async def get_device(id: int):
 
 @app.get("/api/devices", response_model=Page[DeviceOut])
 async def get_devices():
+    """Retrieve paginated list of all devices from database."""
+
     with Session() as db:
         query = db.query(Device).order_by(Device.id.asc())
         return paginate(db, query)
@@ -281,6 +292,8 @@ async def get_devices():
 
 @app.patch("/api/device/{id}", response_model=DeviceOut)
 async def update_device(id: int, device_update: DeviceUpdate):
+    """Update device information by ID."""
+
     with Session() as db:
         with db.begin():
             device = db.query(Device).filter(Device.id == id).first()
@@ -307,7 +320,7 @@ def main():
         logger.critical(f"Finishing proggram")
         return False
 
-    uvicorn.run(app, host="0.0.0.0", port=MICROSERVICE_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=API_PORT)
 
 
 if __name__ == "__main__":

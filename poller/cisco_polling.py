@@ -8,16 +8,16 @@ from typing import Any
 async def poll_cisco_device_async(
     device: Device, client: httpx.AsyncClient
 ) -> PollingResult:
-    """Main polling function that polls Cisco Device and parse it's data"""
+    """Poll a Cisco device and return parsed CPU, memory and interface statistics."""
 
-    # Initialize default values
+    # Initialize default values for parsed metrics
     cpu_val = None
     memory_val = None
     total_memory = None
     memory_pct = None
     interfaces = []
 
-    # Build URLs using to poll device
+    # Build URLs used to poll device RESTCONF endpoints
     protocol = "https" if device.https else "http"
     base_url = f"{protocol}://{device.ip}:{device.port}"
 
@@ -45,6 +45,7 @@ async def poll_cisco_device_async(
     raw_memory = results[1] if not isinstance(results[1], BaseException) else None
     raw_interfaces = results[2] if not isinstance(results[2], BaseException) else None
 
+    # Parse each result only when request succeeded
     if raw_cpu:
         try:
             cpu_val = parse_cpu(raw_cpu)
@@ -92,6 +93,8 @@ async def poll_cisco_device_async(
 async def fetch_cisco_data_async(
     client: httpx.AsyncClient, url: str, username: str, password: str
 ) -> dict[Any, Any]:
+    """Fetch JSON data from a Cisco RESTCONF endpoint using basic auth."""
+
     headers = {
         "Accept": "application/yang-data+json",
         "Content-Type": "application/yang-data+json",
@@ -109,14 +112,13 @@ async def fetch_cisco_data_async(
 
 
 def parse_cpu(raw_cpu: dict[str, Any]) -> int:
+    """Extract CPU usage percentage from Cisco RESTCONF response."""
+
     return int(raw_cpu["Cisco-IOS-XE-process-cpu-oper:five-seconds"])
 
 
 def parse_memory(raw_memory: dict[str, Any]) -> tuple[int, int]:
-    """
-    Returns:
-        (total_memory, used_memory)
-    """
+    """Extract total and used memory values from Cisco memory statistics."""
 
     stats = raw_memory["Cisco-IOS-XE-memory-oper:memory-statistics"]
     memory_list = stats["memory-statistic"]
@@ -131,6 +133,8 @@ def parse_memory(raw_memory: dict[str, Any]) -> tuple[int, int]:
 
 
 def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
+    """Parse interface state data and return active interface statistics."""
+
     stats = raw_interfaces["ietf-interfaces:interfaces-state"]
     interface_list = stats["interface"]
 
@@ -140,6 +144,7 @@ def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
         if entry.get("admin-status") == "up":
             statistics = entry["statistics"]
 
+            # Only include interfaces that are administratively up
             if_data: InterfaceData = {
                 "name": entry["name"],
                 "if_index": int(entry["if-index"]),

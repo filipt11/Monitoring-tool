@@ -38,6 +38,7 @@ class BaseDevice:
         return 762551372
 
     def get_interfaces(self) -> list:
+        """Return updated interface counters for the simulated device."""
         updated_interfaces = []
         for iface in self.interfaces_list:
             name = iface["name"]
@@ -47,7 +48,7 @@ class BaseDevice:
             prev_in = self.interface_counters.get(f"{name}_in", 0)
             prev_out = self.interface_counters.get(f"{name}_out", 0)
 
-            # Omitt inactive ports
+            # Omit inactive ports from counter updates
             if status == "up" and speed > 0:
                 # Consider ports in range 20 to 30 as higher utilized IN ones
                 if iface["if-index"] not in range(20, 31):
@@ -238,6 +239,8 @@ class AverageUtilizedCiscoDevice(BaseCiscoDevice):
 
 # Juniper devices
 class BaseJuniperDevice(BaseDevice):
+    """Class representing base Juniper device model for simulation."""
+
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
     ):
@@ -283,6 +286,8 @@ class BaseJuniperDevice(BaseDevice):
 
 
 class HighUtilizedJuniperDevice(BaseJuniperDevice):
+    """Class representing a high-utilization Juniper device simulation."""
+
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
     ):
@@ -298,6 +303,8 @@ class HighUtilizedJuniperDevice(BaseJuniperDevice):
 
 
 class LowUtilizedJuniperDevice(BaseJuniperDevice):
+    """Class representing a low-utilization Juniper device simulation."""
+
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
     ):
@@ -317,6 +324,8 @@ class LowUtilizedJuniperDevice(BaseJuniperDevice):
 
 
 class AverageUtilizedJuniperDevice(BaseJuniperDevice):
+    """Class representing an average-utilization Juniper device simulation."""
+
     def __init__(
         self, ip_address, vendor, hostname, model, username, password, port, https
     ):

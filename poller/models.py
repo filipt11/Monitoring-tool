@@ -7,6 +7,8 @@ from typing import TypedDict
 
 
 class Device(Base):
+    """SQLAlchemy model representing a network device stored in the database."""
+
     __tablename__ = "devices"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -26,8 +28,7 @@ class Device(Base):
 
 
 class DeviceWithPolledData(BaseModel):
-    """Class represinting polled devices with its data
-    These objects are being saved to InfluxDB."""
+    """Pydantic model representing a device with polling metrics for InfluxDB."""
 
     id: int
     hostname: str
@@ -39,6 +40,8 @@ class DeviceWithPolledData(BaseModel):
 
 
 class DeviceCreate(BaseModel):
+    """Pydantic model for device creation requests."""
+
     ip: str
     port: int
     vendor: str
@@ -48,6 +51,8 @@ class DeviceCreate(BaseModel):
 
 
 class DeviceOut(BaseModel):
+    """Pydantic model used for API responses containing device details."""
+
     id: int
     ip: str
     hostname: str
@@ -62,12 +67,17 @@ class DeviceOut(BaseModel):
 
 
 class DeviceUpdate(BaseModel):
+    """Pydantic model for partial device updates."""
+
     port: Optional[int] = Field(None, ge=1, le=65535)
     username: Optional[str] = None
     password: Optional[str] = None
     https: Optional[bool] = None
 
+
 class InterfaceData(TypedDict):
+    """TypedDict describing interface counters and state returned by polling."""
+
     name: str
     if_index: int
     in_octets: int
@@ -77,7 +87,10 @@ class InterfaceData(TypedDict):
     oper_status: str
     mac: str
 
+
 class PollingResult(TypedDict):
+    """TypedDict describing the polling result returned from device polling."""
+
     status: str
     cpu: int | None
     total_memory: int | None
