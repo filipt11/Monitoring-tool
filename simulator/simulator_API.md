@@ -79,6 +79,6 @@ curl -X POST -u admin:123 http://localhost:8001/rpc/get-interface-information
 
 ## Device Profiles
 
-- **high_utilized**: CPU 80-95%, Memory 75-90%
-- **average_utilized**: CPU 40-60%, Memory 50-65%
-- **low_utilized**: CPU 10-20%, Memory 20-35%
+- **high_utilized**: CPU 80-95%, Memory 75-90% (with ocasional drops)
+- **average_utilized**: CPU 40-60%, Memory 50-65% (with occasional drops and spikes)
+- **low_utilized**: CPU 10-20%, Memory 20-35% (with occasional spikes)
