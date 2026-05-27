@@ -34,7 +34,7 @@ def get_current_devices() -> list[Device]:
         return session.query(Device).all()
 
 
-async def poll_single_device(device: Device, client) -> None:
+async def poll_single_device(device: Device, client: httpx.AsyncClient) -> None:
     """Poll and save data from single device."""
 
     async with semaphore:
@@ -245,7 +245,7 @@ def handle_exit(sig: Any, frame: Any) -> None:
     raise SystemExit
 
 
-async def main():
+async def main() -> None:
     """Starting DB connection, initialize example devices and poll devices in infinity loop"""
 
     try:

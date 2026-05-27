@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -19,11 +19,11 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_engine("postgresql://admin:123@localhost:5432/inventory")
+engine: Engine = create_engine("postgresql://admin:123@localhost:5432/inventory")
 Session = sessionmaker(bind=engine)
 
 
-def init_db():
+def init_db() -> None:
     """Initalizing Connection with Postgres DB"""
 
     try:

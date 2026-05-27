@@ -1,24 +1,25 @@
 import logic
+from typing import Any
 
 
 class BaseDevice:
     """Class representing base device model"""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
-        self.ip_address = ip_address
-        self.vendor = vendor
-        self.hostname = hostname
-        self.model = model
-        self.username = username
-        self.password = password
-        self.port = port
-        self.https = https
-        self.interface_counters = {}
-        self.interfaces_list = []
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
+        self.ip_address: str = ip_address
+        self.vendor: str = vendor
+        self.hostname: str = hostname
+        self.model: str = model
+        self.username: str = username
+        self.password: str = password
+        self.port: int = port
+        self.https: bool = https
+        self.interface_counters: dict[str, int] = {}
+        self.interfaces_list: list[dict[str, Any]] = []
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<BaseDevice {self.hostname} ({self.ip_address}) - {self.vendor} {self.model}>"
 
     def get_cpu(self) -> int:
@@ -96,8 +97,8 @@ class BaseCiscoDevice(BaseDevice):
     By default methods return data as for average utilized device."""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )
@@ -144,8 +145,8 @@ class HighUtilizedCiscoDevice(BaseCiscoDevice):
     Methods regarding CPU and Memory usage generate higher values."""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )
@@ -166,8 +167,8 @@ class LowUtilizedCiscoDevice(BaseCiscoDevice):
     Methods regarding CPU and Memory usage generate lower values."""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )
@@ -192,8 +193,8 @@ class AverageUtilizedCiscoDevice(BaseCiscoDevice):
     """Class representaing average utilized Cisco device, extended for a few more interfaces."""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )
@@ -242,8 +243,8 @@ class BaseJuniperDevice(BaseDevice):
     """Class representing base Juniper device model for simulation."""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )
@@ -289,8 +290,8 @@ class HighUtilizedJuniperDevice(BaseJuniperDevice):
     """Class representing a high-utilization Juniper device simulation."""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )
@@ -306,8 +307,8 @@ class LowUtilizedJuniperDevice(BaseJuniperDevice):
     """Class representing a low-utilization Juniper device simulation."""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )
@@ -327,8 +328,8 @@ class AverageUtilizedJuniperDevice(BaseJuniperDevice):
     """Class representing an average-utilization Juniper device simulation."""
 
     def __init__(
-        self, ip_address, vendor, hostname, model, username, password, port, https
-    ):
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )

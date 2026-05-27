@@ -16,7 +16,7 @@ VENDOR = os.getenv("DEVICE_VENDOR", "cisco").lower()
 MODEL = os.getenv("DEVICE_MODEL", "Catalyst 9000")
 USERNAME = os.getenv("DEVICE_USERNAME", "admin")
 PASSWORD = os.getenv("DEVICE_PASSWORD", "123")
-PORT = os.getenv("DEVICE_PORT", 443)
+PORT = int(os.getenv("DEVICE_PORT", 443))
 raw_https = os.getenv("DEVICE_IS_HTTPS", "false")
 HTTPS = raw_https.lower() in ("true", "1", "yes")
 
@@ -37,7 +37,7 @@ device_class = device_mapping.get((VENDOR, PROFILE), devices.AverageUtilizedCisc
 device = device_class(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
 
 
-def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
+def authenticate(credentials: HTTPBasicCredentials = Depends(security)) -> str:
     """Validate HTTP Basic credentials for all simulator endpoints."""
 
     is_user_ok = secrets.compare_digest(credentials.username, USERNAME)
@@ -426,7 +426,7 @@ elif VENDOR == "juniper":
     app.include_router(juniper_router, dependencies=[Depends(authenticate)])
 
 
-def main():
+def main() -> None:
     """Start the simulator FastAPI server with uvicorn."""
 
     uvicorn.run(app, host="0.0.0.0", port=PORT)

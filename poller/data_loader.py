@@ -3,7 +3,7 @@ import models
 from loguru import logger
 
 
-def seed_devices():
+def seed_devices() -> None:
     """Create and save default devices to DB."""
 
     initial_devices = [
@@ -71,7 +71,7 @@ def seed_devices():
 
     with Session() as session:
         for dev_data in initial_devices:
-            exists = (
+            exists: models.Device | None = (
                 session.query(models.Device)
                 .filter_by(hostname=dev_data["hostname"])
                 .first()

@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import List, Optional, Dict
 import logging
 
 # Basic logging configuration
@@ -17,9 +18,9 @@ logging.basicConfig(
 # Create logger instance
 logger = logging.getLogger("MonitoringTool")
 
-def run_command(cmd, cwd=None, env=None, check=True):
+def run_command(cmd: List[str], cwd: Optional[Path] = None, env: Optional[Dict[str, str]] = None, check: bool = True) -> None:
     """Execute a shell command and log the invocation."""
-    
+
     if cwd is not None:
         logger.info(f"Executing: {' '.join(cmd)} in {cwd}")
     else:
@@ -27,9 +28,9 @@ def run_command(cmd, cwd=None, env=None, check=True):
     subprocess.run(cmd, cwd=cwd, env=env, check=check)
 
 
-def run_compose(directory: Path, compose_file="docker-compose.yml", build=False):
+def run_compose(directory: Path, compose_file: str = "docker-compose.yml", build: bool = False) -> None:
     """Run docker-compose up for the given directory."""
-    
+
     command = ["docker-compose", "-f", compose_file, "up", "-d"]
     if build:
         command.insert(3, "--build")
@@ -37,9 +38,9 @@ def run_compose(directory: Path, compose_file="docker-compose.yml", build=False)
     logger.info(f"Successfully executed docker-compose in {directory}")
 
 
-def create_venv(venv_dir: Path):
+def create_venv(venv_dir: Path) -> None:
     """Create a Python virtual environment if it does not already exist."""
-    
+
     if venv_dir.exists():
         logger.info(f"Virtual Env already exists: {venv_dir}")
         return
@@ -55,18 +56,18 @@ def get_venv_python(venv_dir: Path) -> str:
     return str(venv_dir / "bin" / "python")
 
 
-def install_requirements(python_exe: str, requirements_file: Path):
+def install_requirements(python_exe: str, requirements_file: Path) -> None:
     """Install Python dependencies from a requirements file."""
-    
+
     if not requirements_file.exists():
         raise FileNotFoundError(f"missing requirements file: {requirements_file}")
     run_command([python_exe, "-m", "pip", "install", "-r", str(requirements_file)])
     logger.info("Dependencies have been installed in venv")
 
 
-def start_background_process(python_exe: str, script_path: Path, log_path: Path | None, env: dict | None = None):
+def start_background_process(python_exe: str, script_path: Path, log_path: Optional[Path], env: Optional[Dict[str, str]] = None) -> subprocess.Popen:
     """Start a background Python process and optionally redirect output to a log file."""
-    
+
     if log_path is not None:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         stdout = open(log_path, "a", encoding="utf-8")

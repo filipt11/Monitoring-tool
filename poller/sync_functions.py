@@ -1,13 +1,13 @@
 # File with sync function originally used to polling. Currently not being used, saved just in case.
 
 
-def poll_devices():
+def poll_devices() -> None:
     """Main polling function"""
 
     global cached_device_list
     try:
         cached_device_list = get_current_devices()
-    except Exception as e:
+    except Exception as e: Exception:
         logger.warning(
             "Can not establish connection with Postges DB, using cached device list for polling"
         )
@@ -37,7 +37,7 @@ def poll_devices():
         # DEBUG END
 
         try:
-            has_data = any([device_data.get("cpu"), device_data.get("memory_pct")])
+            has_data: bool = any([device_data.get("cpu"), device_data.get("memory_pct")])
 
             if not has_data:
                 logger.warning(
@@ -58,7 +58,7 @@ def poll_devices():
 
                 save_polled_device_data(polled_device, status=1)
 
-        except Exception as e:
+        except Exception as e: Exception:
             logger.error(
                 f"Error during saving data for device: {device.hostname} | {device.ip}: {e}"
             )
@@ -73,16 +73,16 @@ def poll_devices():
                     device.id, device.hostname, device.ip, interfaces_list
                 )
 
-        except Exception as e:
+        except Exception as e: Exception:
             logger.error(
                 f"Error during saving interface data for {device.hostname} | {device.ip}: {e}"
             )
 
 
-def main():
+def main() -> bool:
     try:
         init_db()
-    except ConnectionError as e:
+    except ConnectionError as e: ConnectionError:
         logger.critical(f"Finishing proggram")
         return False
 
@@ -115,23 +115,23 @@ def poll_cisco_device(device: Device) -> dict:
     interfaces = []
 
     # Build URLs using to poll device
-    protocol = "https" if device.https else "http"
-    base_url = f"{protocol}://{device.ip}:{device.port}"
+    protocol: str = "https" if device.https else "http"
+    base_url: str = f"{protocol}://{device.ip}:{device.port}"
 
     cpu_path = "/restconf/data/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds"
     memory_path = "/restconf/data/Cisco-IOS-XE-memory-oper:memory-statistics"
     interface_path = "/restconf/data/ietf-interfaces:interfaces-state"
 
-    full_cpu_url = f"{base_url}{cpu_path}"
-    full_memory_url = f"{base_url}{memory_path}"
-    full_interface_url = f"{base_url}{interface_path}"
+    full_cpu_url: str = f"{base_url}{cpu_path}"
+    full_memory_url: str = f"{base_url}{memory_path}"
+    full_interface_url: str = f"{base_url}{interface_path}"
 
     # Poll device and parse returned values
     try:
         raw_cpu = fetch_data(full_cpu_url, device.username, device.password)
         if raw_cpu:
             cpu_val = parse_cpu(raw_cpu)
-    except Exception as e:
+    except Exception as e: Exception:
         logger.error(
             f"Error during polling CPU value for device: {device.hostname} | {device.ip}: {e}"
         )
@@ -142,7 +142,7 @@ def poll_cisco_device(device: Device) -> dict:
             total_memory, memory_val = parse_memory(raw_memory)
             if total_memory and total_memory > 0:
                 memory_pct = round((memory_val / total_memory) * 100, 2)
-    except Exception as e:
+    except Exception as e: Exception:
         logger.error(
             f"Error during polling Memory values for device: {device.hostname} | {device.ip}: {e}"
         )
@@ -151,7 +151,7 @@ def poll_cisco_device(device: Device) -> dict:
         raw_interface = fetch_data(full_interface_url, device.username, device.password)
         if raw_interface:
             interfaces = parse_interfaces(raw_interface)
-    except Exception as e:
+    except Exception as e: Exception:
         logger.error(
             f"Error during polling Interface values for device: {device.hostname} | {device.ip}: {e}"
         )
@@ -175,7 +175,7 @@ def poll_cisco_device(device: Device) -> dict:
 
 
 def fetch_data(url: str, username: str, password: str) -> dict:
-    headers = {
+    headers: dict[str, str] = {
         "Accept": "application/yang-data+json",
         "Content-Type": "application/yang-data+json",
     }
@@ -204,14 +204,14 @@ def poll_juniper_device(device: Device) -> dict:
     interfaces = []
 
     # Build URLs using to poll device
-    protocol = "https" if device.https else "http"
-    base_url = f"{protocol}://{device.ip}:{device.port}"
+    protocol: str = "https" if device.https else "http"
+    base_url: str = f"{protocol}://{device.ip}:{device.port}"
 
     route_engine_path = "/rpc/get-route-engine-information"
     interface_path = "/rpc/get-interface-information"
 
-    full_route_engine_url = f"{base_url}{route_engine_path}"
-    full_interface_url = f"{base_url}{interface_path}"
+    full_route_engine_url: str = f"{base_url}{route_engine_path}"
+    full_interface_url: str = f"{base_url}{interface_path}"
 
     # Poll device and parse returned values
     try:
@@ -221,7 +221,7 @@ def poll_juniper_device(device: Device) -> dict:
         if raw_route_engine:
             cpu_val = parse_cpu(raw_route_engine)
             total_memory, memory_val, memory_pct = parse_memory(raw_route_engine)
-    except Exception as e:
+    except Exception as e: Exception:
         logger.error(
             f"Error during polling CPU/Memory value for device: {device.hostname} | {device.ip}: {e}"
         )
@@ -232,7 +232,7 @@ def poll_juniper_device(device: Device) -> dict:
         )
         if raw_interfaces:
             interfaces = parse_interfaces(raw_interfaces)
-    except Exception as e:
+    except Exception as e: Exception:
         logger.error(
             f"Error during polling Interface values for device: {device.hostname} | {device.ip}: {e}"
         )
@@ -256,7 +256,7 @@ def poll_juniper_device(device: Device) -> dict:
 
 
 def fetch_data_juniper(url: str, username: str, password: str) -> dict:
-    headers = {"Accept": "application/json"}
+    headers: dict[str, str] = {"Accept": "application/json"}
 
     response = requests.post(
         url,
