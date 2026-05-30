@@ -19,9 +19,5 @@ public class TestController {
     public String helloAdmin() {
         return "Hello Admin";
     }
-
-    @GetMapping("/administration/api/admin2")
-    public String helloAdmin2() {
-        return "Hello Admin";
-    }
+    
 }
