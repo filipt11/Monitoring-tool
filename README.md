@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Monitoring Tool** is a comprehensive network device monitoring solution designed to collect and store performance metrics from Cisco IOS XE and Juniper devices in real-time. The system architecture consists of three main components:
+**Monitoring Tool** is a comprehensive network device monitoring solution designed to collect and store performance metrics from Cisco IOS XE and Juniper devices through their API. The system architecture consists of three main components:
 
 - **Device Simulator**: Simulates Cisco and Juniper network devices with realistic performance metrics (CPU, memory, interface statistics)
 - **Poller Service**: Discovers, manages, and continuously polls real or simulated network devices, saving collected data to InfluxDB

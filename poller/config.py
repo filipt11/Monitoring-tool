@@ -19,7 +19,7 @@ class Base(DeclarativeBase):
     pass
 
 
-engine: Engine = create_engine("postgresql://admin:123@localhost:5432/inventory")
+engine: Engine = create_engine("postgresql://admin:123@localhost:5432/applicationdb")
 Session = sessionmaker(bind=engine)
 
 

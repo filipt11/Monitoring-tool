@@ -22,7 +22,7 @@ services:
     environment:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=123
-      - POSTGRES_DB=inventory
+      - POSTGRES_DB=applicationDB
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
