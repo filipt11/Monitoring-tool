@@ -1,6 +1,6 @@
 package app.security;
 
-import app.Entity.MyUser;
+import app.entities.MyUser;
 import app.repositories.MyUserRepository;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.GrantedAuthority;
