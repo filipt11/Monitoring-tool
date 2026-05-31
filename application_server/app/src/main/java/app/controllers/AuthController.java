@@ -1,9 +1,6 @@
 package app.controllers;
 
-import app.dtos.auth.JwtResponse;
-import app.dtos.auth.RegistrationResponse;
-import app.dtos.auth.TokenRefreshRequest;
-import app.dtos.auth.TokenRefreshResponse;
+import app.dtos.auth.*;
 import app.dtos.myUser.MyUserLoginDto;
 import app.dtos.myUser.MyUserRegisterDto;
 import app.security.JwtUtil;
