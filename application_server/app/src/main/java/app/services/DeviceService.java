@@ -79,4 +79,13 @@ public class DeviceService {
                 .body(DeviceResponse.class);
     }
 
+    // Use poller API to rediscover device in database
+    public DeviceResponse rediscoverDevice(Long id) {
+        return deviceRestClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/rediscover/{id}")
+                        .build(id))
+                .retrieve()
+                .body(DeviceResponse.class);
+    }
 }

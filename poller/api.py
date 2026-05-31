@@ -261,7 +261,7 @@ async def rediscover_device(id: int):
             logger.success(
                 f"Successfully rediscovered device: {new_hostname} | {device.ip}"
             )
-            return {"status": "updated", "device": device}
+            return device
 
     except HTTPException:
         raise

@@ -57,4 +57,9 @@ public class DeviceController {
     public ResponseEntity<DeviceResponse> updateDevice(@PathVariable Long id, @RequestBody @Valid DeviceUpdateDto dto) {
         return ResponseEntity.ok(deviceService.updateDevice(id, dto));
     }
+
+    @PostMapping("/api/devices/rediscover/{id}")
+    public ResponseEntity<DeviceResponse> rediscoverDevice(@PathVariable Long id) {
+        return ResponseEntity.ok(deviceService.rediscoverDevice(id));
+    }
 }

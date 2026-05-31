@@ -38,6 +38,7 @@ Packages required to manually run:
 - `fastapi-pagination`
 - `pydantic`
 - `typing_extensions`
+- `websockets`
 
 ---
 

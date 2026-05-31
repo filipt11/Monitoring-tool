@@ -8,3 +8,4 @@ loguru
 fastapi-pagination
 pydantic
 typing_extensions
+websockets
