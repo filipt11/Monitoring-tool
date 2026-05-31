@@ -9,11 +9,16 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,6 +26,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidationErrors(MethodArgumentNotValidException ex) {
@@ -99,10 +105,60 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
     }
-    
+
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ExceptionMessage> handleUserNotFound(UserNotFoundException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(IncorrectPasswordException.class)
+    public ResponseEntity<ExceptionMessage> handleIncorrectPassword(IncorrectPasswordException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(IllegalOperationException.class)
+    public ResponseEntity<ExceptionMessage> handleIllegalOperation(IllegalOperationException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InternalAuthenticationServiceException.class)
+    public ResponseEntity<ExceptionMessage> handleAuthenticationServiceException(InternalAuthenticationServiceException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ExceptionMessage("Authentication failed: " + ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DeviceNotFoundException.class)
+    public ResponseEntity<ExceptionMessage> handleDeviceNotFound(DeviceNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(RestClientResponseException.class)
+    public ResponseEntity<ExceptionMessage> handleRestClientError(
+            RestClientResponseException ex,
+            HttpServletRequest request) {
+
+        String errorMessage = ex.getStatusText();
+
+        try {
+            JsonNode jsonNode = objectMapper.readTree(ex.getResponseBodyAsString());
+            if (jsonNode.has("detail")) {
+                errorMessage = jsonNode.get("detail").asText();
+            }
+        } catch (Exception e) {
+            errorMessage = ex.getResponseBodyAsString();
+        }
+
+        ExceptionMessage exceptionMessage = new ExceptionMessage(
+                errorMessage,
+                request.getRequestURI()
+        );
+        
+        return ResponseEntity
+                .status(ex.getStatusCode())
+                .body(exceptionMessage);
     }
 }

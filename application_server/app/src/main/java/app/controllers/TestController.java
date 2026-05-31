@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TestController {
     @GetMapping("test")
     public String test() {
-        return "Your backend is ready to work\n";
+        return "Application server is ready to work\n";
     }
 
     @GetMapping("/api/user")
@@ -19,5 +19,5 @@ public class TestController {
     public String helloAdmin() {
         return "Hello Admin";
     }
-    
+
 }

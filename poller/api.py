@@ -12,7 +12,7 @@ from juniper_polling import fetch_juniper_data_async
 from sys import stderr
 from sqlalchemy.exc import IntegrityError
 from fastapi_pagination import Page, add_pagination
-from fastapi_pagination.ext.sqlalchemy import paginate
+from fastapi_pagination.ext.sqlalchemy import paginate  
 import httpx
 import asyncio
 from contextlib import asynccontextmanager
@@ -69,7 +69,7 @@ async def model_cisco_device_info(
 
     except Exception as e:
         logger.error(f"Error during modeling device: {ip}: {e}")
-        raise ConnectionError(f"Error during modeling device: {ip}")
+        raise ConnectionError(f"Error during modeling device: {ip}:{port}")
 
     return hostname, model
 
@@ -97,7 +97,7 @@ async def model_juniper_device_info(
 
     except Exception as e:
         logger.error(f"Error during modeling device: {ip}: {e}")
-        raise ConnectionError(f"Error during modeling device: {ip}")
+        raise ConnectionError(f"Error during modeling device: {ip}:{port}")
 
     return hostname, model
 
@@ -133,9 +133,15 @@ async def add_device(device_in: DeviceCreate):
                 device_in.https,
                 client,
             )
+        else:
+            # Return 400 if vendor is not supported
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unsupported vendor: '{device_in.vendor}'"
+            )
     except ConnectionError as e:
-        # Return 400 if device not responds
-        raise HTTPException(status_code=400, detail=str(e))
+        # Return 502 if device not responds
+        raise HTTPException(status_code=502, detail=str(e))
 
     try:
         with Session() as db:
@@ -154,7 +160,7 @@ async def add_device(device_in: DeviceCreate):
 
             db.refresh(new_device)
             logger.success(f"Successfully created device: {hostname} | {device_in.ip}")
-            return {"status": "created", "device": new_device}
+            return new_device
 
     except IntegrityError as e:
         # Device already exists in Database
@@ -261,7 +267,7 @@ async def rediscover_device(id: int):
         raise
     except ConnectionError as e:
         logger.error(f"Rediscover failed: {e}")
-        raise HTTPException(status_code=400, detail=f"Device unreachable: {e}")
+        raise HTTPException(status_code=502, detail=f"Device unreachable: {e}")
     except Exception as e:
         logger.error(f"Rediscover failed: {e}")
         raise HTTPException(status_code=500, detail="Internal database error occurred.")

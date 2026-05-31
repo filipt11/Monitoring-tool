@@ -9,6 +9,7 @@ import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface MyUserMapper {
+    @Mapping(source = "banned", target = "isBanned")
     MyUserResponseDto toDto(MyUser myUser);
 
     MyUserDto fromRegisterToDto(MyUserRegisterDto myUserRegisterDto);
@@ -18,5 +19,6 @@ public interface MyUserMapper {
     @Mapping(target = "id", ignore = true)
     MyUser toEntity(MyUserRegisterDto registerDto);
 
+    @Mapping(source = "banned", target = "isBanned")
     MyUserResponseDto toResponseDto(MyUser myUser);
 }

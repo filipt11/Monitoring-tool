@@ -3,6 +3,8 @@ package app.entities;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,6 +21,9 @@ public class MyUser {
     private String email;
     private String password;
     private String role;
+
+    @OneToMany(mappedBy = "myUser", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RefreshToken> refreshTokens;
 
     @Column(columnDefinition = "boolean default false")
     private boolean isBanned;

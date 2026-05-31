@@ -26,7 +26,7 @@ public class MyDatabaseUserDetailsService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         if (user.isBanned()) {
-            throw new LockedException("You account has been banned.");
+            throw new LockedException("You account has been disabled.");
         }
 
         List<GrantedAuthority> authorities =
