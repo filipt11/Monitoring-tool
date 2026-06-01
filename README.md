@@ -296,6 +296,14 @@ monitoring-tool/
 
 ---
 
+## Documentation
+
+Code documentation is available in HTML format. Open it directly in your browser:
+
+```bash
+# Open the main documentation file
+open docs/_build/html/index.html
+```
 ## API Documentation
 
 ### Poller API
