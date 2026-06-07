@@ -18,6 +18,21 @@ The tool provides a REST API for device management and uses Docker Compose for s
 - **Scalable Architecture**: Asynchronous polling capable of handling thousands of devices simultaneously.
 - **Device Profiles**: Simulated devices with different utilization profiles (high, average, low)
 
+---
+
+## Documentation
+
+### Complete Code documentation is available in HTML format: [Documentation](https://filipt11.github.io/Monitoring-tool/index.html)
+
+## API Documentation
+
+### Poller API
+Complete documentation for device management endpoints: [Poller API](poller/poller_API.md)
+
+### Simulator API
+Complete documentation for simulated device endpoints: [Simulator API](simulator/simulator_API.md)
+
+---
 
 ## Requirements
 
@@ -294,22 +309,3 @@ monitoring-tool/
 └── docs/                              # Additional documentation
 ```
 
----
-
-## Documentation
-
-Code documentation is available in HTML format. Open it directly in your browser:
-
-```bash
-# Open the main documentation file
-open docs/index.html
-```
-## API Documentation
-
-### Poller API
-Complete documentation for device management endpoints: [Poller API](poller/poller_API.md)
-
-### Simulator API
-Complete documentation for simulated device endpoints: [Simulator API](simulator/simulator_API.md)
-
----
