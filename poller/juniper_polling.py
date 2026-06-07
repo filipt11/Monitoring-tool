@@ -1,5 +1,5 @@
 from loguru import logger
-from models import Device, PollingResult, InterfaceData
+from .models import Device, PollingResult, InterfaceData
 from re import search
 import httpx
 import asyncio

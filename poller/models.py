@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import String, Integer, Boolean, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
-from config import Base
+from .config import Base
 from typing import Optional
 from typing import TypedDict
 
@@ -22,9 +22,6 @@ class Device(Base):
     https: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (UniqueConstraint("ip", "port", name="_ip_port_uc"),)
-
-    def __repr__(self) -> str:
-        return f"<Device(hostname={self.hostname}, ip={self.ip}, vendor={self.vendor})>"
 
 
 class DeviceWithPolledData(BaseModel):

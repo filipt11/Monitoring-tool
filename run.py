@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"
-    env["PYTHONPATH"] = str(poller_dir)
+    env["PYTHONPATH"] = str(root_dir)
 
     api_process = start_background_process(python_exe, poller_dir / "api.py", api_log, env=env)
     poller_process = start_background_process(python_exe, poller_dir / "main.py", None, env=env)

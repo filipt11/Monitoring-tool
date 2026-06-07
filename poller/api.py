@@ -1,14 +1,14 @@
-from config import (
+from .config import (
     Session,
     init_db,
     API_PORT,
 )
 from loguru import logger
-from models import Device, DeviceCreate, DeviceOut, DeviceUpdate
+from .models import Device, DeviceCreate, DeviceOut, DeviceUpdate
 from fastapi import FastAPI, HTTPException, status
 import uvicorn
-from cisco_polling import fetch_cisco_data_async
-from juniper_polling import fetch_juniper_data_async
+from .cisco_polling import fetch_cisco_data_async
+from .juniper_polling import fetch_juniper_data_async
 from sys import stderr
 from sqlalchemy.exc import IntegrityError
 from fastapi_pagination import Page, add_pagination
@@ -106,7 +106,7 @@ async def model_juniper_device_info(
 async def health():
     """Return status 'OK' if API started correctly."""
 
-    return {"status:": "OK"}
+    return {"status": "OK"}
 
 
 @app.post("/api/device", status_code=201)
@@ -317,7 +317,7 @@ async def update_device(id: int, device_update: DeviceUpdate):
         return device
 
 
-def main():
+def main(): # pragma: no cover
     """Connect to DB and start uvicorn server"""
 
     try:
@@ -329,7 +329,7 @@ def main():
     uvicorn.run(app, host="0.0.0.0", port=API_PORT)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     # Configure Logging
     logger.remove()
     logger.add(stderr, level="INFO")

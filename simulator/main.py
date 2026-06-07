@@ -426,11 +426,11 @@ elif VENDOR == "juniper":
     app.include_router(juniper_router, dependencies=[Depends(authenticate)])
 
 
-def main() -> None:
+def main() -> None: # pragma: no cover
     """Start the simulator FastAPI server with uvicorn."""
 
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     main()

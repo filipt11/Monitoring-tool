@@ -1,4 +1,4 @@
-from config import (
+from poller.config import (
     Session,
     INFLUX_ORG,
     INFLUX_BUCKET,
@@ -7,11 +7,11 @@ from config import (
     POLLING_INERVAL,
     MAX_DEVICES,
 )
-from cisco_polling import poll_cisco_device_async
-from juniper_polling import poll_juniper_device_async
-from models import Device, DeviceWithPolledData
+from poller.cisco_polling import poll_cisco_device_async
+from poller.juniper_polling import poll_juniper_device_async
+from poller.models import Device, DeviceWithPolledData
 from loguru import logger
-from data_loader import seed_devices
+from poller.data_loader import seed_devices
 from influxdb_client import Point
 import time
 import asyncio
@@ -238,7 +238,7 @@ def calculate_utilization(
     return None, None
 
 
-def handle_exit(sig: Any, frame: Any) -> None:
+def handle_exit(sig: Any, frame: Any) -> None: # pragma: no cover
     """Handle system signals"""
 
     signame = signal.Signals(sig).name
@@ -246,7 +246,7 @@ def handle_exit(sig: Any, frame: Any) -> None:
     raise SystemExit
 
 
-async def main() -> None:
+async def main() -> None: # pragma: no cover
     """Starting DB connection, initialize example devices and poll devices in infinity loop"""
 
     try:
@@ -265,7 +265,7 @@ async def main() -> None:
         await asyncio.sleep(POLLING_INERVAL)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     # Handling exit signals
     signal.signal(signal.SIGTERM, handle_exit)
     signal.signal(signal.SIGINT, handle_exit)

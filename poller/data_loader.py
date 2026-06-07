@@ -1,5 +1,5 @@
-from config import Session, engine
-import models
+from .config import Session, engine
+from poller import models
 from loguru import logger
 
 

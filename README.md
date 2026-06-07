@@ -283,29 +283,3 @@ tail -f poller/discovery.log
 docker logs -f <service_name>
 ```
 
-## Project Structure
-
-```
-monitoring-tool/
-├── README.md                          # This file
-├── run.py                             # Startup automation script
-├── simulator/                         # Device simulator
-│   ├── main.py                        # Simulator API server
-│   ├── devices.py                     # Simulated device models
-│   ├── docker-compose.yml             # Simulator services
-│   └── simulator_API.md               # Simulator API documentation
-├── poller/                            # Polling service
-│   ├── api.py                         # Device management API
-│   ├── main.py                        # Polling service
-│   ├── models.py                      # Database models
-│   ├── config.py                      # Configuration
-│   ├── docker-compose.yml             # Poller infrastructure
-│   ├── requirements.txt               # Python dependencies
-│   ├── cisco_polling.py               # Cisco-specific polling
-│   ├── juniper_polling.py             # Juniper-specific polling
-│   ├── data_loader.py                 # Test data initialization
-│   ├── sync_functions.py              # Utility functions
-│   └── poller_API.md                  # Poller API documentation
-└── docs/                              # Additional documentation
-```
-
