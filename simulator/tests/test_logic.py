@@ -1,0 +1,71 @@
+import pytest
+
+from simulator import logic
+
+
+def test_get_high_utilized_cpu_spike(monkeypatch):
+    # Force spike branch (random.random() > 0.95)
+    seq = iter([0.96, 0.5])
+    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
+    assert logic.get_high_utilized_cpu() == 100
+
+
+def test_get_high_utilized_cpu_drop(monkeypatch):
+    # First random.random() not a spike, second triggers drop (<0.03)
+    seq = iter([0.5, 0.01])
+    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
+    # Ensure gauss returns a low value for the drop case
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 10)
+    assert logic.get_high_utilized_cpu() == int(max(5, 10))
+
+
+def test_cpu_average_default(monkeypatch):
+    # Normal path for average CPU
+    seq = iter([0.5, 0.5])
+    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 45)
+    assert logic.get_average_utilized_cpu() == int(max(20, min(60, 45)))
+
+
+def test_ram_functions_deterministic(monkeypatch):
+    # Make gauss return mean to make outputs deterministic
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: mu)
+
+    total = 1000
+    assert logic.get_high_utilized_ram(total) == int(total * 0.7)
+    assert logic.get_average_utilized_ram(total) == int(total * 0.5)
+    assert logic.get_low_utilized_ram(total) == int(total * 0.3)
+
+
+def test_get_dynamic_interval(monkeypatch):
+    # Control time progression
+    times = iter([100.0, 105.5])
+    monkeypatch.setattr(logic, "time", lambda: next(times))
+
+    # First call has no previous time
+    assert logic.get_dynamic_interval("k1") == 0.0
+    # Second call returns difference
+    assert logic.get_dynamic_interval("k1") == pytest.approx(5.5)
+
+
+def test_increase_interface_counter(monkeypatch):
+    # Control interval and utilization to compute exact increment
+    monkeypatch.setattr(logic, "get_dynamic_interval", lambda key: 2.0)
+    monkeypatch.setattr(logic.random, "uniform", lambda a, b: 0.3)
+
+    prev = 100
+    declared_speed = 8_000_000_000
+    res = logic.increase_interface_counter(prev, declared_speed, "k")
+    expected_increment = int((declared_speed / 8) * 0.3 * 2.0)
+    assert res == prev + expected_increment
+
+
+def test_increase_interface_counter_high_util(monkeypatch):
+    monkeypatch.setattr(logic, "get_dynamic_interval", lambda key: 1.5)
+    monkeypatch.setattr(logic.random, "uniform", lambda a, b: 0.8)
+
+    prev = 0
+    declared_speed = 1_000_000_000
+    res = logic.increase_interface_counter_for_higher_utilized(prev, declared_speed, "k")
+    expected_increment = int((declared_speed / 8) * 0.8 * 1.5)
+    assert res == expected_increment
