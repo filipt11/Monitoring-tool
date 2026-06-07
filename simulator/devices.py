@@ -19,9 +19,6 @@ class BaseDevice:
         self.interface_counters: dict[str, int] = {}
         self.interfaces_list: list[dict[str, Any]] = []
 
-    def __repr__(self) -> str:
-        return f"<BaseDevice {self.hostname} ({self.ip_address}) - {self.vendor} {self.model}>"
-
     def get_cpu(self) -> int:
         """Return raw device CPU usage value."""
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-import devices
+from simulator import devices
 import os
 import secrets
 import uvicorn
@@ -60,7 +60,7 @@ cisco_router = APIRouter(prefix="/restconf/data")
 async def health():
     """Return status 'OK' if API started correctly."""
 
-    return {"status:": "OK"}
+    return {"status": "OK"}
 
 
 @cisco_router.get(
