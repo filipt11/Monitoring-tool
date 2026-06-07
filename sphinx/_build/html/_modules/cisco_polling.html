@@ -1,0 +1,284 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cisco_polling &mdash; Monitoring Tool 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2c3e50" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Monitoring Tool
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../poller.html">Poller Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulator.html">Simulator Module Documentation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../run.html">run module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2c3e50" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Monitoring Tool</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
+      <li class="breadcrumb-item active">cisco_polling</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for cisco_polling</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">PollingResult</span><span class="p">,</span> <span class="n">InterfaceData</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+
+
+<div class="viewcode-block" id="poll_cisco_device_async">
+<a class="viewcode-back" href="../poller/cisco_polling.html#cisco_polling.poll_cisco_device_async">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">poll_cisco_device_async</span><span class="p">(</span>
+    <span class="n">device</span><span class="p">:</span> <span class="n">Device</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PollingResult</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Poll a Cisco device and return parsed CPU, memory and interface statistics.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Initialize default values for parsed metrics</span>
+    <span class="n">cpu_val</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">memory_val</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">total_memory</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">memory_pct</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">interfaces</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># Build URLs used to poll device RESTCONF endpoints</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;https&quot;</span> <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">https</span> <span class="k">else</span> <span class="s2">&quot;http&quot;</span>
+    <span class="n">base_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="n">cpu_path</span> <span class="o">=</span> <span class="s2">&quot;/restconf/data/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds&quot;</span>
+    <span class="n">memory_path</span> <span class="o">=</span> <span class="s2">&quot;/restconf/data/Cisco-IOS-XE-memory-oper:memory-statistics&quot;</span>
+    <span class="n">interface_path</span> <span class="o">=</span> <span class="s2">&quot;/restconf/data/ietf-interfaces:interfaces-state&quot;</span>
+
+    <span class="n">full_cpu_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">cpu_path</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">full_memory_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">memory_path</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">full_interface_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">interface_path</span><span class="si">}</span><span class="s2">&quot;</span>
+
+    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">fetch_cisco_data_async</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">full_cpu_url</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">password</span><span class="p">),</span>
+        <span class="n">fetch_cisco_data_async</span><span class="p">(</span>
+            <span class="n">client</span><span class="p">,</span> <span class="n">full_memory_url</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">password</span>
+        <span class="p">),</span>
+        <span class="n">fetch_cisco_data_async</span><span class="p">(</span>
+            <span class="n">client</span><span class="p">,</span> <span class="n">full_interface_url</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">password</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">,</span> <span class="n">return_exceptions</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">raw_cpu</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="ne">BaseException</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">raw_memory</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="ne">BaseException</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="n">raw_interfaces</span> <span class="o">=</span> <span class="n">results</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="ne">BaseException</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="c1"># Parse each result only when request succeeded</span>
+    <span class="k">if</span> <span class="n">raw_cpu</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cpu_val</span> <span class="o">=</span> <span class="n">parse_cpu</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error parsing CPU for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">raw_memory</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">total_memory</span><span class="p">,</span> <span class="n">memory_val</span> <span class="o">=</span> <span class="n">parse_memory</span><span class="p">(</span><span class="n">raw_memory</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">total_memory</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">memory_pct</span> <span class="o">=</span> <span class="nb">round</span><span class="p">((</span><span class="n">memory_val</span> <span class="o">/</span> <span class="n">total_memory</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Error parsing Memory for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">raw_interfaces</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">interfaces</span> <span class="o">=</span> <span class="n">parse_interfaces</span><span class="p">(</span><span class="n">raw_interfaces</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Error parsing Interfaces for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+
+    <span class="n">result</span><span class="p">:</span> <span class="n">PollingResult</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span> <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">cpu_val</span><span class="p">,</span> <span class="n">memory_val</span><span class="p">,</span> <span class="n">interfaces</span><span class="p">])</span> <span class="k">else</span> <span class="s2">&quot;down&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="n">cpu_val</span><span class="p">,</span>
+        <span class="s2">&quot;total_memory&quot;</span><span class="p">:</span> <span class="n">total_memory</span><span class="p">,</span>
+        <span class="s2">&quot;used_memory&quot;</span><span class="p">:</span> <span class="n">memory_val</span><span class="p">,</span>
+        <span class="s2">&quot;memory_pct&quot;</span><span class="p">:</span> <span class="n">memory_pct</span><span class="p">,</span>
+        <span class="s2">&quot;interfaces&quot;</span><span class="p">:</span> <span class="n">interfaces</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully polled data for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Device </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2"> is unreachable or returned no data&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+
+<div class="viewcode-block" id="fetch_cisco_data_async">
+<a class="viewcode-back" href="../poller/cisco_polling.html#cisco_polling.fetch_cisco_data_async">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch_cisco_data_async</span><span class="p">(</span>
+    <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch JSON data from a Cisco RESTCONF endpoint using basic auth.&quot;&quot;&quot;</span>
+
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/yang-data+json&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/yang-data+json&quot;</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+        <span class="n">url</span><span class="p">,</span>
+        <span class="n">auth</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">BasicAuth</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">),</span>
+        <span class="n">headers</span><span class="o">=</span><span class="n">headers</span><span class="p">,</span>
+        <span class="n">timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="parse_cpu">
+<a class="viewcode-back" href="../poller/cisco_polling.html#cisco_polling.parse_cpu">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_cpu</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract CPU usage percentage from Cisco RESTCONF response.&quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">[</span><span class="s2">&quot;Cisco-IOS-XE-process-cpu-oper:five-seconds&quot;</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="parse_memory">
+<a class="viewcode-back" href="../poller/cisco_polling.html#cisco_polling.parse_memory">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_memory</span><span class="p">(</span><span class="n">raw_memory</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract total and used memory values from Cisco memory statistics.&quot;&quot;&quot;</span>
+
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">raw_memory</span><span class="p">[</span><span class="s2">&quot;Cisco-IOS-XE-memory-oper:memory-statistics&quot;</span><span class="p">]</span>
+    <span class="n">memory_list</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;memory-statistic&quot;</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">memory_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Processor&quot;</span><span class="p">:</span>
+            <span class="n">used_memory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;used-memory&quot;</span><span class="p">])</span>
+            <span class="n">total_memory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;total-memory&quot;</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">total_memory</span><span class="p">,</span> <span class="n">used_memory</span>
+
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not find &#39;Processor&#39; entry in raw_memory&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="parse_interfaces">
+<a class="viewcode-back" href="../poller/cisco_polling.html#cisco_polling.parse_interfaces">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_interfaces</span><span class="p">(</span><span class="n">raw_interfaces</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse interface state data and return active interface statistics.&quot;&quot;&quot;</span>
+
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">&quot;ietf-interfaces:interfaces-state&quot;</span><span class="p">]</span>
+    <span class="n">interface_list</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;interface&quot;</span><span class="p">]</span>
+
+    <span class="n">parsed_results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">interface_list</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;admin-status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span><span class="p">:</span>
+            <span class="n">statistics</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;statistics&quot;</span><span class="p">]</span>
+
+            <span class="c1"># Only include interfaces that are administratively up</span>
+            <span class="n">if_data</span><span class="p">:</span> <span class="n">InterfaceData</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;if_index&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;in_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="p">[</span><span class="s2">&quot;in-octets&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;out_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="p">[</span><span class="s2">&quot;out-octets&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;admin_status&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;admin-status&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;oper_status&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;oper-status&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;mac&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phys-address&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+            <span class="p">}</span>
+            <span class="n">parsed_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">if_data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">parsed_results</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No active interfaces with statistics found&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">parsed_results</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Filip Terzyk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

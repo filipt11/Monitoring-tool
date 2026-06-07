@@ -13,7 +13,7 @@ from models import Device, DeviceWithPolledData
 from loguru import logger
 from data_loader import seed_devices
 from influxdb_client import Point
-from time import time
+import time
 import asyncio
 import httpx
 import signal
@@ -210,13 +210,14 @@ def calculate_utilization(
     """Calculate interface utilization based on previous and current counters values."""
 
     key = f"{hostname}_{if_name}_{direction}"
-    current_time = time()
+    current_time = time.monotonic()
 
     if key in last_polls:
         prev_time, prev_octets = last_polls[key]
         time_delta = current_time - prev_time
 
         if time_delta <= 0:
+            last_polls[key] = (current_time, current_octets)
             return None, None
 
         # Handle counters reset

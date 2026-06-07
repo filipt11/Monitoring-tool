@@ -1,0 +1,575 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>simulator.main &mdash; Monitoring Tool 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2c3e50" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Monitoring Tool
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../run.html">run module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2c3e50" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Monitoring Tool</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">simulator.main</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for simulator.main</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.security</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPBasic</span><span class="p">,</span> <span class="n">HTTPBasicCredentials</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">devices</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">secrets</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+<span class="n">security</span> <span class="o">=</span> <span class="n">HTTPBasic</span><span class="p">()</span>
+
+<span class="c1"># Set up global environments based on system environments</span>
+<span class="n">PROFILE</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_PROFILE&quot;</span><span class="p">,</span> <span class="s2">&quot;standard&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+<span class="n">IP</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_IP&quot;</span><span class="p">,</span> <span class="s2">&quot;0.0.0.0&quot;</span><span class="p">)</span>
+<span class="n">HOSTNAME</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_HOSTNAME&quot;</span><span class="p">,</span> <span class="s2">&quot;s-cat-def-1&quot;</span><span class="p">)</span>
+<span class="n">VENDOR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_VENDOR&quot;</span><span class="p">,</span> <span class="s2">&quot;cisco&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+<span class="n">MODEL</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_MODEL&quot;</span><span class="p">,</span> <span class="s2">&quot;Catalyst 9000&quot;</span><span class="p">)</span>
+<span class="n">USERNAME</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_USERNAME&quot;</span><span class="p">,</span> <span class="s2">&quot;admin&quot;</span><span class="p">)</span>
+<span class="n">PASSWORD</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_PASSWORD&quot;</span><span class="p">,</span> <span class="s2">&quot;123&quot;</span><span class="p">)</span>
+<span class="n">PORT</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_PORT&quot;</span><span class="p">,</span> <span class="mi">443</span><span class="p">))</span>
+<span class="n">raw_https</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;DEVICE_IS_HTTPS&quot;</span><span class="p">,</span> <span class="s2">&quot;false&quot;</span><span class="p">)</span>
+<span class="n">HTTPS</span> <span class="o">=</span> <span class="n">raw_https</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;true&quot;</span><span class="p">,</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;yes&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># Create simulated device based on vendor and specified profile</span>
+<span class="n">device</span><span class="p">:</span> <span class="n">devices</span><span class="o">.</span><span class="n">BaseDevice</span>
+
+<span class="n">device_mapping</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;high_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">HighUtilizedCiscoDevice</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;low_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">LowUtilizedCiscoDevice</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;average_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedCiscoDevice</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;high_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">HighUtilizedJuniperDevice</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;low_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">LowUtilizedJuniperDevice</span><span class="p">,</span>
+    <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;average_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedJuniperDevice</span><span class="p">,</span>
+<span class="p">}</span>
+
+<span class="n">device_class</span> <span class="o">=</span> <span class="n">device_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">VENDOR</span><span class="p">,</span> <span class="n">PROFILE</span><span class="p">),</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedCiscoDevice</span><span class="p">)</span>
+<span class="n">device</span> <span class="o">=</span> <span class="n">device_class</span><span class="p">(</span><span class="n">IP</span><span class="p">,</span> <span class="n">VENDOR</span><span class="p">,</span> <span class="n">HOSTNAME</span><span class="p">,</span> <span class="n">MODEL</span><span class="p">,</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="n">PASSWORD</span><span class="p">,</span> <span class="n">PORT</span><span class="p">,</span> <span class="n">HTTPS</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="authenticate">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.authenticate">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">authenticate</span><span class="p">(</span><span class="n">credentials</span><span class="p">:</span> <span class="n">HTTPBasicCredentials</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">security</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate HTTP Basic credentials for all simulator endpoints.&quot;&quot;&quot;</span>
+
+    <span class="n">is_user_ok</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">compare_digest</span><span class="p">(</span><span class="n">credentials</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="n">USERNAME</span><span class="p">)</span>
+    <span class="n">is_pass_ok</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">compare_digest</span><span class="p">(</span><span class="n">credentials</span><span class="o">.</span><span class="n">password</span><span class="p">,</span> <span class="n">PASSWORD</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">is_user_ok</span> <span class="ow">and</span> <span class="n">is_pass_ok</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
+            <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_401_UNAUTHORIZED</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Incorrect username or password&quot;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;WWW-Authenticate&quot;</span><span class="p">:</span> <span class="s2">&quot;Basic&quot;</span><span class="p">},</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">credentials</span><span class="o">.</span><span class="n">username</span></div>
+
+
+
+<span class="c1"># Define URL paths for Cisco Devices</span>
+<span class="n">cisco_router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/restconf/data&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="health">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.health">[docs]</a>
+<span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return status &#39;OK&#39; if API started correctly.&quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status:&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="cpu_usage">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.cpu_usage">[docs]</a>
+<span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;/Cisco-IOS-XE-process-cpu-oper</span><span class="si">{colon}</span><span class="s2">cpu-usage/cpu-utilization/five-seconds&quot;</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">cpu_usage</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return data regarding device CPU usage.&quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Cisco-IOS-XE-process-cpu-oper:five-seconds&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">()}</span></div>
+
+
+
+<div class="viewcode-block" id="memory_usage">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.memory_usage">[docs]</a>
+<span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/Cisco-IOS-XE-memory-oper</span><span class="si">{colon}</span><span class="s2">memory-statistics&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">memory_usage</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return data regarding device Memory statistics.&quot;&quot;&quot;</span>
+
+    <span class="n">total_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">()</span>
+    <span class="n">used_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_used_memory</span><span class="p">()</span>
+    <span class="n">free_memory</span> <span class="o">=</span> <span class="n">total_memory</span> <span class="o">-</span> <span class="n">used_memory</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;Cisco-IOS-XE-memory-oper:memory-statistics&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;memory-statistic&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Processor&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;total-memory&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">total_memory</span><span class="p">),</span>
+                    <span class="s2">&quot;used-memory&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">used_memory</span><span class="p">),</span>
+                    <span class="s2">&quot;free-memory&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">free_memory</span><span class="p">),</span>
+                    <span class="s2">&quot;lowest-usage&quot;</span><span class="p">:</span> <span class="s2">&quot;470392804&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;highest-usage&quot;</span><span class="p">:</span> <span class="s2">&quot;479335280&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;reserve Processor&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;total-memory&quot;</span><span class="p">:</span> <span class="s2">&quot;102404&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;used-memory&quot;</span><span class="p">:</span> <span class="s2">&quot;92&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;free-memory&quot;</span><span class="p">:</span> <span class="s2">&quot;102312&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;lowest-usage&quot;</span><span class="p">:</span> <span class="s2">&quot;102312&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;highest-usage&quot;</span><span class="p">:</span> <span class="s2">&quot;102312&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;lsmpi_io&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;total-memory&quot;</span><span class="p">:</span> <span class="s2">&quot;3149400&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;used-memory&quot;</span><span class="p">:</span> <span class="s2">&quot;3148576&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;free-memory&quot;</span><span class="p">:</span> <span class="s2">&quot;824&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;lowest-usage&quot;</span><span class="p">:</span> <span class="s2">&quot;824&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;highest-usage&quot;</span><span class="p">:</span> <span class="s2">&quot;412&quot;</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">]</span>
+        <span class="p">}</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="get_model">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_model">[docs]</a>
+<span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+    <span class="s2">&quot;/Cisco-IOS-XE-device-hardware-oper</span><span class="si">{colon}</span><span class="s2">device-hardware-data/device-hardware/device-inventory&quot;</span>
+<span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_model</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return data in JSON format containing data regarding device inventory.&quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;Cisco-IOS-XE-device-hardware-oper:device-inventory&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;hw-type&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-type-emmc&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;hw-dev-index&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;V01&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;part-number&quot;</span><span class="p">:</span> <span class="s2">&quot;C9KV-UADP-8P&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;serial-number&quot;</span><span class="p">:</span> <span class="s2">&quot;98DVJUONW1X&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;hw-description&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+                <span class="s2">&quot;dev-name&quot;</span><span class="p">:</span> <span class="s2">&quot;Switch 1&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;field-replaceable&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;hw-class&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-class-physical&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;hw-type&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-type-chassis&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;hw-dev-index&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;V01&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;part-number&quot;</span><span class="p">:</span> <span class="s2">&quot;C9KV-UADP-8P&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;serial-number&quot;</span><span class="p">:</span> <span class="s2">&quot;98DVJUONW1X&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;hw-description&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">model</span><span class="p">,</span>
+                <span class="s2">&quot;dev-name&quot;</span><span class="p">:</span> <span class="s2">&quot;Switch 1&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;field-replaceable&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;hw-class&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-class-physical&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;hw-type&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-type-dram&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;hw-dev-index&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+                <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;part-number&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;serial-number&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;hw-description&quot;</span><span class="p">:</span> <span class="s2">&quot;Physical Memory&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;dev-name&quot;</span><span class="p">:</span> <span class="s2">&quot;Memory&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;field-replaceable&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;hw-class&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-class-physical&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;hw-type&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-type-cpu&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;hw-dev-index&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="s2">&quot; 6&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;part-number&quot;</span><span class="p">:</span> <span class="s2">&quot; GenuineIntel&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;serial-number&quot;</span><span class="p">:</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;hw-description&quot;</span><span class="p">:</span> <span class="s2">&quot; Intel(R) Xeon(R) Gold 6248R CPU @ 3.00&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;dev-name&quot;</span><span class="p">:</span> <span class="s2">&quot;CPU&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;field-replaceable&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="s2">&quot;hw-class&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-class-physical&quot;</span><span class="p">,</span>
+            <span class="p">},</span>
+        <span class="p">]</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="get_hostname">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_hostname">[docs]</a>
+<span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/Cisco-IOS-XE-native</span><span class="si">{colon}</span><span class="s2">native/hostname&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_hostname</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return device current hostname.&quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Cisco-IOS-XE-native:hostname&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="get_interfaces_state">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_interfaces_state">[docs]</a>
+<span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/ietf-interfaces</span><span class="si">{colon}</span><span class="s2">interfaces-state&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_interfaces_state</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return data regarding device interfaces statistics.&quot;&quot;&quot;</span>
+
+    <span class="n">raw_interfaces</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_interfaces</span><span class="p">()</span>
+
+    <span class="n">interface_output</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">raw_interfaces</span><span class="p">:</span>
+        <span class="n">interface_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;admin-status&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;oper-status&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;oper-status&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;last-change&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-07T15:37:09.39+00:00&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;phys-address&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;statistics&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;discontinuity-time&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-03-06T19:34:19.276+00:00&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;in-octets&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;in-octets&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;out-octets&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;out-octets&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;in-unicast-pkts&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;in-broadcast-pkts&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;in-multicast-pkts&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;in-discards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;in-errors&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;in-unknown-protos&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;out-unicast-pkts&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;out-broadcast-pkts&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;out-multicast-pkts&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;out-discards&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                    <span class="s2">&quot;out-errors&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="p">},</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;ietf-interfaces:interfaces-state&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;interface&quot;</span><span class="p">:</span> <span class="n">interface_output</span><span class="p">}}</span></div>
+
+
+
+<span class="c1"># Define URL paths for Juniper devices</span>
+<span class="n">juniper_router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/rpc&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_interface_information">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_interface_information">[docs]</a>
+<span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/get-interface-information&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_interface_information</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper interface information including traffic statistics.&quot;&quot;&quot;</span>
+
+    <span class="n">raw_interfaces</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_interfaces</span><span class="p">()</span>
+
+    <span class="n">physical_interfaces_output</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">raw_interfaces</span><span class="p">:</span>
+        <span class="n">speed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">])</span>
+        <span class="n">speed_mbps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">speed</span> <span class="o">//</span> <span class="mi">10</span><span class="o">**</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">speed_formatted</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">speed_mbps</span><span class="si">}</span><span class="s2">mbps&quot;</span>
+
+        <span class="n">ifd</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]}],</span>
+            <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;admin-status&quot;</span><span class="p">],</span>
+                    <span class="s2">&quot;attributes&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;junos:format&quot;</span><span class="p">:</span> <span class="s2">&quot;Enabled&quot;</span><span class="p">},</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;oper-status&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;oper-status&quot;</span><span class="p">]}],</span>
+            <span class="s2">&quot;local-index&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">])}],</span>
+            <span class="s2">&quot;snmp-index&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">])</span> <span class="o">+</span> <span class="mi">220</span><span class="p">)}],</span>
+            <span class="s2">&quot;if-type&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">]}],</span>
+            <span class="s2">&quot;mtu&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;1514&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;sonet-mode&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;LAN-PHY&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;mru&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;1522&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;source-filtering&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;disabled&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">speed_formatted</span><span class="p">}],</span>
+            <span class="s2">&quot;eth-switch-error&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;remote-bounce&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;bpdu-error&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;ld-pdu-error&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;l2pt-error&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;loopback&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;disabled&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;if-flow-control&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;enabled&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;if-auto-negotiation&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;enabled&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;if-remote-fault&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;online&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;pad-to-minimum-frame-size&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;Disabled&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;if-device-flags&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;ifdf-present&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]}],</span> <span class="s2">&quot;ifdf-running&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]}]}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;if-config-flags&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;iff-hardware-down&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]}],</span>
+                    <span class="s2">&quot;iff-snmp-traps&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]}],</span>
+                    <span class="s2">&quot;internal-flags&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]}],</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;if-media-flags&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;ifmf-none&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]}]}],</span>
+            <span class="s2">&quot;physical-interface-cos-information&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;physical-interface-cos-hw-max-queues&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;8&quot;</span><span class="p">}],</span>
+                    <span class="s2">&quot;physical-interface-cos-use-max-queues&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;8&quot;</span><span class="p">}],</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;current-physical-address&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phys-address&quot;</span><span class="p">,</span> <span class="s2">&quot;00:50:56:be:c8:e0&quot;</span><span class="p">)}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;hardware-physical-address&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phys-address&quot;</span><span class="p">,</span> <span class="s2">&quot;00:50:56:be:c8:e0&quot;</span><span class="p">)}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;traffic-statistics&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;input-bps&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                    <span class="s2">&quot;input-pps&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                    <span class="s2">&quot;output-bps&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                    <span class="s2">&quot;output-pps&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;active-alarms&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;interface-alarms&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;ethernet-alarm-link-down&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]}]}]}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;active-defects&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">&quot;interface-alarms&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;ethernet-alarm-link-down&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="p">[</span><span class="kc">None</span><span class="p">]}]}]}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;ethernet-pcs-statistics&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;attributes&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;junos:style&quot;</span><span class="p">:</span> <span class="s2">&quot;verbose&quot;</span><span class="p">},</span>
+                    <span class="s2">&quot;bit-error-seconds&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                    <span class="s2">&quot;errored-blocks-seconds&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+            <span class="s2">&quot;interface-transmit-statistics&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;Enabled&quot;</span><span class="p">}],</span>
+            <span class="s2">&quot;logical-interface&quot;</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span>
+                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">.0&quot;</span><span class="p">}],</span>
+                    <span class="s2">&quot;local-index&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">])</span> <span class="o">+</span> <span class="mi">100</span><span class="p">)}],</span>
+                    <span class="s2">&quot;snmp-index&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">])</span> <span class="o">+</span> <span class="mi">200</span><span class="p">)}],</span>
+                    <span class="s2">&quot;traffic-statistics&quot;</span><span class="p">:</span> <span class="p">[</span>
+                        <span class="p">{</span>
+                            <span class="s2">&quot;input-bytes&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;in-octets&quot;</span><span class="p">]}],</span>
+                            <span class="s2">&quot;output-bytes&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="s2">&quot;out-octets&quot;</span><span class="p">]}],</span>
+                            <span class="s2">&quot;input-packets&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                            <span class="s2">&quot;output-packets&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="p">}</span>
+                    <span class="p">],</span>
+                <span class="p">}</span>
+            <span class="p">],</span>
+        <span class="p">}</span>
+
+        <span class="n">physical_interfaces_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ifd</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;interface-information&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;physical-interface&quot;</span><span class="p">:</span> <span class="n">physical_interfaces_output</span><span class="p">}]</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="get_route_engine_information">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_route_engine_information">[docs]</a>
+<span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/get-route-engine-information&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_route_engine_information</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper route engine CPU and memory statistics.&quot;&quot;&quot;</span>
+
+    <span class="n">cpu_idle</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">100</span> <span class="o">-</span> <span class="n">device</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">())</span>
+    <span class="n">total_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">()</span>
+    <span class="n">used_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_used_memory</span><span class="p">()</span>
+    <span class="n">memory_MB</span> <span class="o">=</span> <span class="n">total_memory</span> <span class="o">//</span> <span class="p">(</span><span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="n">formatted_memory</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;(</span><span class="si">{</span><span class="n">memory_MB</span><span class="si">}</span><span class="s2"> MB installed)&quot;</span>
+    <span class="n">memory_utilization</span> <span class="o">=</span> <span class="p">(</span><span class="n">used_memory</span> <span class="o">/</span> <span class="n">total_memory</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+    <span class="n">dram</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">memory_MB</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">7</span><span class="si">}</span><span class="s2"> MB&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;route-engine-information&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;route-engine&quot;</span><span class="p">:</span> <span class="p">[</span>
+                    <span class="p">{</span>
+                        <span class="s2">&quot;slot&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;mastership-state&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;master&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;mastership-priority&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;master (default)&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;memory-dram-size&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">dram</span><span class="p">}],</span>
+                        <span class="s2">&quot;memory-installed-size&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">formatted_memory</span><span class="p">}],</span>
+                        <span class="s2">&quot;memory-buffer-utilization&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">memory_utilization</span><span class="p">)}</span>
+                        <span class="p">],</span>
+                        <span class="s2">&quot;cpu-user&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-background&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-system&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-interrupt&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-idle&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">cpu_idle</span><span class="p">)}],</span>
+                        <span class="s2">&quot;cpu-user1&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-background1&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-system1&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-interrupt1&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-idle1&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;97&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-user2&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-background2&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-system2&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-interrupt2&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-idle2&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;97&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-user3&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-background3&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-system3&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;2&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-interrupt3&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;cpu-idle3&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;97&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;RE-VMX&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;start-time&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="p">{</span>
+                                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;2026-04-29 14:08:40 UTC&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;attributes&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;junos:seconds&quot;</span><span class="p">:</span> <span class="s2">&quot;1777471720&quot;</span><span class="p">},</span>
+                            <span class="p">}</span>
+                        <span class="p">],</span>
+                        <span class="s2">&quot;up-time&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="p">{</span>
+                                <span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;29 minutes, 21 seconds&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;attributes&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;junos:seconds&quot;</span><span class="p">:</span> <span class="s2">&quot;1761&quot;</span><span class="p">},</span>
+                            <span class="p">}</span>
+                        <span class="p">],</span>
+                        <span class="s2">&quot;last-reboot-reason&quot;</span><span class="p">:</span> <span class="p">[</span>
+                            <span class="p">{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;Router rebooted after a normal shutdown.&quot;</span><span class="p">}</span>
+                        <span class="p">],</span>
+                        <span class="s2">&quot;load-average-one&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;2.50&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;load-average-five&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;1.42&quot;</span><span class="p">}],</span>
+                        <span class="s2">&quot;load-average-fifteen&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;0.93&quot;</span><span class="p">}],</span>
+                    <span class="p">}</span>
+                <span class="p">]</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="get_system_information">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_system_information">[docs]</a>
+<span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/get-system-information&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_system_information</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper system information including hostname and model.&quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">&quot;system-information&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;host-name&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">}],</span>
+                <span class="s2">&quot;hardware-model&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">model</span><span class="p">}],</span>
+                <span class="s2">&quot;os-name&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;junos&quot;</span><span class="p">}],</span>
+                <span class="s2">&quot;os-version&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;25.2R2.11&quot;</span><span class="p">}],</span>
+                <span class="s2">&quot;serial-number&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;VM69F21129F0&quot;</span><span class="p">}],</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">}</span></div>
+
+
+
+<span class="c1"># Choose API Router based on device Vendor</span>
+<span class="k">if</span> <span class="n">VENDOR</span> <span class="o">==</span> <span class="s2">&quot;cisco&quot;</span><span class="p">:</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">cisco_router</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">authenticate</span><span class="p">)])</span>
+
+<span class="k">elif</span> <span class="n">VENDOR</span> <span class="o">==</span> <span class="s2">&quot;juniper&quot;</span><span class="p">:</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">juniper_router</span><span class="p">,</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">authenticate</span><span class="p">)])</span>
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Start the simulator FastAPI server with uvicorn.&quot;&quot;&quot;</span>
+
+    <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">PORT</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Filip Terzyk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

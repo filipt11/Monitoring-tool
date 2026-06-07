@@ -1,4 +1,4 @@
-import logic
+from simulator import logic
 from typing import Any
 
 

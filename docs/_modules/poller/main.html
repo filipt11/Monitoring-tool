@@ -1,0 +1,415 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>poller.main &mdash; Monitoring Tool 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2c3e50" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Monitoring Tool
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../run.html">run module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2c3e50" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Monitoring Tool</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">poller.main</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for poller.main</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Session</span><span class="p">,</span>
+    <span class="n">INFLUX_ORG</span><span class="p">,</span>
+    <span class="n">INFLUX_BUCKET</span><span class="p">,</span>
+    <span class="n">write_api</span><span class="p">,</span>
+    <span class="n">init_db</span><span class="p">,</span>
+    <span class="n">POLLING_INERVAL</span><span class="p">,</span>
+    <span class="n">MAX_DEVICES</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">cisco_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">poll_cisco_device_async</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">juniper_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">poll_juniper_device_async</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">DeviceWithPolledData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">data_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">seed_devices</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">influxdb_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Point</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">time</span><span class="w"> </span><span class="kn">import</span> <span class="n">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">cast</span><span class="p">,</span> <span class="n">Any</span>
+
+<span class="c1"># Initialize list used for caching devices</span>
+<span class="n">cached_device_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Device</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="c1"># Initialize dict used for cache last polled interfaces data</span>
+<span class="n">last_polls</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">int</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="c1"># Initialize sempahore with max device size</span>
+<span class="n">semaphore</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">(</span><span class="n">MAX_DEVICES</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_current_devices">
+<a class="viewcode-back" href="../../poller/main.html#poller.main.get_current_devices">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_current_devices</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Device</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Connect to postgreSQL and gather newest devices data required to polling.&quot;&quot;&quot;</span>
+
+    <span class="k">with</span> <span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Device</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="poll_single_device">
+<a class="viewcode-back" href="../../poller/main.html#poller.main.poll_single_device">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">poll_single_device</span><span class="p">(</span><span class="n">device</span><span class="p">:</span> <span class="n">Device</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Poll and save data from single device.&quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">with</span> <span class="n">semaphore</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Run correct function based on device vendor</span>
+            <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">vendor</span> <span class="o">==</span> <span class="s2">&quot;juniper&quot;</span><span class="p">:</span>
+                <span class="n">device_data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">poll_juniper_device_async</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">client</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">device</span><span class="o">.</span><span class="n">vendor</span> <span class="o">==</span> <span class="s2">&quot;cisco&quot;</span><span class="p">:</span>
+                <span class="n">device_data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">poll_cisco_device_async</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">client</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span>
+
+            <span class="n">has_data</span> <span class="o">=</span> <span class="nb">any</span><span class="p">([</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">),</span> <span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory_pct&quot;</span><span class="p">)])</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">has_data</span><span class="p">:</span>
+                <span class="c1"># Saving only down status</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span>
+                    <span class="n">save_polled_device_data</span><span class="p">,</span>
+                    <span class="n">cast</span><span class="p">(</span><span class="n">DeviceWithPolledData</span><span class="p">,</span> <span class="n">device</span><span class="p">),</span>
+                    <span class="n">status</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Validate object before saving</span>
+                <span class="n">polled_device</span> <span class="o">=</span> <span class="n">DeviceWithPolledData</span><span class="p">(</span>
+                    <span class="nb">id</span><span class="o">=</span><span class="n">device</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                    <span class="n">hostname</span><span class="o">=</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">,</span>
+                    <span class="n">ip</span><span class="o">=</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span>
+                    <span class="n">cpu_usage</span><span class="o">=</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">),</span>
+                    <span class="n">memory_total</span><span class="o">=</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;total_memory&quot;</span><span class="p">),</span>
+                    <span class="n">memory_usage</span><span class="o">=</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;used_memory&quot;</span><span class="p">),</span>
+                    <span class="n">memory_usage_pct</span><span class="o">=</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;memory_pct&quot;</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="c1"># Save device data</span>
+                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span>
+                    <span class="n">save_polled_device_data</span><span class="p">,</span> <span class="n">polled_device</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">)</span>
+
+                <span class="c1"># Save interfaces data</span>
+                <span class="n">interfaces</span> <span class="o">=</span> <span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;interfaces&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="k">if</span> <span class="n">interfaces</span><span class="p">:</span>
+                    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span>
+                        <span class="n">save_polled_interface_data</span><span class="p">,</span>
+                        <span class="n">device</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+                        <span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">,</span>
+                        <span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span>
+                        <span class="n">interfaces</span><span class="p">,</span>
+                    <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="poll_devices_main">
+<a class="viewcode-back" href="../../poller/main.html#poller.main.poll_devices_main">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">poll_devices_main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Run polling and data saving functions on each device.&quot;&quot;&quot;</span>
+
+    <span class="c1"># Try to gather current device list from DB, if error occurs uses chached list</span>
+    <span class="k">global</span> <span class="n">cached_device_list</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cached_device_list</span> <span class="o">=</span> <span class="n">get_current_devices</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="s2">&quot;Can not establish connection with Postges DB, using cached device list for polling&quot;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Poll devices and save data</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">poll_single_device</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">client</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">cached_device_list</span><span class="p">]</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="save_polled_device_data">
+<a class="viewcode-back" href="../../poller/main.html#poller.main.save_polled_device_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_polled_device_data</span><span class="p">(</span><span class="n">device</span><span class="p">:</span> <span class="n">DeviceWithPolledData</span><span class="p">,</span> <span class="n">status</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save polled device data.&quot;&quot;&quot;</span>
+
+    <span class="n">point</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">Point</span><span class="p">(</span><span class="s2">&quot;device_statistics&quot;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s2">&quot;hostname&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s2">&quot;ip&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s2">&quot;id&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Save status for each device</span>
+    <span class="n">point</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">status</span><span class="p">))</span>
+
+    <span class="c1"># If device is up, save rest of the data</span>
+    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">cpu_usage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;cpu_usage&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">cpu_usage</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">memory_total</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;memory_total&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">memory_total</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">memory_usage</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;memory_usage&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">memory_usage</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">memory_usage_pct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;memory_usage_pct&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">memory_usage_pct</span><span class="p">))</span>
+
+    <span class="n">write_api</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="n">INFLUX_BUCKET</span><span class="p">,</span> <span class="n">org</span><span class="o">=</span><span class="n">INFLUX_ORG</span><span class="p">,</span> <span class="n">record</span><span class="o">=</span><span class="n">point</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Successfully saved polled data for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Successfully saved DOWN status for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="save_polled_interface_data">
+<a class="viewcode-back" href="../../poller/main.html#poller.main.save_polled_interface_data">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_polled_interface_data</span><span class="p">(</span>
+    <span class="n">device_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">device_hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">device_ip</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">interfaces_raw</span><span class="p">:</span> <span class="nb">list</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Save polled interfaces data.&quot;&quot;&quot;</span>
+
+    <span class="n">points</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">iface</span> <span class="ow">in</span> <span class="n">interfaces_raw</span><span class="p">:</span>
+        <span class="c1"># Create basic point with tags</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">Point</span><span class="p">(</span><span class="s2">&quot;interface_statistics&quot;</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s2">&quot;hostname&quot;</span><span class="p">,</span> <span class="n">device_hostname</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s2">&quot;device_id&quot;</span><span class="p">,</span> <span class="n">device_id</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s2">&quot;ip&quot;</span><span class="p">,</span> <span class="n">device_ip</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s2">&quot;if_name&quot;</span><span class="p">,</span> <span class="n">iface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">))</span>
+            <span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="s2">&quot;if_index&quot;</span><span class="p">,</span> <span class="n">iface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;if_index&quot;</span><span class="p">))</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Map admin/oper statuses to numbers</span>
+        <span class="n">admin_up</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">iface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;admin_status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span> <span class="k">else</span> <span class="mi">0</span>
+        <span class="n">oper_up</span> <span class="o">=</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">iface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oper_status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="n">if_name</span> <span class="o">=</span> <span class="n">iface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;name&quot;</span><span class="p">)</span>
+        <span class="n">speed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">iface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;speed&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+        <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;admin_status&quot;</span><span class="p">,</span> <span class="n">admin_up</span><span class="p">)</span>
+        <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;oper_status&quot;</span><span class="p">,</span> <span class="n">oper_up</span><span class="p">)</span>
+
+        <span class="c1"># If admin status is up, find rest of metrics</span>
+        <span class="k">if</span> <span class="n">admin_up</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">in_octets</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">iface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;in_octets&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="n">out_octets</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">iface</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;out_octets&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+
+            <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;in_octets&quot;</span><span class="p">,</span> <span class="n">in_octets</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;out_octets&quot;</span><span class="p">,</span> <span class="n">out_octets</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;speed_bps&quot;</span><span class="p">,</span> <span class="n">speed</span><span class="p">)</span>
+
+            <span class="n">in_bps</span><span class="p">,</span> <span class="n">in_util</span> <span class="o">=</span> <span class="n">calculate_utilization</span><span class="p">(</span>
+                <span class="n">device_hostname</span><span class="p">,</span> <span class="n">if_name</span><span class="p">,</span> <span class="s2">&quot;in&quot;</span><span class="p">,</span> <span class="n">in_octets</span><span class="p">,</span> <span class="n">speed</span>
+            <span class="p">)</span>
+            <span class="n">out_bps</span><span class="p">,</span> <span class="n">out_util</span> <span class="o">=</span> <span class="n">calculate_utilization</span><span class="p">(</span>
+                <span class="n">device_hostname</span><span class="p">,</span> <span class="n">if_name</span><span class="p">,</span> <span class="s2">&quot;out&quot;</span><span class="p">,</span> <span class="n">out_octets</span><span class="p">,</span> <span class="n">speed</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">in_bps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">in_util</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;in_bps&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">in_bps</span><span class="p">))</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;in_util_pct&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">in_util</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">out_bps</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">out_util</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;out_bps&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">out_bps</span><span class="p">))</span>
+                <span class="n">p</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">&quot;out_util_pct&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">out_util</span><span class="p">))</span>
+
+        <span class="n">points</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">points</span><span class="p">:</span>
+        <span class="n">write_api</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="n">INFLUX_BUCKET</span><span class="p">,</span> <span class="n">org</span><span class="o">=</span><span class="n">INFLUX_ORG</span><span class="p">,</span> <span class="n">record</span><span class="o">=</span><span class="n">points</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">)</span><span class="si">}</span><span class="s2"> interfaces for </span><span class="si">{</span><span class="n">device_hostname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="calculate_utilization">
+<a class="viewcode-back" href="../../poller/main.html#poller.main.calculate_utilization">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">calculate_utilization</span><span class="p">(</span>
+    <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">if_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">current_octets</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">speed_bps</span><span class="p">:</span> <span class="nb">int</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="nb">float</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate interface utilization based on previous and current counters values.&quot;&quot;&quot;</span>
+
+    <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">if_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">current_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">last_polls</span><span class="p">:</span>
+        <span class="n">prev_time</span><span class="p">,</span> <span class="n">prev_octets</span> <span class="o">=</span> <span class="n">last_polls</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">time_delta</span> <span class="o">=</span> <span class="n">current_time</span> <span class="o">-</span> <span class="n">prev_time</span>
+
+        <span class="k">if</span> <span class="n">time_delta</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="c1"># Handle counters reset</span>
+        <span class="k">if</span> <span class="n">current_octets</span> <span class="o">&lt;</span> <span class="n">prev_octets</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Counter reset detected for </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2"> Skipping this sample&quot;</span><span class="p">)</span>
+            <span class="n">last_polls</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_time</span><span class="p">,</span> <span class="n">current_octets</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+        <span class="n">octets_delta</span> <span class="o">=</span> <span class="n">current_octets</span> <span class="o">-</span> <span class="n">prev_octets</span>
+
+        <span class="n">bps</span> <span class="o">=</span> <span class="p">(</span><span class="n">octets_delta</span> <span class="o">*</span> <span class="mi">8</span><span class="p">)</span> <span class="o">/</span> <span class="n">time_delta</span>
+        <span class="n">util_pct</span> <span class="o">=</span> <span class="p">(</span><span class="n">bps</span> <span class="o">/</span> <span class="n">speed_bps</span> <span class="o">*</span> <span class="mi">100</span><span class="p">)</span> <span class="k">if</span> <span class="n">speed_bps</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
+
+        <span class="n">last_polls</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_time</span><span class="p">,</span> <span class="n">current_octets</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">bps</span><span class="p">,</span> <span class="n">util_pct</span>
+
+    <span class="n">last_polls</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_time</span><span class="p">,</span> <span class="n">current_octets</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="handle_exit">
+<a class="viewcode-back" href="../../poller/main.html#poller.main.handle_exit">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">handle_exit</span><span class="p">(</span><span class="n">sig</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Handle system signals&quot;&quot;&quot;</span>
+
+    <span class="n">signame</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">Signals</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Received signal: </span><span class="si">{</span><span class="n">signame</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">SystemExit</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../poller/main.html#poller.main.main">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Starting DB connection, initialize example devices and poll devices in infinity loop&quot;&quot;&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Init Postgres DB</span>
+        <span class="n">init_db</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Finishing proggram </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="c1"># Add example devices to DB</span>
+    <span class="n">seed_devices</span><span class="p">()</span>
+
+    <span class="c1"># Start polling devices</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">await</span> <span class="n">poll_devices_main</span><span class="p">()</span>
+        <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">POLLING_INERVAL</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="c1"># Handling exit signals</span>
+    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">handle_exit</span><span class="p">)</span>
+    <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">handle_exit</span><span class="p">)</span>
+
+    <span class="c1"># Configure logger</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
+        <span class="s2">&quot;poller.log&quot;</span><span class="p">,</span>
+        <span class="n">rotation</span><span class="o">=</span><span class="s2">&quot;10 MB&quot;</span><span class="p">,</span>
+        <span class="n">retention</span><span class="o">=</span><span class="s2">&quot;10 days&quot;</span><span class="p">,</span>
+        <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;tar&quot;</span><span class="p">,</span>
+        <span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">main</span><span class="p">())</span>
+    <span class="k">except</span> <span class="ne">SystemExit</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Closing proggram...&quot;</span><span class="p">)</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">pass</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Filip Terzyk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
