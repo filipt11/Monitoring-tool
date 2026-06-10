@@ -65,8 +65,8 @@ def install_requirements(python_exe: str, requirements_file: Path) -> None:
     logger.info("Dependencies have been installed in venv")
 
 
-def start_background_process(python_exe: str, script_path: Path, log_path: Optional[Path], env: Optional[Dict[str, str]] = None) -> subprocess.Popen:
-    """Start a background Python process and optionally redirect output to a log file."""
+def start_background_process(python_exe: str, module_name: str, cwd: Path, log_path: Optional[Path], env: Optional[Dict[str, str]] = None) -> subprocess.Popen:
+    """Start a background Python process as a module and optionally redirect output to a log file."""
 
     if log_path is not None:
         log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -75,9 +75,10 @@ def start_background_process(python_exe: str, script_path: Path, log_path: Optio
     else:
         stdout = None
         stderr = None
+        
     process = subprocess.Popen(
-        [python_exe, str(script_path)],
-        cwd=script_path.parent,
+        [python_exe, "-m", module_name],
+        cwd=cwd,
         stdout=stdout,
         stderr=stderr,
         env=env,
@@ -105,8 +106,8 @@ if __name__ == "__main__":
     env["PYTHONUNBUFFERED"] = "1"
     env["PYTHONPATH"] = str(root_dir)
 
-    api_process = start_background_process(python_exe, poller_dir / "api.py", api_log, env=env)
-    poller_process = start_background_process(python_exe, poller_dir / "main.py", None, env=env)
+    api_process = start_background_process(python_exe, "poller.api", root_dir, api_log, env=env)
+    poller_process = start_background_process(python_exe, "poller.main", root_dir, None, env=env)
 
     try:
         api_process.wait()

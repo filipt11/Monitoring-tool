@@ -5,32 +5,27 @@ from simulator import logic
 
 def test_get_high_utilized_cpu_spike(monkeypatch):
     # Force spike branch (random.random() > 0.95)
-    seq = iter([0.96, 0.5])
-    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
+    monkeypatch.setattr(logic.random, "random", lambda: 0.96)
     assert logic.get_high_utilized_cpu() == 100
 
 
 def test_get_high_utilized_cpu_drop(monkeypatch):
-    # First random.random() not a spike, second triggers drop (<0.03)
-    seq = iter([0.5, 0.01])
-    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
-    # Ensure gauss returns a low value for the drop case
+    # Force drop branch (random.random() < 0.03)
+    monkeypatch.setattr(logic.random, "random", lambda: 0.01)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 10)
     assert logic.get_high_utilized_cpu() == 10
 
 
 def test_high_utilized_cpu_normal(monkeypatch):
     # Normal path for high CPU
-    seq = iter([0.5, 0.5])
-    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
+    monkeypatch.setattr(logic.random, "random", lambda: 0.5)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 80)
     assert logic.get_high_utilized_cpu() == 80
 
 
 def test_cpu_average_default(monkeypatch):
     # Normal path for average CPU
-    seq = iter([0.5, 0.5])
-    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
+    monkeypatch.setattr(logic.random, "random", lambda: 0.5)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 45)
     assert logic.get_average_utilized_cpu() == 45
 
@@ -43,18 +38,16 @@ def test_cpu_average_spike(monkeypatch):
 
 
 def test_cpu_average_drop(monkeypatch):
-    # First random.random() not a spike, second triggers drop (<0.03)
-    seq = iter([0.5, 0.01])
-    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
-    # Ensure gauss returns a low value for the drop case
+    # Force drop branch (random.random() < 0.03)
+    monkeypatch.setattr(logic.random, "random", lambda: 0.01)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 10)
+    
     assert logic.get_average_utilized_cpu() == 10
 
 
 def test_cpu_low_default(monkeypatch):
     # Normal path for low CPU
-    seq = iter([0.5, 0.5])
-    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
+    monkeypatch.setattr(logic.random, "random", lambda: 0.5)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 8)
     assert logic.get_low_utilized_cpu() == 8
 
@@ -68,8 +61,7 @@ def test_cpu_low_spike(monkeypatch):
 
 def test_cpu_low_big_spike(monkeypatch):
     # Force big spike branch (random.random() < 0.01)
-    seq = iter([0.5, 0.005])
-    monkeypatch.setattr(logic.random, "random", lambda: next(seq))
+    monkeypatch.setattr(logic.random, "random", lambda: 0.005)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 80)
     assert logic.get_low_utilized_cpu() == 80
 

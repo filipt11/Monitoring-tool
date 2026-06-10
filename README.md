@@ -22,15 +22,15 @@ The tool provides a REST API for device management and uses Docker Compose for s
 
 ## Documentation
 
-### Complete Code documentation is available in HTML format: [Documentation](https://filipt11.github.io/Monitoring-tool/index.html)
+### Complete Source Code documentation is available in HTML format: [Documentation](https://filipt11.github.io/Monitoring-tool/index.html)
 
 ## API Documentation
 
 ### Poller API
-Complete documentation for device management endpoints: [Poller API](poller/poller_API.md)
+Documentation for device management endpoints: [Poller API](poller/poller_API.md)
 
 ### Simulator API
-Complete documentation for simulated device endpoints: [Simulator API](simulator/simulator_API.md)
+Documentation for simulated device endpoints: [Simulator API](simulator/simulator_API.md)
 
 ---
 

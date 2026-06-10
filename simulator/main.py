@@ -24,17 +24,54 @@ HTTPS = raw_https.lower() in ("true", "1", "yes")
 # Create simulated device based on vendor and specified profile
 device: devices.BaseDevice
 
-device_mapping = {
-    ("cisco", "high_utilized"): devices.HighUtilizedCiscoDevice,
-    ("cisco", "low_utilized"): devices.LowUtilizedCiscoDevice,
-    ("cisco", "average_utilized"): devices.AverageUtilizedCiscoDevice,
-    ("juniper", "high_utilized"): devices.HighUtilizedJuniperDevice,
-    ("juniper", "low_utilized"): devices.LowUtilizedJuniperDevice,
-    ("juniper", "average_utilized"): devices.AverageUtilizedJuniperDevice,
-}
+if PROFILE == "custom":
+    env_mapping = {
+        "mean": ("DEVICE_MEAN", float),
+        "deviation": ("DEVICE_DEVIATION", float),
+        "min_val": ("DEVICE_MIN_VAL", int),
+        "max_val": ("DEVICE_MAX_VAL", int),
+        
+        "spike_chance_pct": ("DEVICE_SPIKE_CHANCE", float),
+        "spike_min": ("DEVICE_SPIKE_MIN", int),
+        "spike_max": ("DEVICE_SPIKE_MAX", int),
+        "spike_mean": ("DEVICE_SPIKE_MEAN", float),
+        "spike_deviation": ("DEVICE_SPIKE_DEVIATION", float),
+        
+        "drop_chance_pct": ("DEVICE_DROP_CHANCE", float),
+        "drop_min": ("DEVICE_DROP_MIN", int),
+        "drop_max": ("DEVICE_DROP_MAX", int),
+        "drop_mean": ("DEVICE_DROP_MEAN", float),
+        "drop_deviation": ("DEVICE_DROP_DEVIATION", float),
+    }
 
-device_class = device_mapping.get((VENDOR, PROFILE), devices.AverageUtilizedCiscoDevice)
-device = device_class(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
+    profile_kwargs = {}
+    for field_name, (env_name, field_type) in env_mapping.items():
+        env_value = os.getenv(env_name)
+        if env_value is not None:
+            profile_kwargs[field_name] = field_type(env_value)
+
+    custom_profile = devices.CustomProfile(**profile_kwargs)
+
+    custom_vendor_mapping = {
+        "cisco": devices.customUtilizedCiscoDevice,
+        "juniper": devices.customUtilizedJuniperDevice,
+    }
+    
+    device_class = custom_vendor_mapping.get(VENDOR, devices.customUtilizedCiscoDevice)
+    device = device_class(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS, profile=custom_profile)
+
+else:
+    device_mapping = {
+        ("cisco", "high_utilized"): devices.HighUtilizedCiscoDevice,
+        ("cisco", "low_utilized"): devices.LowUtilizedCiscoDevice,
+        ("cisco", "average_utilized"): devices.AverageUtilizedCiscoDevice,
+        ("juniper", "high_utilized"): devices.HighUtilizedJuniperDevice,
+        ("juniper", "low_utilized"): devices.LowUtilizedJuniperDevice,
+        ("juniper", "average_utilized"): devices.AverageUtilizedJuniperDevice,
+    }
+
+    device_class = device_mapping.get((VENDOR, PROFILE), devices.AverageUtilizedCiscoDevice)
+    device = device_class(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS)
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)) -> str:

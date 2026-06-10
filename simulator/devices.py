@@ -1,9 +1,11 @@
 from simulator import logic
 from typing import Any
+from simulator.logic import CustomProfile
+from typing import Any, Optional
 
 
 class BaseDevice:
-    """Class representing base device model"""
+    """Class representing base device model."""
 
     def __init__(
         self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
@@ -360,3 +362,51 @@ class AverageUtilizedJuniperDevice(BaseJuniperDevice):
                 },
             ]
         )
+
+
+
+    
+
+class customUtilizedCiscoDevice(BaseCiscoDevice):
+    """Class representing a custom-utilized Cisco device simulation."""
+
+    def __init__(
+        self, 
+        ip_address: str, 
+        vendor: str, 
+        hostname: str, 
+        model: str, 
+        username: str, 
+        password: str, 
+        port: int, 
+        https: bool,
+        profile: Optional[CustomProfile] = None
+    ) -> None:
+        super().__init__(
+            ip_address, vendor, hostname, model, username, password, port, https
+        )
+
+        self.profile = profile or CustomProfile()
+
+    def get_cpu(self) -> int:
+        return logic.get_custom_utilized_cpu(self.profile)
+
+    def get_used_memory(self) -> int:
+        return logic.get_custom_utilized_ram(self.get_total_memory(), self.profile)
+    
+
+class customUtilizedJuniperDevice(BaseJuniperDevice):
+    """Class representing a custom-utilized Juniper device simulation."""
+
+    def __init__(
+        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+    ) -> None:
+        super().__init__(
+            ip_address, vendor, hostname, model, username, password, port, https
+        )
+
+    def get_cpu(self) -> int:
+        return logic.get_custom_utilized_cpu()
+
+    def get_used_memory(self) -> int:
+        return logic.get_custom_utilized_ram(self.get_total_memory())
