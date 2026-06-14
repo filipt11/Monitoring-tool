@@ -8,6 +8,8 @@ last_sim_times: dict[str, float] = {}
 
 
 class CustomProfile(BaseModel):
+    """Custom profile used to build utilization logic for custom utilized devices"""
+
     # Normal
     mean: float = 30.0
     deviation: float = 5.0

@@ -108,3 +108,45 @@ def test_increase_interface_counter_high_util(monkeypatch):
     res = logic.increase_interface_counter_for_higher_utilized(prev, declared_speed, "k")
     expected_increment = int((declared_speed / 8) * 0.8 * 1.5)
     assert res == expected_increment
+
+
+def test_get_custom_utilized_cpu(monkeypatch):
+    # Force spike branch (random.random() > 0.95)
+    monkeypatch.setattr(logic.random, "random", lambda: 0.96)
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 100)
+    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == 100
+
+
+def test_get_custom_utilized_cpu_drop(monkeypatch):
+    # Force drop branch (random.random() < 0.03)
+    monkeypatch.setattr(logic.random, "random", lambda: 0.01)
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 10)
+    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == 10
+
+
+def test_get_custom_utilized_cpu_normal(monkeypatch):
+    # Normal path for custom CPU
+    monkeypatch.setattr(logic.random, "random", lambda: 0.5)
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 80)
+    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == 80
+
+
+def test_get_custom_utilized_ram(monkeypatch):
+    # Force spike branch (random.random() > 0.95)
+    monkeypatch.setattr(logic.random, "random", lambda: 0.96)
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 100)
+    assert logic.get_custom_utilized_ram(1000, logic.CustomProfile()) == 1000
+
+
+def test_get_custom_utilized_ram_drop(monkeypatch):
+    # Force drop branch (random.random() < 0.03)
+    monkeypatch.setattr(logic.random, "random", lambda: 0.01)
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 10)
+    assert logic.get_custom_utilized_ram(1000, logic.CustomProfile()) == 100
+
+
+def test_get_custom_utilized_ram_normal(monkeypatch):
+    # Normal path for custom RAM
+    monkeypatch.setattr(logic.random, "random", lambda: 0.5)
+    monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 80)
+    assert logic.get_custom_utilized_ram(1000, logic.CustomProfile()) == 800
