@@ -364,9 +364,6 @@ class AverageUtilizedJuniperDevice(BaseJuniperDevice):
         )
 
 
-
-    
-
 class customUtilizedCiscoDevice(BaseCiscoDevice):
     """Class representing a custom-utilized Cisco device simulation."""
 
