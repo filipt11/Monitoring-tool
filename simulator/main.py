@@ -24,19 +24,20 @@ HTTPS = raw_https.lower() in ("true", "1", "yes")
 # Create simulated device based on vendor and specified profile
 device: devices.BaseDevice
 
+# Custom profile scenario
 if PROFILE == "custom":
     env_mapping = {
         "mean": ("DEVICE_MEAN", float),
         "deviation": ("DEVICE_DEVIATION", float),
         "min_val": ("DEVICE_MIN_VAL", int),
         "max_val": ("DEVICE_MAX_VAL", int),
-        
+
         "spike_chance_pct": ("DEVICE_SPIKE_CHANCE", float),
         "spike_min": ("DEVICE_SPIKE_MIN", int),
         "spike_max": ("DEVICE_SPIKE_MAX", int),
         "spike_mean": ("DEVICE_SPIKE_MEAN", float),
         "spike_deviation": ("DEVICE_SPIKE_DEVIATION", float),
-        
+
         "drop_chance_pct": ("DEVICE_DROP_CHANCE", float),
         "drop_min": ("DEVICE_DROP_MIN", int),
         "drop_max": ("DEVICE_DROP_MAX", int),
@@ -60,6 +61,7 @@ if PROFILE == "custom":
     device_class = custom_vendor_mapping.get(VENDOR, devices.customUtilizedCiscoDevice)
     device = device_class(IP, VENDOR, HOSTNAME, MODEL, USERNAME, PASSWORD, PORT, HTTPS, profile=custom_profile)
 
+# Defined profile scenario
 else:
     device_mapping = {
         ("cisco", "high_utilized"): devices.HighUtilizedCiscoDevice,

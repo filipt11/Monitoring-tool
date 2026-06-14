@@ -399,14 +399,25 @@ class customUtilizedJuniperDevice(BaseJuniperDevice):
     """Class representing a custom-utilized Juniper device simulation."""
 
     def __init__(
-        self, ip_address: str, vendor: str, hostname: str, model: str, username: str, password: str, port: int, https: bool
+        self, 
+        ip_address: str, 
+        vendor: str, 
+        hostname: str, 
+        model: str, 
+        username: str, 
+        password: str, 
+        port: int, 
+        https: bool,
+        profile: Optional[CustomProfile] = None
     ) -> None:
         super().__init__(
             ip_address, vendor, hostname, model, username, password, port, https
         )
 
+        self.profile = profile or CustomProfile()
+
     def get_cpu(self) -> int:
-        return logic.get_custom_utilized_cpu()
+        return logic.get_custom_utilized_cpu(self.profile)
 
     def get_used_memory(self) -> int:
-        return logic.get_custom_utilized_ram(self.get_total_memory())
+        return logic.get_custom_utilized_ram(self.get_total_memory(), self.profile)

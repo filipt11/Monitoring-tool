@@ -215,7 +215,7 @@ def get_custom_utilized_ram(
     """Simulate values of usage for RAM with custom utilization pattern"""
 
     r = random.random()
-    
+
     # spike scenario
     if r > 1 - profile.spike_chance_pct / 100:
         val = random.gauss(profile.spike_mean, profile.spike_deviation)
