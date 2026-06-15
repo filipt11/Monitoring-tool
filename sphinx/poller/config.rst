@@ -1,7 +1,7 @@
 config module
 =============
 
-.. automodule:: config
+.. automodule:: poller.config
    :members:
    :undoc-members:
    :show-inheritance:

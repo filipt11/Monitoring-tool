@@ -1,7 +1,7 @@
 sync_functions module
 =====================
 
-.. automodule:: sync_functions
+.. automodule:: poller.sync_functions
    :members:
    :undoc-members:
    :show-inheritance:

@@ -84,7 +84,6 @@
  | <a href="#G"><strong>G</strong></a>
  | <a href="#H"><strong>H</strong></a>
  | <a href="#I"><strong>I</strong></a>
- | <a href="#J"><strong>J</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
@@ -100,20 +99,17 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#api.add_device">add_device() (in module api)</a>
+      <li><a href="poller/api.html#poller.api.add_device">add_device() (in module poller.api)</a>
 </li>
-      <li><a href="poller/models.html#models.InterfaceData.admin_status">admin_status (models.InterfaceData attribute)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData.admin_status">admin_status (poller.models.InterfaceData attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li>
-    api
-
-      <ul>
-        <li><a href="poller/api.html#module-api">module</a>
-</li>
-      </ul></li>
       <li><a href="simulator/main.html#simulator.main.authenticate">authenticate() (in module simulator.main)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.AverageUtilizedCiscoDevice">AverageUtilizedCiscoDevice (class in simulator.devices)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.AverageUtilizedJuniperDevice">AverageUtilizedJuniperDevice (class in simulator.devices)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -121,7 +117,15 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/config.html#config.Base">Base (class in config)</a>
+      <li><a href="poller/config.html#poller.config.Base">Base (class in poller.config)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.BaseCiscoDevice">BaseCiscoDevice (class in simulator.devices)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="simulator/devices.html#simulator.devices.BaseDevice">BaseDevice (class in simulator.devices)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.BaseJuniperDevice">BaseJuniperDevice (class in simulator.devices)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -131,29 +135,23 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="poller/main.html#poller.main.calculate_utilization">calculate_utilization() (in module poller.main)</a>
 </li>
-      <li>
-    cisco_polling
-
-      <ul>
-        <li><a href="poller/cisco_polling.html#module-cisco_polling">module</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.clamp_values_0_100">clamp_values_0_100() (simulator.logic.CustomProfile class method)</a>
 </li>
-      </ul></li>
-      <li>
-    config
-
-      <ul>
-        <li><a href="poller/config.html#module-config">module</a>
+      <li><a href="poller/models.html#poller.models.PollingResult.cpu">cpu (poller.models.PollingResult attribute)</a>
 </li>
-      </ul></li>
+      <li><a href="poller/models.html#poller.models.DeviceWithPolledData.cpu_usage">cpu_usage (poller.models.DeviceWithPolledData attribute)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.PollingResult.cpu">cpu (models.PollingResult attribute)</a>
-</li>
-      <li><a href="poller/models.html#models.DeviceWithPolledData.cpu_usage">cpu_usage (models.DeviceWithPolledData attribute)</a>
-</li>
       <li><a href="simulator/main.html#simulator.main.cpu_usage">cpu_usage() (in module simulator.main)</a>
 </li>
       <li><a href="run.html#run.create_venv">create_venv() (in module run)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile">CustomProfile (class in simulator.logic)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.customUtilizedCiscoDevice">customUtilizedCiscoDevice (class in simulator.devices)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.customUtilizedJuniperDevice">customUtilizedJuniperDevice (class in simulator.devices)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -161,26 +159,31 @@
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li>
-    data_loader
-
-      <ul>
-        <li><a href="poller/data_loader.html#module-data_loader">module</a>
+      <li><a href="poller/api.html#poller.api.delete_device">delete_device() (in module poller.api)</a>
 </li>
-      </ul></li>
-      <li><a href="poller/api.html#api.delete_device">delete_device() (in module api)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.deviation">deviation (simulator.logic.CustomProfile attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.Device">Device (class in models)</a>
+      <li><a href="poller/models.html#poller.models.Device">Device (class in poller.models)</a>
+</li>
+      <li><a href="poller/models.html#poller.models.DeviceCreate">DeviceCreate (class in poller.models)</a>
+</li>
+      <li><a href="poller/models.html#poller.models.DeviceOut">DeviceOut (class in poller.models)</a>
+</li>
+      <li><a href="poller/models.html#poller.models.DeviceUpdate">DeviceUpdate (class in poller.models)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.DeviceCreate">DeviceCreate (class in models)</a>
+      <li><a href="poller/models.html#poller.models.DeviceWithPolledData">DeviceWithPolledData (class in poller.models)</a>
 </li>
-      <li><a href="poller/models.html#models.DeviceOut">DeviceOut (class in models)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.drop_chance_pct">drop_chance_pct (simulator.logic.CustomProfile attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.DeviceUpdate">DeviceUpdate (class in models)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.drop_deviation">drop_deviation (simulator.logic.CustomProfile attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.DeviceWithPolledData">DeviceWithPolledData (class in models)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.drop_max">drop_max (simulator.logic.CustomProfile attribute)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.drop_mean">drop_mean (simulator.logic.CustomProfile attribute)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.drop_min">drop_min (simulator.logic.CustomProfile attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -188,11 +191,11 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/cisco_polling.html#cisco_polling.fetch_cisco_data_async">fetch_cisco_data_async() (in module cisco_polling)</a>
+      <li><a href="poller/cisco_polling.html#poller.cisco_polling.fetch_cisco_data_async">fetch_cisco_data_async() (in module poller.cisco_polling)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/juniper_polling.html#juniper_polling.fetch_juniper_data_async">fetch_juniper_data_async() (in module juniper_polling)</a>
+      <li><a href="poller/juniper_polling.html#poller.juniper_polling.fetch_juniper_data_async">fetch_juniper_data_async() (in module poller.juniper_polling)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -200,19 +203,55 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="simulator/logic.html#simulator.logic.get_average_utilized_cpu">get_average_utilized_cpu() (in module simulator.logic)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.get_average_utilized_ram">get_average_utilized_ram() (in module simulator.logic)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.BaseDevice.get_cpu">get_cpu() (simulator.devices.BaseDevice method)</a>
+
+      <ul>
+        <li><a href="simulator/devices.html#simulator.devices.customUtilizedCiscoDevice.get_cpu">(simulator.devices.customUtilizedCiscoDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.customUtilizedJuniperDevice.get_cpu">(simulator.devices.customUtilizedJuniperDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice.get_cpu">(simulator.devices.HighUtilizedCiscoDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice.get_cpu">(simulator.devices.HighUtilizedJuniperDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_cpu">(simulator.devices.LowUtilizedCiscoDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_cpu">(simulator.devices.LowUtilizedJuniperDevice method)</a>
+</li>
+      </ul></li>
       <li><a href="poller/main.html#poller.main.get_current_devices">get_current_devices() (in module poller.main)</a>
 </li>
-      <li><a href="poller/api.html#api.get_device">get_device() (in module api)</a>
+      <li><a href="simulator/logic.html#simulator.logic.get_custom_utilized_cpu">get_custom_utilized_cpu() (in module simulator.logic)</a>
 </li>
-      <li><a href="poller/api.html#api.get_devices">get_devices() (in module api)</a>
+      <li><a href="simulator/logic.html#simulator.logic.get_custom_utilized_ram">get_custom_utilized_ram() (in module simulator.logic)</a>
+</li>
+      <li><a href="poller/api.html#poller.api.get_device">get_device() (in module poller.api)</a>
+</li>
+      <li><a href="poller/api.html#poller.api.get_devices">get_devices() (in module poller.api)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.get_dynamic_interval">get_dynamic_interval() (in module simulator.logic)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.get_high_utilized_cpu">get_high_utilized_cpu() (in module simulator.logic)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.get_high_utilized_ram">get_high_utilized_ram() (in module simulator.logic)</a>
 </li>
       <li><a href="simulator/main.html#simulator.main.get_hostname">get_hostname() (in module simulator.main)</a>
 </li>
-      <li><a href="simulator/main.html#simulator.main.get_interface_information">get_interface_information() (in module simulator.main)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="simulator/main.html#simulator.main.get_interface_information">get_interface_information() (in module simulator.main)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.BaseDevice.get_interfaces">get_interfaces() (simulator.devices.BaseDevice method)</a>
+</li>
       <li><a href="simulator/main.html#simulator.main.get_interfaces_state">get_interfaces_state() (in module simulator.main)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.get_low_utilized_cpu">get_low_utilized_cpu() (in module simulator.logic)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.get_low_utilized_ram">get_low_utilized_ram() (in module simulator.logic)</a>
 </li>
       <li><a href="simulator/main.html#simulator.main.get_model">get_model() (in module simulator.main)</a>
 </li>
@@ -220,6 +259,30 @@
 </li>
       <li><a href="simulator/main.html#simulator.main.get_system_information">get_system_information() (in module simulator.main)</a>
 </li>
+      <li><a href="simulator/devices.html#simulator.devices.BaseDevice.get_total_memory">get_total_memory() (simulator.devices.BaseDevice method)</a>
+
+      <ul>
+        <li><a href="simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_total_memory">(simulator.devices.LowUtilizedCiscoDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_total_memory">(simulator.devices.LowUtilizedJuniperDevice method)</a>
+</li>
+      </ul></li>
+      <li><a href="simulator/devices.html#simulator.devices.BaseDevice.get_used_memory">get_used_memory() (simulator.devices.BaseDevice method)</a>
+
+      <ul>
+        <li><a href="simulator/devices.html#simulator.devices.customUtilizedCiscoDevice.get_used_memory">(simulator.devices.customUtilizedCiscoDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.customUtilizedJuniperDevice.get_used_memory">(simulator.devices.customUtilizedJuniperDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice.get_used_memory">(simulator.devices.HighUtilizedCiscoDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice.get_used_memory">(simulator.devices.HighUtilizedJuniperDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_used_memory">(simulator.devices.LowUtilizedCiscoDevice method)</a>
+</li>
+        <li><a href="simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_used_memory">(simulator.devices.LowUtilizedJuniperDevice method)</a>
+</li>
+      </ul></li>
       <li><a href="run.html#run.get_venv_python">get_venv_python() (in module run)</a>
 </li>
   </ul></td>
@@ -230,30 +293,34 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="poller/main.html#poller.main.handle_exit">handle_exit() (in module poller.main)</a>
 </li>
-      <li><a href="poller/api.html#api.health">health() (in module api)</a>
+      <li><a href="poller/api.html#poller.api.health">health() (in module poller.api)</a>
 
       <ul>
         <li><a href="simulator/main.html#simulator.main.health">(in module simulator.main)</a>
 </li>
       </ul></li>
-      <li><a href="poller/models.html#models.Device.hostname">hostname (models.Device attribute)</a>
+      <li><a href="simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice">HighUtilizedCiscoDevice (class in simulator.devices)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice">HighUtilizedJuniperDevice (class in simulator.devices)</a>
+</li>
+      <li><a href="poller/models.html#poller.models.Device.hostname">hostname (poller.models.Device attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceOut.hostname">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.hostname">(poller.models.DeviceOut attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceWithPolledData.hostname">(models.DeviceWithPolledData attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceWithPolledData.hostname">(poller.models.DeviceWithPolledData attribute)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.Device.https">https (models.Device attribute)</a>
+      <li><a href="poller/models.html#poller.models.Device.https">https (poller.models.Device attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceCreate.https">(models.DeviceCreate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceCreate.https">(poller.models.DeviceCreate attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceOut.https">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.https">(poller.models.DeviceOut attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceUpdate.https">(models.DeviceUpdate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceUpdate.https">(poller.models.DeviceUpdate attribute)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -262,49 +329,40 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.Device.id">id (models.Device attribute)</a>
+      <li><a href="poller/models.html#poller.models.Device.id">id (poller.models.Device attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceOut.id">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.id">(poller.models.DeviceOut attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceWithPolledData.id">(models.DeviceWithPolledData attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceWithPolledData.id">(poller.models.DeviceWithPolledData attribute)</a>
 </li>
       </ul></li>
-      <li><a href="poller/models.html#models.InterfaceData.if_index">if_index (models.InterfaceData attribute)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData.if_index">if_index (poller.models.InterfaceData attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.InterfaceData.in_octets">in_octets (models.InterfaceData attribute)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData.in_octets">in_octets (poller.models.InterfaceData attribute)</a>
 </li>
-      <li><a href="poller/config.html#config.init_db">init_db() (in module config)</a>
+      <li><a href="simulator/logic.html#simulator.logic.increase_interface_counter">increase_interface_counter() (in module simulator.logic)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.increase_interface_counter_for_higher_utilized">increase_interface_counter_for_higher_utilized() (in module simulator.logic)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="poller/config.html#poller.config.init_db">init_db() (in module poller.config)</a>
+</li>
       <li><a href="run.html#run.install_requirements">install_requirements() (in module run)</a>
 </li>
-      <li><a href="poller/models.html#models.InterfaceData">InterfaceData (class in models)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData">InterfaceData (class in poller.models)</a>
 </li>
-      <li><a href="poller/models.html#models.PollingResult.interfaces">interfaces (models.PollingResult attribute)</a>
+      <li><a href="poller/models.html#poller.models.PollingResult.interfaces">interfaces (poller.models.PollingResult attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.Device.ip">ip (models.Device attribute)</a>
+      <li><a href="poller/models.html#poller.models.Device.ip">ip (poller.models.Device attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceCreate.ip">(models.DeviceCreate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceCreate.ip">(poller.models.DeviceCreate attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceOut.ip">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.ip">(poller.models.DeviceOut attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceWithPolledData.ip">(models.DeviceWithPolledData attribute)</a>
-</li>
-      </ul></li>
-  </ul></td>
-</tr></table>
-
-<h2 id="J">J</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li>
-    juniper_polling
-
-      <ul>
-        <li><a href="poller/juniper_polling.html#module-juniper_polling">module</a>
+        <li><a href="poller/models.html#poller.models.DeviceWithPolledData.ip">(poller.models.DeviceWithPolledData attribute)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -313,7 +371,13 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#api.lifespan">lifespan() (in module api)</a>
+      <li><a href="poller/api.html#poller.api.lifespan">lifespan() (in module poller.api)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice">LowUtilizedCiscoDevice (class in simulator.devices)</a>
+</li>
+      <li><a href="simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice">LowUtilizedJuniperDevice (class in simulator.devices)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -321,9 +385,9 @@
 <h2 id="M">M</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.InterfaceData.mac">mac (models.InterfaceData attribute)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData.mac">mac (poller.models.InterfaceData attribute)</a>
 </li>
-      <li><a href="poller/api.html#api.main">main() (in module api)</a>
+      <li><a href="poller/api.html#poller.api.main">main() (in module poller.api)</a>
 
       <ul>
         <li><a href="poller/main.html#poller.main.main">(in module poller.main)</a>
@@ -331,66 +395,71 @@
         <li><a href="simulator/main.html#simulator.main.main">(in module simulator.main)</a>
 </li>
       </ul></li>
-      <li><a href="poller/models.html#models.PollingResult.memory_pct">memory_pct (models.PollingResult attribute)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.max_val">max_val (simulator.logic.CustomProfile attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.DeviceWithPolledData.memory_total">memory_total (models.DeviceWithPolledData attribute)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.mean">mean (simulator.logic.CustomProfile attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.DeviceWithPolledData.memory_usage">memory_usage (models.DeviceWithPolledData attribute)</a>
+      <li><a href="poller/models.html#poller.models.PollingResult.memory_pct">memory_pct (poller.models.PollingResult attribute)</a>
+</li>
+      <li><a href="poller/models.html#poller.models.DeviceWithPolledData.memory_total">memory_total (poller.models.DeviceWithPolledData attribute)</a>
+</li>
+      <li><a href="poller/models.html#poller.models.DeviceWithPolledData.memory_usage">memory_usage (poller.models.DeviceWithPolledData attribute)</a>
 </li>
       <li><a href="simulator/main.html#simulator.main.memory_usage">memory_usage() (in module simulator.main)</a>
 </li>
-      <li><a href="poller/models.html#models.DeviceWithPolledData.memory_usage_pct">memory_usage_pct (models.DeviceWithPolledData attribute)</a>
+      <li><a href="poller/models.html#poller.models.DeviceWithPolledData.memory_usage_pct">memory_usage_pct (poller.models.DeviceWithPolledData attribute)</a>
 </li>
-      <li><a href="poller/config.html#config.Base.metadata">metadata (config.Base attribute)</a>
+      <li><a href="poller/config.html#poller.config.Base.metadata">metadata (poller.config.Base attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.Device.model">model (models.Device attribute)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.min_val">min_val (simulator.logic.CustomProfile attribute)</a>
+</li>
+      <li><a href="poller/models.html#poller.models.Device.model">model (poller.models.Device attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceOut.model">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.model">(poller.models.DeviceOut attribute)</a>
 </li>
       </ul></li>
-      <li><a href="poller/api.html#api.model_cisco_device_info">model_cisco_device_info() (in module api)</a>
+      <li><a href="poller/api.html#poller.api.model_cisco_device_info">model_cisco_device_info() (in module poller.api)</a>
 </li>
-      <li><a href="poller/models.html#models.DeviceCreate.model_config">model_config (models.DeviceCreate attribute)</a>
+      <li><a href="poller/models.html#poller.models.DeviceCreate.model_config">model_config (poller.models.DeviceCreate attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceOut.model_config">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.model_config">(poller.models.DeviceOut attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceUpdate.model_config">(models.DeviceUpdate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceUpdate.model_config">(poller.models.DeviceUpdate attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceWithPolledData.model_config">(models.DeviceWithPolledData attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceWithPolledData.model_config">(poller.models.DeviceWithPolledData attribute)</a>
+</li>
+        <li><a href="simulator/logic.html#simulator.logic.CustomProfile.model_config">(simulator.logic.CustomProfile attribute)</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#api.model_juniper_device_info">model_juniper_device_info() (in module api)</a>
+      <li><a href="poller/api.html#poller.api.model_juniper_device_info">model_juniper_device_info() (in module poller.api)</a>
 </li>
-      <li>
-    models
-
-      <ul>
-        <li><a href="poller/models.html#module-models">module</a>
-</li>
-      </ul></li>
       <li>
     module
 
       <ul>
-        <li><a href="poller/api.html#module-api">api</a>
+        <li><a href="poller/api.html#module-poller.api">poller.api</a>
 </li>
-        <li><a href="poller/cisco_polling.html#module-cisco_polling">cisco_polling</a>
+        <li><a href="poller/cisco_polling.html#module-poller.cisco_polling">poller.cisco_polling</a>
 </li>
-        <li><a href="poller/config.html#module-config">config</a>
+        <li><a href="poller/config.html#module-poller.config">poller.config</a>
 </li>
-        <li><a href="poller/data_loader.html#module-data_loader">data_loader</a>
+        <li><a href="poller/data_loader.html#module-poller.data_loader">poller.data_loader</a>
 </li>
-        <li><a href="poller/juniper_polling.html#module-juniper_polling">juniper_polling</a>
-</li>
-        <li><a href="poller/models.html#module-models">models</a>
+        <li><a href="poller/juniper_polling.html#module-poller.juniper_polling">poller.juniper_polling</a>
 </li>
         <li><a href="poller/main.html#module-poller.main">poller.main</a>
 </li>
+        <li><a href="poller/models.html#module-poller.models">poller.models</a>
+</li>
         <li><a href="run.html#module-run">run</a>
+</li>
+        <li><a href="simulator/devices.html#module-simulator.devices">simulator.devices</a>
+</li>
+        <li><a href="simulator/logic.html#module-simulator.logic">simulator.logic</a>
 </li>
         <li><a href="simulator/main.html#module-simulator.main">simulator.main</a>
 </li>
@@ -401,7 +470,7 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.InterfaceData.name">name (models.InterfaceData attribute)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData.name">name (poller.models.InterfaceData attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -409,11 +478,11 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.InterfaceData.oper_status">oper_status (models.InterfaceData attribute)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData.oper_status">oper_status (poller.models.InterfaceData attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.InterfaceData.out_octets">out_octets (models.InterfaceData attribute)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData.out_octets">out_octets (poller.models.InterfaceData attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -421,44 +490,79 @@
 <h2 id="P">P</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/cisco_polling.html#cisco_polling.parse_cpu">parse_cpu() (in module cisco_polling)</a>
+      <li><a href="poller/cisco_polling.html#poller.cisco_polling.parse_cpu">parse_cpu() (in module poller.cisco_polling)</a>
 
       <ul>
-        <li><a href="poller/juniper_polling.html#juniper_polling.parse_cpu">(in module juniper_polling)</a>
+        <li><a href="poller/juniper_polling.html#poller.juniper_polling.parse_cpu">(in module poller.juniper_polling)</a>
 </li>
       </ul></li>
-      <li><a href="poller/cisco_polling.html#cisco_polling.parse_interfaces">parse_interfaces() (in module cisco_polling)</a>
+      <li><a href="poller/cisco_polling.html#poller.cisco_polling.parse_interfaces">parse_interfaces() (in module poller.cisco_polling)</a>
 
       <ul>
-        <li><a href="poller/juniper_polling.html#juniper_polling.parse_interfaces">(in module juniper_polling)</a>
+        <li><a href="poller/juniper_polling.html#poller.juniper_polling.parse_interfaces">(in module poller.juniper_polling)</a>
 </li>
       </ul></li>
-      <li><a href="poller/cisco_polling.html#cisco_polling.parse_memory">parse_memory() (in module cisco_polling)</a>
+      <li><a href="poller/cisco_polling.html#poller.cisco_polling.parse_memory">parse_memory() (in module poller.cisco_polling)</a>
 
       <ul>
-        <li><a href="poller/juniper_polling.html#juniper_polling.parse_memory">(in module juniper_polling)</a>
+        <li><a href="poller/juniper_polling.html#poller.juniper_polling.parse_memory">(in module poller.juniper_polling)</a>
 </li>
       </ul></li>
-      <li><a href="poller/models.html#models.Device.password">password (models.Device attribute)</a>
+      <li><a href="poller/models.html#poller.models.Device.password">password (poller.models.Device attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceCreate.password">(models.DeviceCreate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceCreate.password">(poller.models.DeviceCreate attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceOut.password">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.password">(poller.models.DeviceOut attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceUpdate.password">(models.DeviceUpdate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceUpdate.password">(poller.models.DeviceUpdate attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="poller/cisco_polling.html#poller.cisco_polling.poll_cisco_device_async">poll_cisco_device_async() (in module poller.cisco_polling)</a>
+</li>
+      <li><a href="poller/main.html#poller.main.poll_devices_main">poll_devices_main() (in module poller.main)</a>
+</li>
+      <li><a href="poller/juniper_polling.html#poller.juniper_polling.poll_juniper_device_async">poll_juniper_device_async() (in module poller.juniper_polling)</a>
+</li>
+      <li><a href="poller/main.html#poller.main.poll_single_device">poll_single_device() (in module poller.main)</a>
+</li>
+      <li>
+    poller.api
+
+      <ul>
+        <li><a href="poller/api.html#module-poller.api">module</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/cisco_polling.html#cisco_polling.poll_cisco_device_async">poll_cisco_device_async() (in module cisco_polling)</a>
+      <li>
+    poller.cisco_polling
+
+      <ul>
+        <li><a href="poller/cisco_polling.html#module-poller.cisco_polling">module</a>
 </li>
-      <li><a href="poller/main.html#poller.main.poll_devices_main">poll_devices_main() (in module poller.main)</a>
+      </ul></li>
+      <li>
+    poller.config
+
+      <ul>
+        <li><a href="poller/config.html#module-poller.config">module</a>
 </li>
-      <li><a href="poller/juniper_polling.html#juniper_polling.poll_juniper_device_async">poll_juniper_device_async() (in module juniper_polling)</a>
+      </ul></li>
+      <li>
+    poller.data_loader
+
+      <ul>
+        <li><a href="poller/data_loader.html#module-poller.data_loader">module</a>
 </li>
-      <li><a href="poller/main.html#poller.main.poll_single_device">poll_single_device() (in module poller.main)</a>
+      </ul></li>
+      <li>
+    poller.juniper_polling
+
+      <ul>
+        <li><a href="poller/juniper_polling.html#module-poller.juniper_polling">module</a>
 </li>
+      </ul></li>
       <li>
     poller.main
 
@@ -466,16 +570,23 @@
         <li><a href="poller/main.html#module-poller.main">module</a>
 </li>
       </ul></li>
-      <li><a href="poller/models.html#models.PollingResult">PollingResult (class in models)</a>
-</li>
-      <li><a href="poller/models.html#models.Device.port">port (models.Device attribute)</a>
+      <li>
+    poller.models
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceCreate.port">(models.DeviceCreate attribute)</a>
+        <li><a href="poller/models.html#module-poller.models">module</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceOut.port">(models.DeviceOut attribute)</a>
+      </ul></li>
+      <li><a href="poller/models.html#poller.models.PollingResult">PollingResult (class in poller.models)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceUpdate.port">(models.DeviceUpdate attribute)</a>
+      <li><a href="poller/models.html#poller.models.Device.port">port (poller.models.Device attribute)</a>
+
+      <ul>
+        <li><a href="poller/models.html#poller.models.DeviceCreate.port">(poller.models.DeviceCreate attribute)</a>
+</li>
+        <li><a href="poller/models.html#poller.models.DeviceOut.port">(poller.models.DeviceOut attribute)</a>
+</li>
+        <li><a href="poller/models.html#poller.models.DeviceUpdate.port">(poller.models.DeviceUpdate attribute)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -484,9 +595,9 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#api.rediscover_device">rediscover_device() (in module api)</a>
+      <li><a href="poller/api.html#poller.api.rediscover_device">rediscover_device() (in module poller.api)</a>
 </li>
-      <li><a href="poller/config.html#config.Base.registry">registry (config.Base attribute)</a>
+      <li><a href="poller/config.html#poller.config.Base.registry">registry (poller.config.Base attribute)</a>
 </li>
       <li>
     run
@@ -511,8 +622,22 @@
 </li>
       <li><a href="poller/main.html#poller.main.save_polled_interface_data">save_polled_interface_data() (in module poller.main)</a>
 </li>
-      <li><a href="poller/data_loader.html#data_loader.seed_devices">seed_devices() (in module data_loader)</a>
+      <li><a href="poller/data_loader.html#poller.data_loader.seed_devices">seed_devices() (in module poller.data_loader)</a>
 </li>
+      <li>
+    simulator.devices
+
+      <ul>
+        <li><a href="simulator/devices.html#module-simulator.devices">module</a>
+</li>
+      </ul></li>
+      <li>
+    simulator.logic
+
+      <ul>
+        <li><a href="simulator/logic.html#module-simulator.logic">module</a>
+</li>
+      </ul></li>
       <li>
     simulator.main
 
@@ -522,11 +647,21 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.InterfaceData.speed">speed (models.InterfaceData attribute)</a>
+      <li><a href="poller/models.html#poller.models.InterfaceData.speed">speed (poller.models.InterfaceData attribute)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.spike_chance_pct">spike_chance_pct (simulator.logic.CustomProfile attribute)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.spike_deviation">spike_deviation (simulator.logic.CustomProfile attribute)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.spike_max">spike_max (simulator.logic.CustomProfile attribute)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.spike_mean">spike_mean (simulator.logic.CustomProfile attribute)</a>
+</li>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.spike_min">spike_min (simulator.logic.CustomProfile attribute)</a>
 </li>
       <li><a href="run.html#run.start_background_process">start_background_process() (in module run)</a>
 </li>
-      <li><a href="poller/models.html#models.PollingResult.status">status (models.PollingResult attribute)</a>
+      <li><a href="poller/models.html#poller.models.PollingResult.status">status (poller.models.PollingResult attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -534,7 +669,7 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.PollingResult.total_memory">total_memory (models.PollingResult attribute)</a>
+      <li><a href="poller/models.html#poller.models.PollingResult.total_memory">total_memory (poller.models.PollingResult attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -542,18 +677,18 @@
 <h2 id="U">U</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#api.update_device">update_device() (in module api)</a>
+      <li><a href="poller/api.html#poller.api.update_device">update_device() (in module poller.api)</a>
 </li>
-      <li><a href="poller/models.html#models.PollingResult.used_memory">used_memory (models.PollingResult attribute)</a>
+      <li><a href="poller/models.html#poller.models.PollingResult.used_memory">used_memory (poller.models.PollingResult attribute)</a>
 </li>
-      <li><a href="poller/models.html#models.Device.username">username (models.Device attribute)</a>
+      <li><a href="poller/models.html#poller.models.Device.username">username (poller.models.Device attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceCreate.username">(models.DeviceCreate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceCreate.username">(poller.models.DeviceCreate attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceOut.username">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.username">(poller.models.DeviceOut attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceUpdate.username">(models.DeviceUpdate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceUpdate.username">(poller.models.DeviceUpdate attribute)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -562,12 +697,14 @@
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/models.html#models.Device.vendor">vendor (models.Device attribute)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.validate_total_chance">validate_total_chance() (simulator.logic.CustomProfile method)</a>
+</li>
+      <li><a href="poller/models.html#poller.models.Device.vendor">vendor (poller.models.Device attribute)</a>
 
       <ul>
-        <li><a href="poller/models.html#models.DeviceCreate.vendor">(models.DeviceCreate attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceCreate.vendor">(poller.models.DeviceCreate attribute)</a>
 </li>
-        <li><a href="poller/models.html#models.DeviceOut.vendor">(models.DeviceOut attribute)</a>
+        <li><a href="poller/models.html#poller.models.DeviceOut.vendor">(poller.models.DeviceOut attribute)</a>
 </li>
       </ul></li>
   </ul></td>

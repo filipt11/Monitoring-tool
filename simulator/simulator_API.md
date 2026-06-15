@@ -18,13 +18,42 @@ The simulator creates virtual devices based on environment variables. Default va
 **Example configuration for first Cisco device:**
 ```bash
 export DEVICE_VENDOR=cisco                     # cisco or juniper
-export DEVICE_PROFILE=high_utilized            # high_utilized, low_utilized, or standard
+export DEVICE_PROFILE=high_utilized            # high_utilized, average_utilized, low_utilized, custom
 export DEVICE_HOSTNAME=r-cisco-1
 export DEVICE_MODEL="Catalyst 9000"
 export DEVICE_USERNAME=admin
 export DEVICE_PASSWORD=123
 export DEVICE_PORT=8001
 export DEVICE_IS_HTTPS=false                   # false for http, true for https
+```
+
+**Custom utilization profile example**
+```bash
+export DEVICE_VENDOR=cisco
+export DEVICE_PROFILE=custom
+export DEVICE_HOSTNAME=r-cisco-custom
+export DEVICE_MODEL="Catalyst 9000"
+export DEVICE_USERNAME=admin
+export DEVICE_PASSWORD=123
+export DEVICE_PORT=8003
+export DEVICE_IS_HTTPS=false
+
+export DEVICE_MEAN=45
+export DEVICE_DEVIATION=8
+export DEVICE_MIN_VAL=20
+export DEVICE_MAX_VAL=75
+
+export DEVICE_SPIKE_CHANCE=4
+export DEVICE_SPIKE_MIN=85
+export DEVICE_SPIKE_MAX=100
+export DEVICE_SPIKE_MEAN=92
+export DEVICE_SPIKE_DEVIATION=4
+
+export DEVICE_DROP_CHANCE=2
+export DEVICE_DROP_MIN=1
+export DEVICE_DROP_MAX=15
+export DEVICE_DROP_MEAN=8
+export DEVICE_DROP_DEVIATION=3
 ```
 
 **Multiple devices example** (start simulator multiple times or use Docker Compose):
@@ -79,6 +108,7 @@ curl -X POST -u admin:123 http://localhost:8001/rpc/get-interface-information
 
 ## Device Profiles
 
-- **high_utilized**: CPU 80-95%, Memory 75-90% (with ocasional drops)
+- **high_utilized**: CPU 80-95%, Memory 75-90% (with occasional drops)
 - **average_utilized**: CPU 40-60%, Memory 50-65% (with occasional drops and spikes)
 - **low_utilized**: CPU 10-20%, Memory 20-35% (with occasional spikes)
+- **custom**: Behavior is driven by custom environment variables; CPU and RAM are generated from the same custom utilization profile and can include defined spikes and drops.

@@ -1,8 +1,7 @@
 logic module
 ============
 
-.. automodule:: logic
-   :no-index:
+.. automodule:: simulator.logic
    :members:
    :undoc-members:
    :show-inheritance:

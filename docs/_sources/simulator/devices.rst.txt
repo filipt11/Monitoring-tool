@@ -1,8 +1,7 @@
 devices module
 ==============
 
-.. automodule:: devices
-   :no-index:
+.. automodule:: simulator.devices
    :members:
    :undoc-members:
    :show-inheritance:

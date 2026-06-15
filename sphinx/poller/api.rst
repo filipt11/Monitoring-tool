@@ -1,7 +1,7 @@
 api module
 ==========
 
-.. automodule:: api
+.. automodule:: poller.api
    :members:
    :undoc-members:
    :show-inheritance:

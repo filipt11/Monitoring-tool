@@ -1,7 +1,7 @@
 data_loader module
 ==================
 
-.. automodule:: data_loader
+.. automodule:: poller.data_loader
    :members:
    :undoc-members:
    :show-inheritance:

@@ -184,7 +184,7 @@ curl http://localhost:8000/api/devices
 Set these environment variables before running the simulator:
 
 ```bash
-export DEVICE_PROFILE=average_utilized    # Options: high_utilized, average_utilized, low_utilized
+export DEVICE_PROFILE=average_utilized    # Options: high_utilized, average_utilized, low_utilized, custom
 export DEVICE_IP=0.0.0.0                 # Device IP address
 export DEVICE_HOSTNAME=s-cisco-1         # Device hostname
 export DEVICE_VENDOR=cisco               # Options: cisco, juniper
@@ -195,20 +195,47 @@ export DEVICE_PORT=8001                  # Port for device API (default: 8001)
 export DEVICE_IS_HTTPS=false              # Use HTTP (false=HTTP, true=HTTPS)
 ```
 
+### Custom utilization profile
+
+When `DEVICE_PROFILE=custom`, the simulator uses additional environment variables to generate both CPU and RAM values from the same custom profile. Values are treated as percentages and are clamped between `0` and `100`.
+
+```bash
+export DEVICE_PROFILE=custom
+export DEVICE_MEAN=50                   # Normal average utilization in percent
+export DEVICE_DEVIATION=10              # Standard deviation for normal utilization
+export DEVICE_MIN_VAL=10                # Minimum normal utilization percent
+export DEVICE_MAX_VAL=90                # Maximum normal utilization percent
+
+export DEVICE_SPIKE_CHANCE=5            # % chance of a spike event
+export DEVICE_SPIKE_MIN=90              # Minimum value when a spike occurs
+export DEVICE_SPIKE_MAX=100             # Maximum value when a spike occurs
+export DEVICE_SPIKE_MEAN=95             # Mean value during a spike event
+export DEVICE_SPIKE_DEVIATION=2         # Deviation for spike values
+
+export DEVICE_DROP_CHANCE=3             # % chance of a drop event
+export DEVICE_DROP_MIN=5                # Minimum value when a drop occurs
+export DEVICE_DROP_MAX=15               # Maximum value when a drop occurs
+export DEVICE_DROP_MEAN=8               # Mean value during a drop event
+export DEVICE_DROP_DEVIATION=2          # Deviation for drop values
+```
+
+`DEVICE_MEAN`, `DEVICE_DEVIATION`, `DEVICE_MIN_VAL`, and `DEVICE_MAX_VAL` define the normal utilization distribution.
+`DEVICE_SPIKE_*` variables control rare high-utilization spikes, while `DEVICE_DROP_*` variables define rare low-utilization drops.
+
 ### Adding New Simulated Devices
 
 To create additional simulated devices beyond the default ones, set environment variables before starting the simulator:
 
 ```bash
 export DEVICE_IP=127.0.0.1              # IP address of the simulated device
-export DEVICE_PORT=8008                     # Port number
-export DEVICE_HOSTNAME=my-device-1          # Unique hostname
-export DEVICE_VENDOR=cisco                  # Vendor: cisco or juniper
-export DEVICE_MODEL="ISR 4451"              # Device model
-export DEVICE_PROFILE=average_utilized      # Utilization: high_utilized, average_utilized, low_utilized
-export DEVICE_USERNAME=admin                # API username
-export DEVICE_PASSWORD=password123          # API password
-export DEVICE_IS_HTTPS=false                 # Use HTTP (set true for HTTPS)
+export DEVICE_PORT=8008                 # Port number
+export DEVICE_HOSTNAME=my-device-1      # Unique hostname
+export DEVICE_VENDOR=cisco              # Vendor: cisco or juniper
+export DEVICE_MODEL="ISR 4451"        # Device model
+export DEVICE_PROFILE=average_utilized  # Utilization: high_utilized, average_utilized, low_utilized, custom
+export DEVICE_USERNAME=admin            # API username
+export DEVICE_PASSWORD=password123      # API password
+export DEVICE_IS_HTTPS=false            # Use HTTP (set true for HTTPS)
 ```
 
 Then start the simulator with these variables set, and it will create a new device with the specified configuration.

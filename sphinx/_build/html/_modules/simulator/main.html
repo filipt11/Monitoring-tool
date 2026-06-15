@@ -76,7 +76,7 @@
   <h1>Source code for simulator.main</h1><div class="highlight"><pre>
 <span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.security</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPBasic</span><span class="p">,</span> <span class="n">HTTPBasicCredentials</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">devices</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">devices</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">secrets</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
@@ -100,17 +100,56 @@
 <span class="c1"># Create simulated device based on vendor and specified profile</span>
 <span class="n">device</span><span class="p">:</span> <span class="n">devices</span><span class="o">.</span><span class="n">BaseDevice</span>
 
-<span class="n">device_mapping</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;high_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">HighUtilizedCiscoDevice</span><span class="p">,</span>
-    <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;low_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">LowUtilizedCiscoDevice</span><span class="p">,</span>
-    <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;average_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedCiscoDevice</span><span class="p">,</span>
-    <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;high_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">HighUtilizedJuniperDevice</span><span class="p">,</span>
-    <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;low_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">LowUtilizedJuniperDevice</span><span class="p">,</span>
-    <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;average_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedJuniperDevice</span><span class="p">,</span>
-<span class="p">}</span>
+<span class="c1"># Custom profile scenario</span>
+<span class="k">if</span> <span class="n">PROFILE</span> <span class="o">==</span> <span class="s2">&quot;custom&quot;</span><span class="p">:</span>
+    <span class="n">env_mapping</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;mean&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_MEAN&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+        <span class="s2">&quot;deviation&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_DEVIATION&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+        <span class="s2">&quot;min_val&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_MIN_VAL&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
+        <span class="s2">&quot;max_val&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_MAX_VAL&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
 
-<span class="n">device_class</span> <span class="o">=</span> <span class="n">device_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">VENDOR</span><span class="p">,</span> <span class="n">PROFILE</span><span class="p">),</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedCiscoDevice</span><span class="p">)</span>
-<span class="n">device</span> <span class="o">=</span> <span class="n">device_class</span><span class="p">(</span><span class="n">IP</span><span class="p">,</span> <span class="n">VENDOR</span><span class="p">,</span> <span class="n">HOSTNAME</span><span class="p">,</span> <span class="n">MODEL</span><span class="p">,</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="n">PASSWORD</span><span class="p">,</span> <span class="n">PORT</span><span class="p">,</span> <span class="n">HTTPS</span><span class="p">)</span>
+        <span class="s2">&quot;spike_chance_pct&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_SPIKE_CHANCE&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+        <span class="s2">&quot;spike_min&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_SPIKE_MIN&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
+        <span class="s2">&quot;spike_max&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_SPIKE_MAX&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
+        <span class="s2">&quot;spike_mean&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_SPIKE_MEAN&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+        <span class="s2">&quot;spike_deviation&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_SPIKE_DEVIATION&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+
+        <span class="s2">&quot;drop_chance_pct&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_DROP_CHANCE&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+        <span class="s2">&quot;drop_min&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_DROP_MIN&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
+        <span class="s2">&quot;drop_max&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_DROP_MAX&quot;</span><span class="p">,</span> <span class="nb">int</span><span class="p">),</span>
+        <span class="s2">&quot;drop_mean&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_DROP_MEAN&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+        <span class="s2">&quot;drop_deviation&quot;</span><span class="p">:</span> <span class="p">(</span><span class="s2">&quot;DEVICE_DROP_DEVIATION&quot;</span><span class="p">,</span> <span class="nb">float</span><span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="n">profile_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">field_name</span><span class="p">,</span> <span class="p">(</span><span class="n">env_name</span><span class="p">,</span> <span class="n">field_type</span><span class="p">)</span> <span class="ow">in</span> <span class="n">env_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">env_value</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="n">env_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">env_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">profile_kwargs</span><span class="p">[</span><span class="n">field_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">field_type</span><span class="p">(</span><span class="n">env_value</span><span class="p">)</span>
+
+    <span class="n">custom_profile</span> <span class="o">=</span> <span class="n">devices</span><span class="o">.</span><span class="n">CustomProfile</span><span class="p">(</span><span class="o">**</span><span class="n">profile_kwargs</span><span class="p">)</span>
+
+    <span class="n">custom_vendor_mapping</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;cisco&quot;</span><span class="p">:</span> <span class="n">devices</span><span class="o">.</span><span class="n">customUtilizedCiscoDevice</span><span class="p">,</span>
+        <span class="s2">&quot;juniper&quot;</span><span class="p">:</span> <span class="n">devices</span><span class="o">.</span><span class="n">customUtilizedJuniperDevice</span><span class="p">,</span>
+    <span class="p">}</span>
+    
+    <span class="n">device_class</span> <span class="o">=</span> <span class="n">custom_vendor_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">VENDOR</span><span class="p">,</span> <span class="n">devices</span><span class="o">.</span><span class="n">customUtilizedCiscoDevice</span><span class="p">)</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="n">device_class</span><span class="p">(</span><span class="n">IP</span><span class="p">,</span> <span class="n">VENDOR</span><span class="p">,</span> <span class="n">HOSTNAME</span><span class="p">,</span> <span class="n">MODEL</span><span class="p">,</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="n">PASSWORD</span><span class="p">,</span> <span class="n">PORT</span><span class="p">,</span> <span class="n">HTTPS</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="n">custom_profile</span><span class="p">)</span>
+
+<span class="c1"># Defined profile scenario</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">device_mapping</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;high_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">HighUtilizedCiscoDevice</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;low_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">LowUtilizedCiscoDevice</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;cisco&quot;</span><span class="p">,</span> <span class="s2">&quot;average_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedCiscoDevice</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;high_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">HighUtilizedJuniperDevice</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;low_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">LowUtilizedJuniperDevice</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">&quot;juniper&quot;</span><span class="p">,</span> <span class="s2">&quot;average_utilized&quot;</span><span class="p">):</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedJuniperDevice</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">device_class</span> <span class="o">=</span> <span class="n">device_mapping</span><span class="o">.</span><span class="n">get</span><span class="p">((</span><span class="n">VENDOR</span><span class="p">,</span> <span class="n">PROFILE</span><span class="p">),</span> <span class="n">devices</span><span class="o">.</span><span class="n">AverageUtilizedCiscoDevice</span><span class="p">)</span>
+    <span class="n">device</span> <span class="o">=</span> <span class="n">device_class</span><span class="p">(</span><span class="n">IP</span><span class="p">,</span> <span class="n">VENDOR</span><span class="p">,</span> <span class="n">HOSTNAME</span><span class="p">,</span> <span class="n">MODEL</span><span class="p">,</span> <span class="n">USERNAME</span><span class="p">,</span> <span class="n">PASSWORD</span><span class="p">,</span> <span class="n">PORT</span><span class="p">,</span> <span class="n">HTTPS</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="authenticate">
@@ -141,7 +180,7 @@
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return status &#39;OK&#39; if API started correctly.&quot;&quot;&quot;</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status:&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}</span></div>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}</span></div>
 
 
 
@@ -534,14 +573,14 @@
 
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../simulator/main.html#simulator.main.main">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Start the simulator FastAPI server with uvicorn.&quot;&quot;&quot;</span>
 
     <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">PORT</span><span class="p">)</span></div>
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 

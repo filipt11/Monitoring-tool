@@ -1,23 +1,23 @@
 
 
 <!DOCTYPE html>
-<html class="writer-html5" lang="en" data-content_root="../">
+<html class="writer-html5" lang="en" data-content_root="../../">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>api &mdash; Monitoring Tool 1.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+  <title>poller.api &mdash; Monitoring Tool 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
 
   
-      <script src="../_static/jquery.js?v=5d32c60e"></script>
-      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
-      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
-      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
-    <script src="../_static/js/theme.js"></script>
-    <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" /> 
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -28,11 +28,11 @@
 
           
           
-          <a href="../index.html" class="icon icon-home">
+          <a href="../../index.html" class="icon icon-home">
             Monitoring Tool
           </a>
 <div role="search">
-  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -41,12 +41,12 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../poller.html">Poller Module Documentation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../run.html">run module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../run.html">run module</a></li>
 </ul>
 
         </div>
@@ -55,16 +55,16 @@
 
     <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2c3e50" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">Monitoring Tool</a>
+          <a href="../../index.html">Monitoring Tool</a>
       </nav>
 
       <div class="wy-nav-content">
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
-          <li class="breadcrumb-item"><a href="index.html">Module code</a></li>
-      <li class="breadcrumb-item active">api</li>
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">poller.api</li>
       <li class="wy-breadcrumbs-aside">
       </li>
   </ul>
@@ -73,18 +73,18 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <h1>Source code for api</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+  <h1>Source code for poller.api</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">Session</span><span class="p">,</span>
     <span class="n">init_db</span><span class="p">,</span>
     <span class="n">API_PORT</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">DeviceCreate</span><span class="p">,</span> <span class="n">DeviceOut</span><span class="p">,</span> <span class="n">DeviceUpdate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">DeviceCreate</span><span class="p">,</span> <span class="n">DeviceOut</span><span class="p">,</span> <span class="n">DeviceUpdate</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">cisco_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_cisco_data_async</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">juniper_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_juniper_data_async</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.cisco_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_cisco_data_async</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.juniper_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_juniper_data_async</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sys</span><span class="w"> </span><span class="kn">import</span> <span class="n">stderr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.exc</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegrityError</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_pagination</span><span class="w"> </span><span class="kn">import</span> <span class="n">Page</span><span class="p">,</span> <span class="n">add_pagination</span>
@@ -97,7 +97,7 @@
 
 
 <div class="viewcode-block" id="lifespan">
-<a class="viewcode-back" href="../poller/api.html#api.lifespan">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.lifespan">[docs]</a>
 <span class="nd">@asynccontextmanager</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Create and manage HTTP client for API lifespan.&quot;&quot;&quot;</span>
@@ -113,7 +113,7 @@
 
 
 <div class="viewcode-block" id="model_cisco_device_info">
-<a class="viewcode-back" href="../poller/api.html#api.model_cisco_device_info">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.model_cisco_device_info">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">model_cisco_device_info</span><span class="p">(</span>
     <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -157,7 +157,7 @@
 
 
 <div class="viewcode-block" id="model_juniper_device_info">
-<a class="viewcode-back" href="../poller/api.html#api.model_juniper_device_info">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.model_juniper_device_info">[docs]</a>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">model_juniper_device_info</span><span class="p">(</span>
     <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
@@ -188,17 +188,17 @@
 
 
 <div class="viewcode-block" id="health">
-<a class="viewcode-back" href="../poller/api.html#api.health">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.health">[docs]</a>
 <span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return status &#39;OK&#39; if API started correctly.&quot;&quot;&quot;</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status:&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}</span></div>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}</span></div>
 
 
 
 <div class="viewcode-block" id="add_device">
-<a class="viewcode-back" href="../poller/api.html#api.add_device">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.add_device">[docs]</a>
 <span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/device&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_device</span><span class="p">(</span><span class="n">device_in</span><span class="p">:</span> <span class="n">DeviceCreate</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Add new device to database after validating connectivity and retrieving device information.&quot;&quot;&quot;</span>
@@ -271,7 +271,7 @@
 
 
 <div class="viewcode-block" id="delete_device">
-<a class="viewcode-back" href="../poller/api.html#api.delete_device">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.delete_device">[docs]</a>
 <span class="nd">@app</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/api/device/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_device</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete device from database by ID.&quot;&quot;&quot;</span>
@@ -305,7 +305,7 @@
 
 
 <div class="viewcode-block" id="rediscover_device">
-<a class="viewcode-back" href="../poller/api.html#api.rediscover_device">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.rediscover_device">[docs]</a>
 <span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/rediscover/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">rediscover_device</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update device hostname and model information through rediscovery.&quot;&quot;&quot;</span>
@@ -371,7 +371,7 @@
 
 
 <div class="viewcode-block" id="get_device">
-<a class="viewcode-back" href="../poller/api.html#api.get_device">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.get_device">[docs]</a>
 <span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/device/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">DeviceOut</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_device</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve device information by ID.&quot;&quot;&quot;</span>
@@ -388,7 +388,7 @@
 
 
 <div class="viewcode-block" id="get_devices">
-<a class="viewcode-back" href="../poller/api.html#api.get_devices">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.get_devices">[docs]</a>
 <span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/devices&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">DeviceOut</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_devices</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve paginated list of all devices from database.&quot;&quot;&quot;</span>
@@ -400,7 +400,7 @@
 
 
 <div class="viewcode-block" id="update_device">
-<a class="viewcode-back" href="../poller/api.html#api.update_device">[docs]</a>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.update_device">[docs]</a>
 <span class="nd">@app</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s2">&quot;/api/device/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">DeviceOut</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_device</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">device_update</span><span class="p">:</span> <span class="n">DeviceUpdate</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Update device information by ID.&quot;&quot;&quot;</span>
@@ -424,8 +424,8 @@
 
 
 <div class="viewcode-block" id="main">
-<a class="viewcode-back" href="../poller/api.html#api.main">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<a class="viewcode-back" href="../../poller/api.html#poller.api.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span> <span class="c1"># pragma: no cover</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Connect to DB and start uvicorn server&quot;&quot;&quot;</span>
 
     <span class="k">try</span><span class="p">:</span>
@@ -438,7 +438,7 @@
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
     <span class="c1"># Configure Logging</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>

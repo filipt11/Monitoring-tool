@@ -1,7 +1,7 @@
 models module
 =============
 
-.. automodule:: models
+.. automodule:: poller.models
    :members:
    :undoc-members:
    :show-inheritance:

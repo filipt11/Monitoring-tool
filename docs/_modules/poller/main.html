@@ -74,7 +74,7 @@
            <div itemprop="articleBody">
              
   <h1>Source code for poller.main</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">poller.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">Session</span><span class="p">,</span>
     <span class="n">INFLUX_ORG</span><span class="p">,</span>
     <span class="n">INFLUX_BUCKET</span><span class="p">,</span>
@@ -83,13 +83,13 @@
     <span class="n">POLLING_INERVAL</span><span class="p">,</span>
     <span class="n">MAX_DEVICES</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">cisco_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">poll_cisco_device_async</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">juniper_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">poll_juniper_device_async</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">DeviceWithPolledData</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">poller.cisco_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">poll_cisco_device_async</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">poller.juniper_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">poll_juniper_device_async</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">poller.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">DeviceWithPolledData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">data_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">seed_devices</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">poller.data_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">seed_devices</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">influxdb_client</span><span class="w"> </span><span class="kn">import</span> <span class="n">Point</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">time</span><span class="w"> </span><span class="kn">import</span> <span class="n">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">signal</span>
@@ -303,13 +303,14 @@
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate interface utilization based on previous and current counters values.&quot;&quot;&quot;</span>
 
     <span class="n">key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">if_name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">direction</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="n">current_time</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
+    <span class="n">current_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span>
 
     <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">last_polls</span><span class="p">:</span>
         <span class="n">prev_time</span><span class="p">,</span> <span class="n">prev_octets</span> <span class="o">=</span> <span class="n">last_polls</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
         <span class="n">time_delta</span> <span class="o">=</span> <span class="n">current_time</span> <span class="o">-</span> <span class="n">prev_time</span>
 
         <span class="k">if</span> <span class="n">time_delta</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">last_polls</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">current_time</span><span class="p">,</span> <span class="n">current_octets</span><span class="p">)</span>
             <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
 
         <span class="c1"># Handle counters reset</span>
@@ -333,7 +334,7 @@
 
 <div class="viewcode-block" id="handle_exit">
 <a class="viewcode-back" href="../../poller/main.html#poller.main.handle_exit">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">handle_exit</span><span class="p">(</span><span class="n">sig</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">handle_exit</span><span class="p">(</span><span class="n">sig</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Handle system signals&quot;&quot;&quot;</span>
 
     <span class="n">signame</span> <span class="o">=</span> <span class="n">signal</span><span class="o">.</span><span class="n">Signals</span><span class="p">(</span><span class="n">sig</span><span class="p">)</span><span class="o">.</span><span class="n">name</span>
@@ -344,7 +345,7 @@
 
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../poller/main.html#poller.main.main">[docs]</a>
-<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Starting DB connection, initialize example devices and poll devices in infinity loop&quot;&quot;&quot;</span>
 
     <span class="k">try</span><span class="p">:</span>
@@ -364,7 +365,7 @@
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
     <span class="c1"># Handling exit signals</span>
     <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGTERM</span><span class="p">,</span> <span class="n">handle_exit</span><span class="p">)</span>
     <span class="n">signal</span><span class="o">.</span><span class="n">signal</span><span class="p">(</span><span class="n">signal</span><span class="o">.</span><span class="n">SIGINT</span><span class="p">,</span> <span class="n">handle_exit</span><span class="p">)</span>
