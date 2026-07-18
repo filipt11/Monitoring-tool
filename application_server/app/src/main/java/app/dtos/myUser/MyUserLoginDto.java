@@ -4,11 +4,11 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 
 public record MyUserLoginDto(
-        @Schema(example = "existingUser")
+        @Schema(example = "admin")
         @NotBlank(message = "Username cannot be empty")
         String username,
 
-        @Schema(example = "paS$word123")
+        @Schema(example = "123")
         @NotBlank(message = "Password cannot be empty")
         String password) {
 }

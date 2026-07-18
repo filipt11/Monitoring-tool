@@ -1,0 +1,145 @@
+package app.services;
+
+import app.dtos.data.DataPointDto;
+import app.dtos.data.DeviceMetricsDto;
+import app.dtos.data.InterfaceMetricsDto;
+import com.influxdb.client.InfluxDBClient;
+import com.influxdb.query.FluxRecord;
+import com.influxdb.query.FluxTable;
+import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+
+import java.time.Instant;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class DataAccessService {
+    private final InfluxDBClient influxDBClient;
+
+    @Value("${influx.bucket}")
+    private String bucket;
+
+    public DataAccessService(InfluxDBClient influxDBClient) {
+        this.influxDBClient = influxDBClient;
+    }
+
+    public List<DeviceMetricsDto> getDeviceMetrics(
+            List<String> deviceIds,
+            List<String> metrics,
+            Instant start,
+            Instant end) {
+
+        if (deviceIds == null || deviceIds.isEmpty() || metrics == null || metrics.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String devicesArr = "[\"" + String.join("\", \"", deviceIds) + "\"]";
+        String metricsArr = "[\"" + String.join("\", \"", metrics) + "\"]";
+
+        String flux = String.format(
+                "from(bucket: \"%s\") " +
+                        "|> range(start: %s, stop: %s) " +
+                        "|> filter(fn: (r) => contains(value: r.id, set: %s)) " +
+                        "|> filter(fn: (r) => contains(value: r._field, set: %s)) " +
+                        "|> pivot(rowKey:[\"_time\", \"id\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
+                bucket, start.toString(), end.toString(), devicesArr, metricsArr
+        );
+
+        List<FluxTable> tables = influxDBClient.getQueryApi().query(flux);
+
+        Map<String, List<DataPointDto>> devicePointsMap = new HashMap<>();
+
+        for (FluxTable table : tables) {
+            for (FluxRecord record : table.getRecords()) {
+                String deviceId = (String) record.getValueByKey("id");
+                Instant timestamp = record.getTime();
+
+                Map<String, Double> dynamicValues = new HashMap<>();
+
+                for (String metric : metrics) {
+                    Object rawValue = record.getValueByKey(metric);
+                    if (rawValue != null) {
+                        dynamicValues.put(metric, ((Number) rawValue).doubleValue());
+                    }
+                }
+
+                devicePointsMap
+                        .computeIfAbsent(deviceId, k -> new ArrayList<>())
+                        .add(new DataPointDto(timestamp, dynamicValues));
+            }
+        }
+
+        return devicePointsMap.entrySet().stream()
+                .map(entry -> new DeviceMetricsDto(
+                        entry.getKey(),
+                        entry.getValue()
+                ))
+                .collect(Collectors.toList());
+    }
+
+    public List<InterfaceMetricsDto> getInterfaceMetrics(
+            List<String> interfaces,
+            List<String> metrics,
+            Instant start,
+            Instant end) {
+
+        if (interfaces == null || interfaces.isEmpty() || metrics == null || metrics.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String deviceInterfaceFilter = interfaces.stream()
+                .map(pair -> {
+                    String[] parts = pair.split(":");
+                    return String.format("(r[\"device_id\"] == \"%s\" and r[\"if_index\"] == \"%s\")",
+                            parts[0], parts[1]);
+                })
+                .collect(Collectors.joining(" or "));
+
+        String metricsFilter = metrics.stream()
+                .map(m -> String.format("r[\"_field\"] == \"%s\"", m))
+                .collect(Collectors.joining(" or "));
+
+        String fluxQuery = String.format(
+                "from(bucket: \"%s\")\n" +
+                        "  |> range(start: %s, stop: %s)\n" +
+                        "  |> filter(fn: (r) => r[\"_measurement\"] == \"interface_statistics\")\n" +
+                        "  |> filter(fn: (r) => %s)\n" +
+                        "  |> filter(fn: (r) => %s)\n" +
+                        "  |> pivot(rowKey:[\"_time\", \"device_id\", \"if_index\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
+                bucket, start.toString(), end.toString(), deviceInterfaceFilter, metricsFilter
+        );
+
+        List<FluxTable> tables = influxDBClient.getQueryApi().query(fluxQuery);
+
+        Map<String, List<DataPointDto>> groupedData = new HashMap<>();
+
+        for (FluxTable table : tables) {
+            for (FluxRecord record : table.getRecords()) {
+                String deviceId = (String) record.getValueByKey("device_id");
+                String ifIndex = (String) record.getValueByKey("if_index");
+                String compositeKey = deviceId + "_" + ifIndex;
+
+                Instant timestamp = record.getTime();
+                Map<String, Double> valuesMap = new HashMap<>();
+
+                for (String metric : metrics) {
+                    Object val = record.getValueByKey(metric);
+                    if (val instanceof Number number) {
+                        valuesMap.put(metric, number.doubleValue());
+                    }
+                }
+
+                groupedData.computeIfAbsent(compositeKey, k -> new ArrayList<>())
+                        .add(new DataPointDto(timestamp, valuesMap));
+            }
+        }
+
+        return groupedData.entrySet().stream()
+                .map(entry -> {
+                    String[] parts = entry.getKey().split("_");
+                    return new InterfaceMetricsDto(parts[0], parts[1], entry.getValue());
+                })
+                .collect(Collectors.toList());
+    }
+}
