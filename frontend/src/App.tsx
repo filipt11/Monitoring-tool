@@ -1,9 +1,13 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 
+import { AdminRoute } from "@/components/AdminRoute";
 import { GuestRoute, ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout, AuthLayout } from "@/components/layout/AppLayout";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AdminAppConfigPage } from "@/pages/admin/AdminAppConfigPage";
+import { AdminManageDevicesPage } from "@/pages/admin/AdminManageDevicesPage";
+import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { DeviceDetailsPage } from "@/pages/DeviceDetailsPage";
 import { DevicesPage } from "@/pages/DevicesPage";
@@ -26,6 +30,18 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/dashboard/devices" element={<DevicesPage />} />
             <Route path="/dashboard/devices/:deviceId" element={<DeviceDetailsPage />} />
+
+            <Route element={<AdminRoute />}>
+              <Route path="/dashboard/admin/users" element={<AdminUsersPage />} />
+              <Route
+                path="/dashboard/admin/devices"
+                element={<AdminManageDevicesPage />}
+              />
+              <Route
+                path="/dashboard/admin/configuration"
+                element={<AdminAppConfigPage />}
+              />
+            </Route>
           </Route>
         </Route>
 

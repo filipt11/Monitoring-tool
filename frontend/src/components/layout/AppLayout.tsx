@@ -1,7 +1,17 @@
-import { Activity, LayoutDashboard, Server } from "lucide-react";
+import {
+  Activity,
+  LayoutDashboard,
+  Server,
+  ServerCog,
+  Settings,
+  Shield,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdmin } from "@/lib/auth";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,13 +22,59 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
 import { cn, getInitials } from "@/lib/utils";
 
-const navItems = [
+const mainNavItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/dashboard/devices", label: "Devices", icon: Server },
 ];
+
+const adminNavItems = [
+  { to: "/dashboard/admin/users", label: "Users", icon: Users },
+  {
+    to: "/dashboard/admin/devices",
+    label: "Manage Devices",
+    icon: ServerCog,
+  },
+  {
+    to: "/dashboard/admin/configuration",
+    label: "Application configuration",
+    icon: Settings,
+  },
+];
+
+function NavItem({
+  to,
+  label,
+  icon: Icon,
+  end,
+  nested,
+}: {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end?: boolean;
+  nested?: boolean;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      className={({ isActive }) =>
+        cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+          nested && "pl-9",
+          isActive
+            ? "bg-sidebar-accent text-sidebar-accent-foreground"
+            : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
+        )
+      }
+    >
+      <Icon className="size-4 shrink-0" />
+      <span className="truncate">{label}</span>
+    </NavLink>
+  );
+}
 
 export function AppLayout() {
   const { user, logout } = useAuth();
@@ -43,24 +99,36 @@ export function AppLayout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-4">
-          {navItems.map(({ to, label, icon: Icon }) => (
-            <NavLink
+          {mainNavItems.map(({ to, label, icon }) => (
+            <NavItem
               key={to}
               to={to}
+              label={label}
+              icon={icon}
               end={to === "/dashboard"}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
-                )
-              }
-            >
-              <Icon className="size-4" />
-              {label}
-            </NavLink>
+            />
           ))}
+
+          {isAdmin(user) && (
+            <>
+              <div className="my-2 border-t border-sidebar-border" />
+              <div className="flex items-center gap-2 px-3 py-2">
+                <Shield className="text-muted-foreground size-4 shrink-0" />
+                <span className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  Administration
+                </span>
+              </div>
+              {adminNavItems.map(({ to, label, icon }) => (
+                <NavItem
+                  key={to}
+                  to={to}
+                  label={label}
+                  icon={icon}
+                  nested
+                />
+              ))}
+            </>
+          )}
         </nav>
 
         <div className="border-t border-sidebar-border p-4">
@@ -148,15 +216,6 @@ export function AuthLayout() {
         </div>
 
         <Outlet />
-
-        <Separator className="my-8" />
-
-        <p className="text-muted-foreground text-center text-xs">
-          Backend API expected at{" "}
-          <code className="bg-muted rounded px-1.5 py-0.5">
-            http://localhost:8080
-          </code>
-        </p>
       </div>
     </div>
   );

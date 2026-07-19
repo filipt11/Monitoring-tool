@@ -31,9 +31,9 @@ public class DeviceService {
                 .map(deviceMapper::toNoCredentialsDto);
     }
 
-    public DeviceNoCredentialsResponse getDeviceById(Long id) {
+    public DeviceResponse getDeviceById(Long id) {
         return deviceRepository.findById(id)
-                .map(deviceMapper::toNoCredentialsDto)
+                .map(deviceMapper::toResponseDto)
                 .orElseThrow(() -> new DeviceNotFoundException());
     }
 

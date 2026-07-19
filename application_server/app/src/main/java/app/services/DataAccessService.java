@@ -1,20 +1,28 @@
 package app.services;
 
+import app.dtos.data.AvailabilityBucketDto;
 import app.dtos.data.DataPointDto;
+import app.dtos.data.DeviceAvailabilityDto;
 import app.dtos.data.DeviceMetricsDto;
 import app.dtos.data.InterfaceMetricsDto;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
-import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class DataAccessService {
+    private static final Logger log = LoggerFactory.getLogger(DataAccessService.class);
+
     private final InfluxDBClient influxDBClient;
 
     @Value("${influx.bucket}")
@@ -74,6 +82,73 @@ public class DataAccessService {
                 .map(entry -> new DeviceMetricsDto(
                         entry.getKey(),
                         entry.getValue()
+                ))
+                .collect(Collectors.toList());
+    }
+    
+    public List<DeviceAvailabilityDto> getDeviceAvailability(
+            List<String> deviceIds,
+            Instant start,
+            Instant end) {
+
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Instant normalizedStart = start.truncatedTo(ChronoUnit.HOURS);
+        Instant normalizedEnd = end.truncatedTo(ChronoUnit.HOURS);
+
+        log.info(
+                "Fetching device availability from Influx (cache miss): devices={}, start={}, end={}",
+                deviceIds,
+                normalizedStart,
+                normalizedEnd
+        );
+
+        String devicesArr = "[\"" + String.join("\", \"", deviceIds) + "\"]";
+
+        String flux = String.format(
+                "from(bucket: \"%s\") " +
+                        "|> range(start: %s, stop: %s) " +
+                        "|> filter(fn: (r) => contains(value: r.id, set: %s)) " +
+                        "|> filter(fn: (r) => r._field == \"status\") " +
+                        "|> aggregateWindow(every: 1h, fn: mean, createEmpty: false)",
+                bucket, normalizedStart.toString(), normalizedEnd.toString(), devicesArr
+        );
+
+        List<FluxTable> tables = influxDBClient.getQueryApi().query(flux);
+
+        Map<String, List<AvailabilityBucketDto>> bucketsByDevice = new HashMap<>();
+        for (String deviceId : deviceIds) {
+            bucketsByDevice.put(deviceId, new ArrayList<>());
+        }
+
+        for (FluxTable table : tables) {
+            for (FluxRecord record : table.getRecords()) {
+                String deviceId = (String) record.getValueByKey("id");
+                if (deviceId == null || !bucketsByDevice.containsKey(deviceId)) {
+                    continue;
+                }
+
+                Object rawValue = record.getValue();
+                Instant timestamp = record.getTime();
+                if (rawValue == null || timestamp == null) {
+                    continue;
+                }
+
+                double hourlyMean = ((Number) rawValue).doubleValue();
+                String status = hourlyMean < 1.0 ? "down" : "up";
+
+                bucketsByDevice
+                        .computeIfAbsent(deviceId, ignored -> new ArrayList<>())
+                        .add(new AvailabilityBucketDto(timestamp, status));
+            }
+        }
+
+        return deviceIds.stream()
+                .map(deviceId -> new DeviceAvailabilityDto(
+                        deviceId,
+                        bucketsByDevice.getOrDefault(deviceId, Collections.emptyList())
                 ))
                 .collect(Collectors.toList());
     }

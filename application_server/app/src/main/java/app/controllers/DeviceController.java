@@ -29,7 +29,7 @@ public class DeviceController {
     }
 
     @GetMapping("/api/devices/{id}")
-    public ResponseEntity<DeviceNoCredentialsResponse> getDeviceById(@PathVariable Long id) {
+    public ResponseEntity<DeviceResponse> getDeviceById(@PathVariable Long id) {
         return ResponseEntity.ok(deviceService.getDeviceById(id));
     }
 

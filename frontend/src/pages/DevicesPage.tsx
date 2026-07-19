@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Search, Server } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckCircle2, Search, Server, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { apiFetch } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,88 +11,28 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { fetchDeviceList, type DeviceRecord } from "@/lib/devicesApi";
+import {
+  DEVICE_STATUS_UP,
+  extractLatestMetrics,
+  fetchDeviceMetrics,
+  statusLabel,
+} from "@/lib/metricsApi";
 
-interface DeviceRecord {
-  id: number;
-  hostname: string;
-  ipAddress: string;
-  type?: string;
-  status?: string;
+interface DeviceRow extends DeviceRecord {
+  status?: number;
 }
 
-const fallbackDevices: DeviceRecord[] = [
-  {
-    id: 1,
-    hostname: "core-router-01",
-    ipAddress: "10.0.0.1",
-    type: "Router",
-    status: "Online",
-  },
-  {
-    id: 2,
-    hostname: "switch-edge-02",
-    ipAddress: "10.0.0.12",
-    type: "Switch",
-    status: "Online",
-  },
-  {
-    id: 3,
-    hostname: "firewall-main",
-    ipAddress: "10.0.0.254",
-    type: "Firewall",
-    status: "Warning",
-  },
-];
-
-function normalizeDevices(payload: unknown): DeviceRecord[] {
-  if (Array.isArray(payload)) {
-    return payload.flatMap((item) => {
-      if (typeof item !== "object" || item === null) {
-        return [];
-      }
-
-      const data = item as Record<string, unknown>;
-      const vendor = typeof data.vendor === "string" ? data.vendor : undefined;
-      const model = typeof data.model === "string" ? data.model : undefined;
-      const type =
-        typeof data.type === "string"
-          ? data.type
-          : [vendor, model].filter(Boolean).join(" / ") || undefined;
-
-      return [
-        {
-          id: Number(data.id ?? data.deviceId ?? 0) || Date.now() + Math.random(),
-          hostname: String(data.hostname ?? data.name ?? "Unnamed device"),
-          ipAddress: String(data.ipAddress ?? data.ip ?? data.address ?? "Unknown"),
-          type,
-          status: typeof data.status === "string" ? data.status : "Online",
-        },
-      ];
-    });
-  }
-
-  if (payload && typeof payload === "object") {
-    const data = payload as Record<string, unknown>;
-    const nestedCandidates = [data.content, data.devices, data.items, data.data];
-
-    for (const nested of nestedCandidates) {
-      if (Array.isArray(nested)) {
-        return normalizeDevices(nested);
-      }
-    }
-  }
-
-  return [];
-}
+const METRICS_LOOKBACK_MS = 15 * 60 * 1000;
 
 type SortKey = "hostname" | "ipAddress" | "type" | "status";
 type SortDirection = "asc" | "desc";
 
 export function DevicesPage() {
-  const [devices, setDevices] = useState<DeviceRecord[]>(fallbackDevices);
+  const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("hostname");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -104,60 +43,55 @@ export function DevicesPage() {
 
     async function loadDevices() {
       setLoading(true);
-      setNotice(null);
+      setError(null);
 
-      const trimmedQuery = query.trim();
-      const searchPaths = trimmedQuery
-        ? [
-            `/api/devices/search/hostname?name=${encodeURIComponent(trimmedQuery)}`,
-            `/api/devices/search/ip?ip=${encodeURIComponent(trimmedQuery)}`,
-          ]
-        : ["/api/devices"];
+      try {
+        const { devices: deviceList } = await fetchDeviceList(query);
+        if (!active) return;
 
-      let lastError: unknown = null;
+        if (deviceList.length === 0) {
+          setDevices([]);
+          return;
+        }
 
-      for (const path of searchPaths) {
+        const end = new Date();
+        const start = new Date(end.getTime() - METRICS_LOOKBACK_MS);
+
+        let devicesWithStatus: DeviceRow[] = deviceList;
+
         try {
-          const data = await apiFetch<unknown>(path);
-          const normalizedDevices = normalizeDevices(data);
+          const metricsResponse = await fetchDeviceMetrics({
+            deviceIds: deviceList.map((device) => String(device.id)),
+            metrics: ["status"],
+            start,
+            end,
+          });
 
-          if (active && normalizedDevices.length > 0) {
-            setDevices(normalizedDevices);
-            setNotice(null);
-            setLoading(false);
-            return;
+          if (!active) return;
+
+          const metricsByDevice = extractLatestMetrics(metricsResponse);
+          devicesWithStatus = deviceList.map((device) => ({
+            ...device,
+            status: metricsByDevice.get(String(device.id))?.status,
+          }));
+        } catch (metricsError) {
+          if (import.meta.env.DEV) {
+            console.warn("Device status metrics unavailable", metricsError);
           }
-
-          // If this endpoint returned no devices, keep trying other search paths.
-          if (active && Array.isArray(data) && normalizedDevices.length === 0) {
-            continue;
-          }
-        } catch (error) {
-          lastError = error;
         }
-      }
 
-      if (active) {
-        const filteredFallback = trimmedQuery
-          ? fallbackDevices.filter((device) => {
-              const haystack = `${device.hostname} ${device.ipAddress} ${device.type ?? ""} ${device.status ?? ""}`.toLowerCase();
-              return haystack.includes(trimmedQuery.toLowerCase());
-            })
-          : fallbackDevices;
-
-        setDevices(filteredFallback);
-        setNotice(
-          trimmedQuery
-            ? "Search endpoints are unavailable, so sample results are shown."
-            : "The backend is unavailable right now, so sample devices are shown.",
-        );
-      }
-
-      if (active) {
-        if (lastError && import.meta.env.DEV) {
-          console.warn("Devices endpoint unavailable, using demo data", lastError);
+        setDevices(devicesWithStatus);
+      } catch (fetchError) {
+        if (active) {
+          setDevices([]);
+          setError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Failed to load devices.",
+          );
         }
-        setLoading(false);
+      } finally {
+        if (active) setLoading(false);
       }
     }
 
@@ -174,12 +108,27 @@ export function DevicesPage() {
 
     const searchedDevices = normalizedQuery
       ? safeDevices.filter((device) => {
-          const haystack = `${device.hostname} ${device.ipAddress} ${device.type ?? ""} ${device.status ?? ""}`.toLowerCase();
+          const haystack = `${device.hostname} ${device.ipAddress} ${device.type ?? ""} ${statusLabel(device.status)}`.toLowerCase();
           return haystack.includes(normalizedQuery);
         })
       : safeDevices;
 
     const sortedDevices = [...searchedDevices].sort((left, right) => {
+      if (sortKey === "status") {
+        const leftValue = left.status ?? -1;
+        const rightValue = right.status ?? -1;
+
+        if (leftValue < rightValue) {
+          return sortDirection === "asc" ? -1 : 1;
+        }
+
+        if (leftValue > rightValue) {
+          return sortDirection === "asc" ? 1 : -1;
+        }
+
+        return 0;
+      }
+
       const leftValue = (left[sortKey] ?? "").toString().toLowerCase();
       const rightValue = (right[sortKey] ?? "").toString().toLowerCase();
 
@@ -247,8 +196,7 @@ export function DevicesPage() {
                 Device inventory
               </CardTitle>
               <CardDescription>
-                The list tries the backend search endpoints first and falls back to
-                sample data when the API is unavailable.
+                Status is based on the latest monitoring sample from the last 15 minutes.
               </CardDescription>
             </div>
 
@@ -264,13 +212,11 @@ export function DevicesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {notice ? (
-            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-400">
-              {notice}
+          {error ? (
+            <div className="mb-4 flex min-h-40 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-center text-sm text-destructive">
+              {error}
             </div>
-          ) : null}
-
-          {loading ? (
+          ) : loading ? (
             <div className="text-muted-foreground flex min-h-40 items-center justify-center rounded-lg border border-dashed text-sm">
               Loading devices...
             </div>
@@ -327,28 +273,46 @@ export function DevicesPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border bg-background/80">
-                    {pagedDevices.map((device) => (
-                      <tr key={device.id} className="hover:bg-muted/40">
-                        <td className="px-4 py-3">
-                          <Button variant="link" className="h-auto p-0 text-sm" asChild>
-                            <Link to={`/dashboard/devices/${device.id}`}>
-                              {device.hostname}
-                            </Link>
-                          </Button>
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {device.ipAddress}
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {device.type ?? "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
-                            {device.status ?? "Online"}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {pagedDevices.map((device) => {
+                      const isOnline = device.status === DEVICE_STATUS_UP;
+                      const isOffline = device.status === 0;
+
+                      return (
+                        <tr key={device.id} className="hover:bg-muted/40">
+                          <td className="px-4 py-3">
+                            <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                              <Link to={`/dashboard/devices/${device.id}`}>
+                                {device.hostname}
+                              </Link>
+                            </Button>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {device.ipAddress}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {device.type ?? "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                isOnline
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                  : isOffline
+                                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                                    : "border-border bg-muted/30 text-muted-foreground"
+                              }`}
+                            >
+                              {isOnline ? (
+                                <CheckCircle2 className="size-3.5" />
+                              ) : isOffline ? (
+                                <XCircle className="size-3.5" />
+                              ) : null}
+                              {statusLabel(device.status)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

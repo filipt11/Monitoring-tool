@@ -5,7 +5,7 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 from loguru import logger
 
 # Specify polling interval
-POLLING_INERVAL = 60
+POLLING_INERVAL = 300
 
 # Specify max number of devices polled in once
 MAX_DEVICES = 50

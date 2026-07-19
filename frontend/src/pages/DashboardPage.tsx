@@ -1,21 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  CheckCircle2,
-  Server,
-  Wifi,
-} from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { CheckCircle2, Server, XCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -24,127 +11,109 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { apiFetch } from "@/api/client";
+import { fetchDeviceList, type DeviceRecord } from "@/lib/devicesApi";
+import {
+  DEVICE_STATUS_UP,
+  extractLatestMetrics,
+  fetchDeviceMetrics,
+  statusLabel,
+} from "@/lib/metricsApi";
 
-interface MetricPoint {
-  timestamp: string;
-  values: Record<string, number>;
+interface TopDeviceRow extends DeviceRecord {
+  status?: number;
+  cpuUsage?: number;
+  memoryUsagePct?: number;
 }
 
-interface DeviceMetrics {
-  deviceId: string;
-  dataPoints: MetricPoint[];
+const TOP_DEVICE_COUNT = 10;
+const METRICS_LOOKBACK_MS = 15 * 60 * 1000;
+
+function formatMemoryPct(value?: number): string {
+  if (value == null) return "—";
+  return `${(Math.round(value * 100) / 100).toFixed(2)}%`;
 }
 
-type MetricChartPoint = {
-  time: string;
-  cpu_usage: number;
-};
-
-const statCards = [
-  {
-    title: "Active devices",
-    value: "24",
-    change: "+3 this week",
-    icon: Server,
-  },
-  {
-    title: "Healthy interfaces",
-    value: "96%",
-    change: "Stable",
-    icon: CheckCircle2,
-  },
-  {
-    title: "Open alerts",
-    value: "2",
-    change: "Needs attention",
-    icon: AlertTriangle,
-  },
-  {
-    title: "Avg. throughput",
-    value: "52 Mbps",
-    change: "+8% vs yesterday",
-    icon: Wifi,
-  },
-];
-
+function formatCpu(value?: number): string {
+  if (value == null) return "—";
+  return `${Math.round(value)}%`;
+}
 export function DashboardPage() {
   const { user } = useAuth();
-  const isAdmin = user?.authorities.some(
-    (authority) => authority.authority === "ROLE_ADMIN",
-  );
-  const [metrics, setMetrics] = useState<MetricChartPoint[]>([]);
-  const [metricsLoading, setMetricsLoading] = useState(true);
-  const [metricsError, setMetricsError] = useState<string | null>(null);
+
+  const [activeDeviceCount, setActiveDeviceCount] = useState<number | null>(null);
+  const [topDevices, setTopDevices] = useState<TopDeviceRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    async function loadMetrics() {
-      setMetricsLoading(true);
-      setMetricsError(null);
-
-      const endDate = new Date();
-      const startDate = new Date(endDate.getTime() - 15 * 60 * 1000);
-      const query = new URLSearchParams({
-        deviceIds: "3",
-        metrics: "cpu_usage",
-        start: startDate.toISOString(),
-        end: endDate.toISOString(),
-      }).toString();
+    async function loadTopDevices() {
+      setLoading(true);
+      setError(null);
 
       try {
-        const data = await apiFetch<DeviceMetrics[]>(
-          `/api/data/metrics/devices?${query}`,
-        );
+        const { devices, totalElements } = await fetchDeviceList();
+        if (!active) return;
 
-        if (!active) {
+        setActiveDeviceCount(totalElements);
+
+        if (devices.length === 0) {
+          setTopDevices([]);
           return;
         }
 
-        const deviceMetrics = data[0];
+        const end = new Date();
+        const start = new Date(end.getTime() - METRICS_LOOKBACK_MS);
+        const metricsResponse = await fetchDeviceMetrics({
+          deviceIds: devices.map((device) => String(device.id)),
+          metrics: ["cpu_usage", "memory_usage_pct", "status"],
+          start,
+          end,
+        });
 
-        if (!deviceMetrics?.dataPoints?.length) {
-          setMetrics([]);
-          setMetricsError("No CPU metrics found for device 3.");
-          return;
+        if (!active) return;
+
+        const metricsByDevice = extractLatestMetrics(metricsResponse);
+
+        const rankedDevices: TopDeviceRow[] = devices
+          .map((device) => {
+            const metrics = metricsByDevice.get(String(device.id));
+            return {
+              ...device,
+              status: metrics?.status,
+              cpuUsage: metrics?.cpuUsage,
+              memoryUsagePct: metrics?.memoryUsagePct,
+            };
+          })
+          .sort((left, right) => (right.cpuUsage ?? -1) - (left.cpuUsage ?? -1))
+          .slice(0, TOP_DEVICE_COUNT);
+
+        setTopDevices(rankedDevices);
+      } catch (fetchError) {
+        if (active) {
+          setError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Failed to load top utilized devices.",
+          );
+          setTopDevices([]);
         }
-
-        const chartData = deviceMetrics.dataPoints.map((point) => ({
-          time: new Date(point.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          cpu_usage: point.values?.cpu_usage ?? 0,
-        }));
-
-        setMetrics(chartData);
-      } catch (error) {
-        setMetricsError(
-          error instanceof Error ? error.message : "Failed to load CPU metrics.",
-        );
       } finally {
-        setMetricsLoading(false);
+        if (active) setLoading(false);
       }
     }
 
-    void loadMetrics();
+    void loadTopDevices();
 
     return () => {
       active = false;
     };
   }, []);
 
-  const metricData = useMemo<MetricChartPoint[]>(
-    () =>
-      metrics.length > 0
-        ? metrics
-        : [
-            { time: "12:00", cpu_usage: 0 },
-            { time: "12:01", cpu_usage: 0 },
-            { time: "12:02", cpu_usage: 0 },
-          ],
-    [metrics],
+  const hasCpuData = useMemo(
+    () => topDevices.some((device) => device.cpuUsage != null),
+    [topDevices],
   );
 
   return (
@@ -154,126 +123,116 @@ export function DashboardPage() {
           Welcome back, {user?.username}
         </h2>
         <p className="text-muted-foreground max-w-2xl text-sm">
-          This is your monitoring home base. Charts below use sample data for
-          now — we&apos;ll wire them to live metrics from the backend next.
+          Overview of your most utilized devices based on the latest CPU readings.
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map(({ title, value, change, icon: Icon }) => (
-          <Card key={title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{title}</CardTitle>
-              <Icon className="text-muted-foreground size-4" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{value}</div>
-              <p className="text-muted-foreground text-xs">{change}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="xl:col-span-2">
-          <CardHeader>
-            <CardTitle>Network throughput</CardTitle>
-            <CardDescription>
-              Sample 24h trend — Recharts is ready for real API data
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-[320px]">
-            {metricsLoading ? (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                Loading CPU metrics...
-              </div>
-            ) : metricsError ? (
-              <div className="flex h-full items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-center text-sm text-destructive">
-                {metricsError}
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={metricData}>
-                  <defs>
-                    <linearGradient id="throughputFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="5%"
-                        stopColor="var(--color-chart-1)"
-                        stopOpacity={0.35}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="var(--color-chart-1)"
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                  <XAxis
-                    dataKey="time"
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--color-popover)",
-                      borderColor: "var(--color-border)",
-                      borderRadius: "0.5rem",
-                      color: "var(--color-popover-foreground)",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="cpu_usage"
-                    stroke="var(--color-chart-1)"
-                    fill="url(#throughputFill)"
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle>Session</CardTitle>
-            <CardDescription>Your authenticated profile</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active devices</CardTitle>
+            <Server className="text-muted-foreground size-4" />
           </CardHeader>
-          <CardContent className="space-y-4 text-sm">
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <div className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-full">
-                <Activity className="size-5" />
-              </div>
-              <div>
-                <p className="font-medium">{user?.username}</p>
-                <p className="text-muted-foreground text-xs">{user?.email}</p>
-              </div>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {activeDeviceCount == null ? "—" : activeDeviceCount}
             </div>
-
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Role</span>
-                <span>{user?.authorities[0]?.authority ?? "—"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Admin access</span>
-                <span>{isAdmin ? "Yes" : "No"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Account status</span>
-                <span>{user?.isBanned ? "Banned" : "Active"}</span>
-              </div>
-            </div>
+            <p className="text-muted-foreground text-xs">Registered in the monitoring system</p>
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-border/60">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Server className="size-5" />
+            Top {TOP_DEVICE_COUNT} utilized devices
+          </CardTitle>
+          <CardDescription>
+            Ranked by the most recent CPU usage sample from the last 15 minutes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-muted-foreground flex min-h-64 items-center justify-center rounded-lg border border-dashed text-sm">
+              Loading top utilized devices...
+            </div>
+          ) : error ? (
+            <div className="flex min-h-64 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-center text-sm text-destructive">
+              {error}
+            </div>
+          ) : topDevices.length === 0 ? (
+            <div className="text-muted-foreground flex min-h-64 items-center justify-center rounded-lg border border-dashed text-sm">
+              No devices available to rank.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {!hasCpuData && (
+                <p className="text-muted-foreground text-xs">
+                  No recent CPU metrics found. Devices are listed without utilization data.
+                </p>
+              )}
+
+              <div className="overflow-hidden rounded-lg border">
+                <table className="min-w-full divide-y divide-border text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium">#</th>
+                      <th className="px-4 py-3 text-left font-medium">Name</th>
+                      <th className="px-4 py-3 text-left font-medium">Address</th>
+                      <th className="px-4 py-3 text-left font-medium">Status</th>
+                      <th className="px-4 py-3 text-left font-medium">CPU usage</th>
+                      <th className="px-4 py-3 text-left font-medium">Memory usage</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border bg-background/80">
+                    {topDevices.map((device, index) => {
+                      const isOnline = device.status === DEVICE_STATUS_UP;
+                      const isOffline = device.status === 0;
+
+                      return (
+                        <tr key={device.id} className="hover:bg-muted/40">
+                          <td className="px-4 py-3 text-muted-foreground">{index + 1}</td>
+                          <td className="px-4 py-3">
+                            <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                              <Link to={`/dashboard/devices/${device.id}`}>
+                                {device.hostname}
+                              </Link>
+                            </Button>
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">{device.ipAddress}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                isOnline
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                  : isOffline
+                                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                                    : "border-border bg-muted/30 text-muted-foreground"
+                              }`}
+                            >
+                              {isOnline ? (
+                                <CheckCircle2 className="size-3.5" />
+                              ) : isOffline ? (
+                                <XCircle className="size-3.5" />
+                              ) : null}
+                              {statusLabel(device.status)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-mono">{formatCpu(device.cpuUsage)}</td>
+                          <td className="px-4 py-3 font-mono">
+                            {formatMemoryPct(device.memoryUsagePct)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
