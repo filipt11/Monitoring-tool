@@ -1,13 +1,14 @@
 package app.entities;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.Subselect;
+
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -42,4 +43,10 @@ public class Device {
     private String password;
     private Integer port;
     private boolean https;
+
+    @ManyToMany(mappedBy = "devices")
+    private List<DeviceGroup> deviceGroups;
+
+    @ManyToMany(mappedBy = "devices")
+    private List<DashboardSection> sections;
 }

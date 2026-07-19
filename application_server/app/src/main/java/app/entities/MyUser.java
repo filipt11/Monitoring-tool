@@ -25,6 +25,9 @@ public class MyUser {
     @OneToMany(mappedBy = "myUser", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RefreshToken> refreshTokens;
 
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Dashboard> dashboards;
+
     @Column(columnDefinition = "boolean default false")
     private boolean isBanned;
 }
