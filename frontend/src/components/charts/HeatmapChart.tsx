@@ -30,6 +30,11 @@ function formatCompactHour(hour: number): string {
   return `${displayHour} ${period}`;
 }
 
+function formatHourRange(hour: number): string {
+  const nextHour = (hour + 1) % 24;
+  return `${formatCompactHour(hour)} – ${formatCompactHour(nextHour)}`;
+}
+
 function cellClassName(status: "up" | "down" | "unknown" | undefined): string {
   switch (status) {
     case "up":
@@ -160,7 +165,7 @@ export const HeatmapChart = React.memo(function HeatmapChart({
                         <td key={`${day.key}-${hour}`} className="border-b border-border/40 p-0.5">
                           <div
                             className={`h-4 w-full min-w-[1rem] rounded-[3px] transition-colors ${cellClassName(status)}`}
-                            title={`${day.key} ${formatCompactHour(hour)} - ${status ?? "no data"}`}
+                            title={`${day.key} ${formatHourRange(hour)} - ${status ?? "no data"}`}
                           />
                         </td>
                       );

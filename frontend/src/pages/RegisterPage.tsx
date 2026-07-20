@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { getAuthErrorMessage, useAuth } from "@/contexts/AuthContext";
+import { defaultAuthenticatedPath } from "@/lib/routes";
 import {
   registerSchema,
   type RegisterFormValues,
@@ -51,7 +52,7 @@ export function RegisterPage() {
     try {
       await registerUser(values);
       toast.success("Account created successfully");
-      navigate("/dashboard");
+      navigate(defaultAuthenticatedPath);
     } catch (error) {
       toast.error(getAuthErrorMessage(error));
     } finally {

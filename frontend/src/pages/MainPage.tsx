@@ -18,6 +18,7 @@ import {
   fetchDeviceMetrics,
   statusLabel,
 } from "@/lib/metricsApi";
+import { routes } from "@/lib/routes";
 
 interface TopDeviceRow extends DeviceRecord {
   status?: number;
@@ -37,7 +38,8 @@ function formatCpu(value?: number): string {
   if (value == null) return "—";
   return `${Math.round(value)}%`;
 }
-export function DashboardPage() {
+
+export function MainPage() {
   const { user } = useAuth();
 
   const [activeDeviceCount, setActiveDeviceCount] = useState<number | null>(null);
@@ -195,7 +197,7 @@ export function DashboardPage() {
                           <td className="px-4 py-3 text-muted-foreground">{index + 1}</td>
                           <td className="px-4 py-3">
                             <Button variant="link" className="h-auto p-0 text-sm" asChild>
-                              <Link to={`/dashboard/devices/${device.id}`}>
+                              <Link to={routes.deviceDetails(String(device.id))}>
                                 {device.hostname}
                               </Link>
                             </Button>

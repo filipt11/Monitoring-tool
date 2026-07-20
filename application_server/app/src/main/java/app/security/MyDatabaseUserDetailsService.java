@@ -2,7 +2,6 @@ package app.security;
 
 import app.entities.MyUser;
 import app.repositories.MyUserRepository;
-import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,10 +23,6 @@ public class MyDatabaseUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         MyUser user = myUserRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-        if (user.isBanned()) {
-            throw new LockedException("You account has been disabled.");
-        }
 
         List<GrantedAuthority> authorities =
                 List.of(new SimpleGrantedAuthority(user.getRole()));

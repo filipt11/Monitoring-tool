@@ -79,11 +79,15 @@ public class AuthService {
                 )
         );
 
+        MyUser user = myUserRepository.findByUsername(loginRequest.username())
+                .orElseThrow(UserNotFoundException::new);
+
+        if (user.isBanned()) {
+            throw new AccountDisabledException();
+        }
+
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String jwt = jwtUtils.generateToken(userDetails.getUsername());
-        MyUser user = myUserRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new UserNotFoundException());
-
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user.getId());
 
         return new JwtResponse(jwt, refreshToken.getToken());

@@ -9,6 +9,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -68,6 +69,12 @@ public class GlobalExceptionHandler {
                 .body(new ExceptionMessage("Data conflict occurred (e.g., duplicate entry)", request.getRequestURI()));
     }
 
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ExceptionMessage> handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ExceptionMessage("Invalid username or password", request.getRequestURI()));
+    }
+
     // 500 - Internal Server Error
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ExceptionMessage> handleGeneral(Exception ex, HttpServletRequest request) {
@@ -124,6 +131,12 @@ public class GlobalExceptionHandler {
                 .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(AccountDisabledException.class)
+    public ResponseEntity<ExceptionMessage> handleAccountDisabled(AccountDisabledException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(InternalAuthenticationServiceException.class)
     public ResponseEntity<ExceptionMessage> handleAuthenticationServiceException(InternalAuthenticationServiceException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -133,6 +146,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DeviceNotFoundException.class)
     public ResponseEntity<ExceptionMessage> handleDeviceNotFound(DeviceNotFoundException ex, HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DeviceGroupNotFoundException.class)
+    public ResponseEntity<ExceptionMessage> handleDeviceGroupNotFound(DeviceGroupNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DeviceGroupAccessDeniedException.class)
+    public ResponseEntity<ExceptionMessage> handleDeviceGroupAccessDenied(DeviceGroupAccessDeniedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
     }
 
@@ -156,7 +181,7 @@ public class GlobalExceptionHandler {
                 errorMessage,
                 request.getRequestURI()
         );
-        
+
         return ResponseEntity
                 .status(ex.getStatusCode())
                 .body(exceptionMessage);

@@ -7,15 +7,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TimeSeriesChart, HeatmapChart } from "@/components/charts";
 import {
   DEVICE_STATUS_UP,
+  DEVICE_STATUS_DOWN,
   fetchDeviceAvailability,
   fetchDeviceInfo,
   fetchDeviceMetrics,
+  findLatestPointWithField,
   type DeviceInfo,
 } from "@/lib/metricsApi";
-import type { AvailabilityCell, TimeSeriesChartData } from "@/lib/charts.types";
+import {
+  bucketTimestampToAvailabilityCell,
+  type AvailabilityCell,
+  type TimeSeriesChartData,
+} from "@/lib/charts.types";
 import { cn } from "@/lib/utils";
+import { routes } from "@/lib/routes";
+import { createDefaultMetricsRange } from "@/lib/timeRangePresets";
 
-const DEFAULT_RANGE_MS = 3 * 60 * 60 * 1000;
 const HEATMAP_RANGE_MS = 14 * 24 * 60 * 60 * 1000;
 const HIGH_UTILIZATION_THRESHOLD = 90;
 
@@ -24,18 +31,10 @@ function isHighUtilization(value: number | null | undefined) {
 }
 
 interface LatestSnapshot {
-  timestamp: string;
-  status: number;
+  status?: number;
+  statusTimestamp?: string;
   cpuUsage?: number;
   memoryUsagePct?: number;
-}
-
-function pad(value: number): string {
-  return value.toString().padStart(2, "0");
-}
-
-function localDateKey(date: Date): string {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 function formatChartTimestamp(date: Date): string {
@@ -56,10 +55,7 @@ function getHeatmapRange() {
 }
 
 function createDefaultRange() {
-  return {
-    start: new Date(Date.now() - DEFAULT_RANGE_MS),
-    end: new Date(),
-  };
+  return createDefaultMetricsRange();
 }
 
 export function DeviceDetailsPage() {
@@ -146,21 +142,15 @@ export function DeviceDetailsPage() {
 
         setCpuChartData(chartRows);
 
-        const lastPoint = points[points.length - 1];
-        setLatestSnapshot((prev) =>
-          lastPoint
-            ? {
-                timestamp: lastPoint.timestamp,
-                status: lastPoint.values?.status ?? prev?.status ?? DEVICE_STATUS_UP,
-                cpuUsage: lastPoint.values?.cpu_usage ?? prev?.cpuUsage,
-                memoryUsagePct: prev?.memoryUsagePct,
-              }
-            : prev,
-        );
+        const latestStatus = findLatestPointWithField(points, "status");
+        const latestCpu = findLatestPointWithField(points, "cpu_usage");
 
-        if (chartRows.length === 0) {
-          setCpuError("No CPU metrics found for this device in the selected time range.");
-        }
+        setLatestSnapshot((prev) => ({
+          status: latestStatus?.values?.status ?? prev?.status,
+          statusTimestamp: latestStatus?.timestamp ?? prev?.statusTimestamp,
+          cpuUsage: latestCpu?.values?.cpu_usage ?? prev?.cpuUsage,
+          memoryUsagePct: prev?.memoryUsagePct,
+        }));
       } catch (fetchError) {
         if (active) {
           setCpuError(
@@ -218,24 +208,17 @@ export function DeviceDetailsPage() {
 
         setMemoryChartData(chartRows);
 
-        const lastPoint = [...points]
-          .reverse()
-          .find((point) => point.values?.memory_usage_pct != null);
+        const latestMemory = findLatestPointWithField(points, "memory_usage_pct");
 
         setLatestSnapshot((prev) =>
-          lastPoint
+          latestMemory
             ? {
-                timestamp: lastPoint.timestamp,
-                status: prev?.status ?? DEVICE_STATUS_UP,
-                cpuUsage: prev?.cpuUsage,
-                memoryUsagePct: lastPoint.values?.memory_usage_pct ?? prev?.memoryUsagePct,
+                ...prev,
+                memoryUsagePct:
+                  latestMemory.values?.memory_usage_pct ?? prev?.memoryUsagePct,
               }
             : prev,
         );
-
-        if (chartRows.length === 0) {
-          setMemoryError("No memory metrics found for this device in the selected time range.");
-        }
       } catch (fetchError) {
         if (active) {
           setMemoryError(
@@ -277,14 +260,9 @@ export function DeviceDetailsPage() {
           response.find((entry) => entry.deviceId === resolvedDeviceId) ?? response[0];
         const buckets = deviceAvailability?.buckets ?? [];
 
-        const cells: AvailabilityCell[] = buckets.map((bucket) => {
-          const timestamp = new Date(bucket.timestamp);
-          return {
-            date: localDateKey(timestamp),
-            hour: timestamp.getHours(),
-            status: bucket.status,
-          };
-        });
+        const cells: AvailabilityCell[] = buckets.map((bucket) =>
+          bucketTimestampToAvailabilityCell(bucket.timestamp, bucket.status),
+        );
 
         setAvailabilityData(cells);
 
@@ -323,6 +301,7 @@ export function DeviceDetailsPage() {
   }, []);
 
   const isOnline = latestSnapshot?.status === DEVICE_STATUS_UP;
+  const isOffline = latestSnapshot?.status === DEVICE_STATUS_DOWN;
   const cpuUsage = latestSnapshot?.cpuUsage ?? null;
   const memoryUsagePct = latestSnapshot?.memoryUsagePct ?? null;
   const isCpuCritical = isHighUtilization(cpuUsage);
@@ -332,7 +311,7 @@ export function DeviceDetailsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" asChild>
-          <Link to="/dashboard/devices">
+          <Link to={routes.devices}>
             <ArrowLeft className="size-4" />
             Back to devices
           </Link>
@@ -356,19 +335,31 @@ export function DeviceDetailsPage() {
             <CardTitle className="text-sm font-medium">Status</CardTitle>
             {isOnline ? (
               <ShieldCheck className="size-4 text-emerald-500" />
-            ) : (
+            ) : isOffline ? (
               <ShieldAlert className="size-4 text-destructive" />
+            ) : (
+              <ShieldAlert className="text-muted-foreground size-4" />
             )}
           </CardHeader>
           <CardContent>
             <div
-              className={`text-2xl font-bold ${isOnline ? "text-emerald-500" : "text-destructive"}`}
+              className={`text-2xl font-bold ${
+                isOnline
+                  ? "text-emerald-500"
+                  : isOffline
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+              }`}
             >
-              {latestSnapshot ? (isOnline ? "Online" : "Offline") : "Unknown"}
+              {latestSnapshot?.status == null
+                ? "Unknown"
+                : isOnline
+                  ? "Online"
+                  : "Offline"}
             </div>
             <p className="text-muted-foreground text-xs">
-              {latestSnapshot
-                ? `Last seen ${new Date(latestSnapshot.timestamp).toLocaleString([], {
+              {latestSnapshot?.statusTimestamp
+                ? `Last seen ${new Date(latestSnapshot.statusTimestamp).toLocaleString([], {
                     month: "short",
                     day: "numeric",
                     hour: "2-digit",
@@ -435,7 +426,7 @@ export function DeviceDetailsPage() {
         metrics={["cpu_usage"]}
         metricLabels={{ cpu_usage: "CPU Usage (%)" }}
         title="CPU Usage"
-        description="CPU utilization over time. Pick a start and end date/time and apply to refresh the chart."
+        description="CPU utilization over the selected time range."
         initialStart={cpuRange.start}
         initialEnd={cpuRange.end}
         onDateRangeChange={handleCpuRangeChange}
@@ -449,7 +440,7 @@ export function DeviceDetailsPage() {
         metrics={["memory_usage_pct"]}
         metricLabels={{ memory_usage_pct: "Memory Usage (%)" }}
         title="Memory Usage"
-        description="Memory utilization over time. Pick a start and end date/time and apply to refresh the chart."
+        description="Memory utilization over the selected time range."
         initialStart={memoryRange.start}
         initialEnd={memoryRange.end}
         onDateRangeChange={handleMemoryRangeChange}
@@ -464,7 +455,7 @@ export function DeviceDetailsPage() {
         rangeStart={heatmapRange.start}
         rangeEnd={heatmapRange.end}
         title="Device Availability Heatmap"
-        description="Last 14 days of hourly availability (aggregated on the server). Green = up, red = down, blank = no data."
+        description="Last 14 days of hourly availability (aggregated on the server). An hour is marked down if the device was unreachable at any point during that hour."
         isLoading={availabilityLoading}
         error={availabilityError}
       />

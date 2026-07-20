@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { TimeSeriesChartData } from "@/lib/charts.types";
-import { DateTimeRangeControl } from "./DateTimeRangeControl";
+import { MetricsTimeRangeControl } from "./MetricsTimeRangeControl";
 
 const DEFAULT_CHART_COLORS = [
   "oklch(0.72 0.14 245)",
@@ -122,11 +122,12 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-6">
-        <DateTimeRangeControl
+        <MetricsTimeRangeControl
           idPrefix="timeseries"
           start={initialStart}
           end={initialEnd}
           onApply={(start, end) => onDateRangeChange?.(start, end)}
+          disabled={isLoading}
         />
 
         {shouldShowMetricToggles && (

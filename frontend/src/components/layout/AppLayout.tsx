@@ -1,5 +1,6 @@
 import {
   Activity,
+  FolderTree,
   LayoutDashboard,
   Server,
   ServerCog,
@@ -8,10 +9,11 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { isAdmin } from "@/lib/auth";
+import { routes } from "@/lib/routes";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,23 +27,83 @@ import {
 import { cn, getInitials } from "@/lib/utils";
 
 const mainNavItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/dashboard/devices", label: "Devices", icon: Server },
+  { to: routes.mainPage, label: "Main Page", icon: LayoutDashboard, end: true },
+  { to: routes.devices, label: "Devices", icon: Server },
+];
+
+const devicesSubNavItems = [
+  { to: routes.deviceGroups, label: "Groups", icon: FolderTree },
 ];
 
 const adminNavItems = [
-  { to: "/dashboard/admin/users", label: "Users", icon: Users },
+  { to: routes.admin.users, label: "Users", icon: Users },
   {
-    to: "/dashboard/admin/devices",
+    to: routes.admin.devices,
     label: "Manage Devices",
     icon: ServerCog,
   },
   {
-    to: "/dashboard/admin/configuration",
+    to: routes.admin.configuration,
     label: "Application configuration",
     icon: Settings,
   },
 ];
+
+function getPageHeader(pathname: string): { title: string; description: string } {
+  if (pathname === routes.mainPage) {
+    return {
+      title: "Main Page",
+      description: "Overview of your most utilized devices and system status",
+    };
+  }
+
+  if (pathname === routes.devices) {
+    return {
+      title: "Devices",
+      description: "Browse and monitor all registered devices",
+    };
+  }
+
+  if (pathname === routes.deviceGroups) {
+    return {
+      title: "Groups",
+      description: "Create and manage device groups",
+    };
+  }
+
+  if (pathname.startsWith(`${routes.devices}/`)) {
+    return {
+      title: "Device details",
+      description: "Live metrics and availability for this device",
+    };
+  }
+
+  if (pathname === routes.admin.users) {
+    return {
+      title: "Users",
+      description: "Manage user accounts and access",
+    };
+  }
+
+  if (pathname === routes.admin.devices) {
+    return {
+      title: "Manage Devices",
+      description: "Register and configure monitored devices",
+    };
+  }
+
+  if (pathname === routes.admin.configuration) {
+    return {
+      title: "Application configuration",
+      description: "Adjust global monitoring settings",
+    };
+  }
+
+  return {
+    title: "Monitoring Tool",
+    description: "Monitor devices, metrics, and dashboards",
+  };
+}
 
 function NavItem({
   to,
@@ -79,6 +141,8 @@ function NavItem({
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const pageHeader = getPageHeader(pathname);
 
   const handleLogout = () => {
     logout();
@@ -99,14 +163,21 @@ export function AppLayout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-4">
-          {mainNavItems.map(({ to, label, icon }) => (
-            <NavItem
-              key={to}
-              to={to}
-              label={label}
-              icon={icon}
-              end={to === "/dashboard"}
-            />
+          {mainNavItems.map(({ to, label, icon, end }) => (
+            <div key={to}>
+              <NavItem to={to} label={label} icon={icon} end={end} />
+              {to === routes.devices
+                ? devicesSubNavItems.map((item) => (
+                    <NavItem
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                      nested
+                    />
+                  ))
+                : null}
+            </div>
           ))}
 
           {isAdmin(user) && (
@@ -144,17 +215,15 @@ export function AppLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 items-center justify-between border-b px-4 md:px-6">
           <div className="md:hidden">
-            <Link to="/dashboard" className="flex items-center gap-2">
+            <Link to={routes.mainPage} className="flex items-center gap-2">
               <Activity className="size-5" />
               <span className="font-semibold">Monitoring Tool</span>
             </Link>
           </div>
 
           <div className="hidden md:block">
-            <h1 className="text-lg font-semibold">Overview</h1>
-            <p className="text-muted-foreground text-sm">
-              Monitor devices, metrics, and dashboards
-            </p>
+            <h1 className="text-lg font-semibold">{pageHeader.title}</h1>
+            <p className="text-muted-foreground text-sm">{pageHeader.description}</p>
           </div>
 
           <DropdownMenu>

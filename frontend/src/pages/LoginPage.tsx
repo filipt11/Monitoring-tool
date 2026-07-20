@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { getAuthErrorMessage, useAuth } from "@/contexts/AuthContext";
+import { defaultAuthenticatedPath } from "@/lib/routes";
 import { loginSchema, type LoginFormValues } from "@/lib/validations/auth";
 
 export function LoginPage() {
@@ -45,7 +46,7 @@ export function LoginPage() {
     try {
       await login(values.username, values.password);
       toast.success("Welcome back!");
-      navigate("/dashboard");
+      navigate(defaultAuthenticatedPath);
     } catch (error) {
       toast.error(getAuthErrorMessage(error));
     } finally {

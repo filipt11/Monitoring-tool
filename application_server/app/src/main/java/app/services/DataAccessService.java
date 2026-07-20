@@ -85,7 +85,7 @@ public class DataAccessService {
                 ))
                 .collect(Collectors.toList());
     }
-    
+
     public List<DeviceAvailabilityDto> getDeviceAvailability(
             List<String> deviceIds,
             Instant start,
@@ -98,13 +98,6 @@ public class DataAccessService {
         Instant normalizedStart = start.truncatedTo(ChronoUnit.HOURS);
         Instant normalizedEnd = end.truncatedTo(ChronoUnit.HOURS);
 
-        log.info(
-                "Fetching device availability from Influx (cache miss): devices={}, start={}, end={}",
-                deviceIds,
-                normalizedStart,
-                normalizedEnd
-        );
-
         String devicesArr = "[\"" + String.join("\", \"", deviceIds) + "\"]";
 
         String flux = String.format(
@@ -112,7 +105,7 @@ public class DataAccessService {
                         "|> range(start: %s, stop: %s) " +
                         "|> filter(fn: (r) => contains(value: r.id, set: %s)) " +
                         "|> filter(fn: (r) => r._field == \"status\") " +
-                        "|> aggregateWindow(every: 1h, fn: mean, createEmpty: false)",
+                        "|> aggregateWindow(every: 1h, fn: min, createEmpty: false, timeSrc: \"_start\")",
                 bucket, normalizedStart.toString(), normalizedEnd.toString(), devicesArr
         );
 
@@ -136,8 +129,8 @@ public class DataAccessService {
                     continue;
                 }
 
-                double hourlyMean = ((Number) rawValue).doubleValue();
-                String status = hourlyMean < 1.0 ? "down" : "up";
+                double hourlyStatus = ((Number) rawValue).doubleValue();
+                String status = hourlyStatus < 1.0 ? "down" : "up";
 
                 bucketsByDevice
                         .computeIfAbsent(deviceId, ignored -> new ArrayList<>())

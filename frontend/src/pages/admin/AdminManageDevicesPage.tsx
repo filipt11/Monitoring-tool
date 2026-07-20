@@ -54,6 +54,7 @@ import type {
   UpdateDeviceFormValues,
 } from "@/lib/validations/adminDevices";
 import { cn } from "@/lib/utils";
+import { routes } from "@/lib/routes";
 
 const PAGE_SIZE = 10;
 
@@ -230,7 +231,7 @@ export function AdminManageDevicesPage() {
                       <tr key={device.id} className="hover:bg-muted/40">
                         <td className="px-4 py-3 font-medium">
                           <Button variant="link" className="h-auto p-0 text-sm" asChild>
-                            <Link to={`/dashboard/devices/${device.id}`}>
+                            <Link to={routes.deviceDetails(String(device.id))}>
                               {device.hostname || "Unnamed device"}
                             </Link>
                           </Button>

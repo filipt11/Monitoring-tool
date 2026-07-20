@@ -18,6 +18,7 @@ import {
   fetchDeviceMetrics,
   statusLabel,
 } from "@/lib/metricsApi";
+import { routes } from "@/lib/routes";
 
 interface DeviceRow extends DeviceRecord {
   status?: number;
@@ -281,7 +282,7 @@ export function DevicesPage() {
                         <tr key={device.id} className="hover:bg-muted/40">
                           <td className="px-4 py-3">
                             <Button variant="link" className="h-auto p-0 text-sm" asChild>
-                              <Link to={`/dashboard/devices/${device.id}`}>
+                              <Link to={routes.deviceDetails(String(device.id))}>
                                 {device.hostname}
                               </Link>
                             </Button>

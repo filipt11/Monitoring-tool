@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { defaultAuthenticatedPath, routes } from "@/lib/routes";
 
 export function ProtectedRoute() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -15,7 +16,7 @@ export function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace state={{ from: location }} />;
+    return <Navigate to={routes.login} replace state={{ from: location }} />;
   }
 
   return <Outlet />;
@@ -26,7 +27,7 @@ export function GuestRoute() {
   const location = useLocation();
   const redirectTo =
     (location.state as { from?: { pathname: string } } | null)?.from
-      ?.pathname ?? "/dashboard";
+      ?.pathname ?? defaultAuthenticatedPath;
 
   if (isLoading) {
     return (

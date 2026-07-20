@@ -1,0 +1,89 @@
+package app.controllers;
+
+import app.dtos.deviceGroup.DeviceGroupCreateDto;
+import app.dtos.deviceGroup.DeviceGroupCreateResponseDto;
+import app.dtos.deviceGroup.DeviceGroupDetailResponseDto;
+import app.dtos.deviceGroup.DeviceGroupResponseDto;
+import app.records.MessageResponse;
+import app.security.SignedUserDetails;
+import app.services.DeviceGroupService;
+import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+public class DeviceGroupController {
+    private final DeviceGroupService deviceGroupService;
+
+    public DeviceGroupController(DeviceGroupService deviceGroupService) {
+        this.deviceGroupService = deviceGroupService;
+    }
+
+    @GetMapping("/api/device-group")
+    public ResponseEntity<Page<DeviceGroupResponseDto>> getDeviceGroups(
+            @ParameterObject @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable,
+            @AuthenticationPrincipal SignedUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(deviceGroupService.getDeviceGroups(pageable, currentUser));
+    }
+
+    @GetMapping("/api/device-group/{id}")
+    public ResponseEntity<DeviceGroupDetailResponseDto> getDeviceGroup(
+            @PathVariable Long id,
+            @ParameterObject @PageableDefault(size = 10, sort = "hostname", direction = Sort.Direction.ASC) Pageable devicePageable,
+            @AuthenticationPrincipal SignedUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(deviceGroupService.getDeviceGroup(id, devicePageable, currentUser));
+    }
+
+    @PostMapping("/api/device-group")
+    public ResponseEntity<DeviceGroupCreateResponseDto> createDeviceGroup(
+            @RequestBody @Valid DeviceGroupCreateDto deviceGroupCreateDto,
+            @AuthenticationPrincipal SignedUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(deviceGroupService.createDeviceGroup(deviceGroupCreateDto, currentUser));
+    }
+
+    @PutMapping("/api/device-group/{id}")
+    public ResponseEntity<DeviceGroupCreateResponseDto> updateDeviceGroup(
+            @PathVariable Long id,
+            @RequestBody @Valid DeviceGroupCreateDto deviceGroupCreateDto,
+            @AuthenticationPrincipal SignedUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(deviceGroupService.updateDeviceGroup(id, deviceGroupCreateDto, currentUser));
+    }
+
+    @PostMapping("/api/device-group/{id}/add-devices")
+    public ResponseEntity<DeviceGroupResponseDto> addDevicesToDeviceGroup(
+            @PathVariable Long id,
+            @RequestBody List<Long> deviceIds,
+            @AuthenticationPrincipal SignedUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(deviceGroupService.addDevicesToGroup(id, deviceIds, currentUser));
+    }
+
+    @PostMapping("/api/device-group/{id}/delete-devices")
+    public ResponseEntity<DeviceGroupResponseDto> deleteDevicesFromDeviceGroup(
+            @PathVariable Long id,
+            @RequestBody List<Long> deviceIds,
+            @AuthenticationPrincipal SignedUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(deviceGroupService.deleteDevicesFromGroup(id, deviceIds, currentUser));
+    }
+
+    @DeleteMapping("/api/device-group/{id}")
+    public ResponseEntity<MessageResponse> deleteDeviceGroup(
+            @PathVariable Long id,
+            @AuthenticationPrincipal SignedUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(deviceGroupService.deleteDeviceGroup(id, currentUser));
+    }
+}
