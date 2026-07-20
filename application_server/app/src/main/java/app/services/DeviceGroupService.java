@@ -81,8 +81,10 @@ public class DeviceGroupService {
         return toDetailResponseDto(deviceGroup, devices);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public Page<DeviceGroupResponseDto> getDeviceGroups(Pageable pageable, SignedUserDetails currentUser) {
+        deviceGroupRepository.removeOrphanedDeviceGroupMemberships();
+
         Page<DeviceGroup> page = isAdmin(currentUser)
                 ? deviceGroupRepository.findAll(pageable)
                 : deviceGroupRepository.findVisibleToUser(currentUser.getId(), pageable);
@@ -175,7 +177,7 @@ public class DeviceGroupService {
     private Map<Long, Integer> loadDeviceCounts(List<Long> ids) {
         return deviceGroupRepository.countDevicesByGroupIds(ids).stream()
                 .collect(Collectors.toMap(
-                        row -> (Long) row[0],
+                        row -> ((Number) row[0]).longValue(),
                         row -> ((Number) row[1]).intValue()
                 ));
     }

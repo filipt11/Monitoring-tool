@@ -161,6 +161,24 @@ public class GlobalExceptionHandler {
                 .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(InterfaceGroupNotFoundException.class)
+    public ResponseEntity<ExceptionMessage> handleInterfaceGroupNotFound(InterfaceGroupNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InterfaceGroupAccessDeniedException.class)
+    public ResponseEntity<ExceptionMessage> handleInterfaceGroupAccessDenied(InterfaceGroupAccessDeniedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(InterfaceNotFoundException.class)
+    public ResponseEntity<ExceptionMessage> handleInterfaceNotFound(InterfaceNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<ExceptionMessage> handleRestClientError(
             RestClientResponseException ex,

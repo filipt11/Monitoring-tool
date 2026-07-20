@@ -11,6 +11,7 @@ import { AdminManageDevicesPage } from "@/pages/admin/AdminManageDevicesPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { DeviceDetailsPage } from "@/pages/DeviceDetailsPage";
 import { DeviceGroupsPage } from "@/pages/DeviceGroupsPage";
+import { InterfaceGroupsPage } from "@/pages/InterfaceGroupsPage";
 import { DevicesPage } from "@/pages/DevicesPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MainPage } from "@/pages/MainPage";
@@ -42,6 +43,7 @@ export default function App() {
             <Route path={routes.mainPage} element={<MainPage />} />
             <Route path={routes.devices} element={<DevicesPage />} />
             <Route path={routes.deviceGroups} element={<DeviceGroupsPage />} />
+            <Route path={routes.interfaceGroups} element={<InterfaceGroupsPage />} />
             <Route path={`${routes.devices}/:deviceId`} element={<DeviceDetailsPage />} />
 
             <Route element={<AdminRoute />}>

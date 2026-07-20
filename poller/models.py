@@ -1,6 +1,8 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy import String, Integer, Boolean, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, ForeignKey, String, Integer, BigInteger, Boolean, UniqueConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .config import Base
 from typing import Optional
 from typing import TypedDict
@@ -22,6 +24,63 @@ class Device(Base):
     https: Mapped[bool] = mapped_column(Boolean, default=False)
 
     __table_args__ = (UniqueConstraint("ip", "port", name="_ip_port_uc"),)
+
+    interfaces: Mapped[list["Interface"]] = relationship(
+        back_populates="device",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class Interface(Base):
+    """SQLAlchemy model representing a network interface discovered on a device."""
+
+    __tablename__ = "interfaces"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    device_id: Mapped[int] = mapped_column(
+        ForeignKey("devices.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    if_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    mac: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    speed_bps: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    admin_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    oper_status: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    discovered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    device: Mapped["Device"] = relationship(back_populates="interfaces")
+
+    __table_args__ = (
+        UniqueConstraint("device_id", "if_index", name="_device_if_index_uc"),
+    )
+
+
+class InterfaceOut(BaseModel):
+    """Pydantic model used for API responses containing interface details."""
+
+    id: int
+    device_id: int
+    name: str
+    if_index: int
+    mac: str | None = None
+    speed_bps: int | None = None
+    admin_status: str | None = None
+    oper_status: str | None = None
+    discovered_at: datetime
+    last_seen_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DeviceWithPolledData(BaseModel):

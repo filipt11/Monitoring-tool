@@ -5,6 +5,8 @@ import {
   AreaChart,
   CartesianGrid,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -67,6 +69,10 @@ interface TimeSeriesChartProps {
   valueDecimals?: number;
   /** Line/fill colors per metric. Defaults to theme chart colors (blue first). */
   colors?: string[];
+  /** `auto` uses line charts for multi-metric series and area charts for a single metric. */
+  chartStyle?: "auto" | "area" | "line";
+  /** When false, hides the built-in time range picker (e.g. when a parent controls range). */
+  showTimeRangeControl?: boolean;
 }
 
 export const TimeSeriesChart = React.memo(function TimeSeriesChart({
@@ -83,8 +89,13 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
   showMetricToggles = true,
   valueDecimals,
   colors = DEFAULT_CHART_COLORS,
+  chartStyle = "auto",
+  showTimeRangeControl = true,
 }: TimeSeriesChartProps) {
   const [activeMetrics, setActiveMetrics] = useState(metrics);
+
+  const useLineChart =
+    chartStyle === "line" || (chartStyle === "auto" && metrics.length > 1);
 
   const handleMetricToggle = (metric: string) => {
     setActiveMetrics((prev) =>
@@ -122,13 +133,15 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-6">
-        <MetricsTimeRangeControl
-          idPrefix="timeseries"
-          start={initialStart}
-          end={initialEnd}
-          onApply={(start, end) => onDateRangeChange?.(start, end)}
-          disabled={isLoading}
-        />
+        {showTimeRangeControl && (
+          <MetricsTimeRangeControl
+            idPrefix="timeseries"
+            start={initialStart}
+            end={initialEnd}
+            onApply={(start, end) => onDateRangeChange?.(start, end)}
+            disabled={isLoading}
+          />
+        )}
 
         {shouldShowMetricToggles && (
           <div className="flex flex-wrap gap-2">
@@ -161,53 +174,94 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={350}>
-            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                {activeMetrics.map((metric, idx) => (
-                  <linearGradient key={metric} id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={colors[idx % colors.length]} stopOpacity={0.22} />
-                    <stop offset="95%" stopColor={colors[idx % colors.length]} stopOpacity={0} />
-                  </linearGradient>
-                ))}
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-              <XAxis
-                dataKey="timeMs"
-                type="number"
-                domain={["dataMin", "dataMax"]}
-                tickFormatter={formatAxisTime}
-                tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-              />
-              <YAxis
-                tickFormatter={(value) => formatChartValue(Number(value), valueDecimals)}
-                tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
-              />
-              <Tooltip
-                labelFormatter={(value) => formatAxisTime(Number(value))}
-                formatter={(value) => formatChartValue(Number(value), valueDecimals)}
-                contentStyle={{
-                  backgroundColor: "var(--color-popover)",
-                  borderColor: "var(--color-border)",
-                  borderRadius: "0.5rem",
-                  color: "var(--color-popover-foreground)",
-                }}
-              />
-              <Legend />
-              {activeMetrics.map((metric, idx) => (
-                <Area
-                  key={metric}
-                  type="linear"
-                  dataKey={metric}
-                  name={formatMetricLabel(metric, metricLabels)}
-                  stroke={colors[idx % colors.length]}
-                  fill={`url(#gradient-${metric})`}
-                  strokeWidth={2}
-                  connectNulls={false}
-                  isAnimationActive={false}
-                  dot={false}
+            {useLineChart ? (
+              <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                <XAxis
+                  dataKey="timeMs"
+                  type="number"
+                  domain={["dataMin", "dataMax"]}
+                  tickFormatter={formatAxisTime}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
                 />
-              ))}
-            </AreaChart>
+                <YAxis
+                  tickFormatter={(value) => formatChartValue(Number(value), valueDecimals)}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
+                />
+                <Tooltip
+                  labelFormatter={(value) => formatAxisTime(Number(value))}
+                  formatter={(value) => formatChartValue(Number(value), valueDecimals)}
+                  contentStyle={{
+                    backgroundColor: "var(--color-popover)",
+                    borderColor: "var(--color-border)",
+                    borderRadius: "0.5rem",
+                    color: "var(--color-popover-foreground)",
+                  }}
+                />
+                <Legend />
+                {activeMetrics.map((metric, idx) => (
+                  <Line
+                    key={metric}
+                    type="linear"
+                    dataKey={metric}
+                    name={formatMetricLabel(metric, metricLabels)}
+                    stroke={colors[idx % colors.length]}
+                    strokeWidth={2}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                    dot={false}
+                  />
+                ))}
+              </LineChart>
+            ) : (
+              <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  {activeMetrics.map((metric, idx) => (
+                    <linearGradient key={metric} id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={colors[idx % colors.length]} stopOpacity={0.22} />
+                      <stop offset="95%" stopColor={colors[idx % colors.length]} stopOpacity={0} />
+                    </linearGradient>
+                  ))}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                <XAxis
+                  dataKey="timeMs"
+                  type="number"
+                  domain={["dataMin", "dataMax"]}
+                  tickFormatter={formatAxisTime}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
+                />
+                <YAxis
+                  tickFormatter={(value) => formatChartValue(Number(value), valueDecimals)}
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
+                />
+                <Tooltip
+                  labelFormatter={(value) => formatAxisTime(Number(value))}
+                  formatter={(value) => formatChartValue(Number(value), valueDecimals)}
+                  contentStyle={{
+                    backgroundColor: "var(--color-popover)",
+                    borderColor: "var(--color-border)",
+                    borderRadius: "0.5rem",
+                    color: "var(--color-popover-foreground)",
+                  }}
+                />
+                <Legend />
+                {activeMetrics.map((metric, idx) => (
+                  <Area
+                    key={metric}
+                    type="linear"
+                    dataKey={metric}
+                    name={formatMetricLabel(metric, metricLabels)}
+                    stroke={colors[idx % colors.length]}
+                    fill={`url(#gradient-${metric})`}
+                    strokeWidth={2}
+                    connectNulls={false}
+                    isAnimationActive={false}
+                    dot={false}
+                  />
+                ))}
+              </AreaChart>
+            )}
           </ResponsiveContainer>
         )}
       </CardContent>

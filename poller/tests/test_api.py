@@ -213,6 +213,11 @@ def test_add_device_success_cisco(client_factory, monkeypatch):
 
     mock_model = AsyncMock(return_value=("Cisco-Core", "Catalyst 9300"))
     monkeypatch.setattr(api, "model_cisco_device_info", mock_model)
+    monkeypatch.setattr(
+        api,
+        "discover_and_sync_interfaces",
+        AsyncMock(return_value=[]),
+    )
 
     payload = {
         "ip": "10.0.0.1",
@@ -424,6 +429,11 @@ def test_rediscover_device_success_cisco(rediscover_client_factory, monkeypatch)
 
     mock_network_call = AsyncMock(return_value=("New-Cisco-Core", "Catalyst-9500"))
     monkeypatch.setattr(api, "model_cisco_device_info", mock_network_call)
+    monkeypatch.setattr(
+        api,
+        "discover_and_sync_interfaces",
+        AsyncMock(return_value=[]),
+    )
 
     response = client.post("/api/rediscover/10")
 
@@ -483,6 +493,11 @@ def test_rediscover_device_database_commit_crash(rediscover_client_factory, monk
     mock_db.query.return_value.filter.return_value.first.return_value = existing_device
 
     monkeypatch.setattr(api, "model_cisco_device_info", AsyncMock(return_value=("New-Name", "New-Model")))
+    monkeypatch.setattr(
+        api,
+        "discover_and_sync_interfaces",
+        AsyncMock(return_value=[]),
+    )
     mock_db.commit.side_effect = Exception("Deadlock or Connection Lost")
 
     response = client.post("/api/rediscover/30")
@@ -679,3 +694,45 @@ def test_update_device_not_found(patch_client_factory):
     assert response.json()["detail"] == "Device not found"
     
     mock_db.refresh.assert_not_called()
+
+
+def test_get_device_interfaces_success(read_client_factory):
+    mock_db, client, DummyDevice = read_client_factory
+
+    existing_device = DummyDevice(id=5, hostname="Cisco-Switch-05")
+    interface = DummyDevice(
+        id=1,
+        device_id=5,
+        name="Gi0/0",
+        if_index=1,
+        mac="00:11:22:33:44:55",
+        speed_bps=1_000_000_000,
+        admin_status="up",
+        oper_status="up",
+        discovered_at="2026-01-01T00:00:00Z",
+        last_seen_at="2026-01-01T00:00:00Z",
+    )
+
+    mock_db.query.return_value.filter.return_value.first.return_value = existing_device
+    mock_db.query.return_value.filter.return_value.order_by.return_value.all.return_value = [
+        interface
+    ]
+
+    response = client.get("/api/device/5/interfaces")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["name"] == "Gi0/0"
+    assert data[0]["if_index"] == 1
+
+
+def test_get_device_interfaces_device_not_found(read_client_factory):
+    mock_db, client, _ = read_client_factory
+
+    mock_db.query.return_value.filter.return_value.first.return_value = None
+
+    response = client.get("/api/device/999/interfaces")
+
+    assert response.status_code == 404
+    assert "Not found device with ID: 999." in response.json()["detail"]

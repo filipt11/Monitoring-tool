@@ -161,3 +161,28 @@ def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
         raise ValueError("No active interfaces with statistics found")
 
     return parsed_results
+
+
+def parse_interfaces_catalog(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
+    """Parse all interface state entries for inventory discovery."""
+
+    stats = raw_interfaces["ietf-interfaces:interfaces-state"]
+    interface_list = stats["interface"]
+
+    parsed_results: list[InterfaceData] = []
+
+    for entry in interface_list:
+        statistics = entry.get("statistics", {})
+        if_data: InterfaceData = {
+            "name": entry["name"],
+            "if_index": int(entry["if-index"]),
+            "in_octets": int(statistics.get("in-octets", 0)),
+            "out_octets": int(statistics.get("out-octets", 0)),
+            "speed": int(entry.get("speed", 0)),
+            "admin_status": entry.get("admin-status", "down"),
+            "oper_status": entry.get("oper-status", "down"),
+            "mac": entry.get("phys-address", "unknown"),
+        }
+        parsed_results.append(if_data)
+
+    return parsed_results

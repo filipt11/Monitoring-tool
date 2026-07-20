@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Cpu, MemoryStick, Server, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Cpu, MemoryStick, Network, Server, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TimeSeriesChart, HeatmapChart } from "@/components/charts";
+import { DeviceInterfacesPanel } from "@/components/device/DeviceInterfacesPanel";
 import {
   DEVICE_STATUS_UP,
   DEVICE_STATUS_DOWN,
@@ -58,10 +59,13 @@ function createDefaultRange() {
   return createDefaultMetricsRange();
 }
 
+type DeviceDetailsView = "device" | "interfaces";
+
 export function DeviceDetailsPage() {
   const { deviceId } = useParams<{ deviceId: string }>();
   const resolvedDeviceId = deviceId ?? "1";
 
+  const [activeView, setActiveView] = useState<DeviceDetailsView>("device");
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
 
   const [cpuRange, setCpuRange] = useState(createDefaultRange);
@@ -318,17 +322,50 @@ export function DeviceDetailsPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
-          <Server className="size-5" />
-          {deviceTitle} Monitoring
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          {deviceInfo?.ip ? `${deviceInfo.ip} · ` : ""}
-          Live CPU, memory, and availability data pulled from the monitoring backend.
-        </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
+            {activeView === "device" ? (
+              <Server className="size-5" />
+            ) : (
+              <Network className="size-5" />
+            )}
+            {deviceTitle} Monitoring
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            {deviceInfo?.ip ? `${deviceInfo.ip} · ` : ""}
+            {activeView === "device"
+              ? "Live CPU, memory, and availability data pulled from the monitoring backend."
+              : "Discovered interfaces and utilization metrics for this device."}
+          </p>
+        </div>
+
+        <div className="bg-muted/40 flex shrink-0 self-start rounded-full border border-border/60 p-1.5 lg:mt-1">
+          <Button
+            type="button"
+            variant={activeView === "device" ? "default" : "ghost"}
+            className="h-10 rounded-full px-6 text-sm"
+            onClick={() => setActiveView("device")}
+          >
+            <Server className="size-4" />
+            Device
+          </Button>
+          <Button
+            type="button"
+            variant={activeView === "interfaces" ? "default" : "ghost"}
+            className="h-10 rounded-full px-6 text-sm"
+            onClick={() => setActiveView("interfaces")}
+          >
+            <Network className="size-4" />
+            Interfaces
+          </Button>
+        </div>
       </div>
 
+      {activeView === "interfaces" ? (
+        <DeviceInterfacesPanel deviceId={resolvedDeviceId} />
+      ) : (
+        <>
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -459,6 +496,8 @@ export function DeviceDetailsPage() {
         isLoading={availabilityLoading}
         error={availabilityError}
       />
+        </>
+      )}
     </div>
   );
 }

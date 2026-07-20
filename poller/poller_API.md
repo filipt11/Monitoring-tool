@@ -19,8 +19,9 @@ For full interactive API documentation, visit the **Swagger UI** at: `http://loc
 - **POST** `/api/device` - Add new device (with auto-discovery)
 - **GET** `/api/devices` - List all devices (paginated)
 - **GET** `/api/device/{id}` - Get device details
+- **GET** `/api/device/{id}/interfaces` - List discovered interfaces for a device
 - **PATCH** `/api/device/{id}` - Update device info
-- **POST** `/api/rediscover/{id}` - Rediscover device (refresh hostname/model)
+- **POST** `/api/rediscover/{id}` - Rediscover device (refresh hostname/model and interfaces)
 - **DELETE** `/api/device/{id}` - Delete device
 
 ---

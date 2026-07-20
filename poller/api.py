@@ -4,11 +4,12 @@ from .config import (
     API_PORT,
 )
 from loguru import logger
-from .models import Device, DeviceCreate, DeviceOut, DeviceUpdate
+from .models import Device, DeviceCreate, DeviceOut, DeviceUpdate, Interface, InterfaceOut
 from fastapi import FastAPI, HTTPException, status
 import uvicorn
 from .cisco_polling import fetch_cisco_data_async
 from .juniper_polling import fetch_juniper_data_async
+from .interface_discovery import discover_device_interfaces_async, sync_device_interfaces
 from sys import stderr
 from sqlalchemy.exc import IntegrityError
 from fastapi_pagination import Page, add_pagination
@@ -102,6 +103,15 @@ async def model_juniper_device_info(
     return hostname, model
 
 
+async def discover_and_sync_interfaces(
+    device: Device, client: httpx.AsyncClient, db
+) -> list[Interface]:
+    """Discover interfaces on a device and persist them in PostgreSQL."""
+
+    discovered = await discover_device_interfaces_async(device, client)
+    return sync_device_interfaces(db, device.id, discovered)
+
+
 @app.get("/health")
 async def health():
     """Return status 'OK' if API started correctly."""
@@ -160,6 +170,19 @@ async def add_device(device_in: DeviceCreate):
 
             db.refresh(new_device)
             logger.success(f"Successfully created device: {hostname} | {device_in.ip}")
+
+            try:
+                synced = await discover_and_sync_interfaces(new_device, client, db)
+                db.commit()
+                logger.success(
+                    f"Discovered {len(synced)} interfaces for device: {hostname}"
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Device {hostname} created but interface discovery failed: {e}"
+                )
+
+            db.refresh(new_device)
             return new_device
 
     except IntegrityError as e:
@@ -212,7 +235,7 @@ async def delete_device(id: int):
 
 @app.post("/api/rediscover/{id}")
 async def rediscover_device(id: int):
-    """Update device hostname and model information through rediscovery."""
+    """Update device hostname, model, and interface inventory through rediscovery."""
 
     client = app_lifespan_data["http_client"]
     new_hostname, new_model = "Unknown", "Unknown"
@@ -256,10 +279,12 @@ async def rediscover_device(id: int):
             device.hostname = new_hostname
             device.model = new_model
 
+            synced = await discover_and_sync_interfaces(device, client, db)
             db.commit()
             db.refresh(device)
             logger.success(
-                f"Successfully rediscovered device: {new_hostname} | {device.ip}"
+                f"Successfully rediscovered device: {new_hostname} | {device.ip} "
+                f"with {len(synced)} interfaces"
             )
             return device
 
@@ -285,6 +310,27 @@ async def get_device(id: int):
                 detail=f"Not found device with ID: {id} ",
             )
         return device
+
+
+@app.get("/api/device/{id}/interfaces", response_model=list[InterfaceOut])
+async def get_device_interfaces(id: int):
+    """Retrieve discovered interfaces for a device."""
+
+    with Session() as db:
+        device = db.query(Device).filter(Device.id == id).first()
+        if not device:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Not found device with ID: {id}.",
+            )
+
+        interfaces = (
+            db.query(Interface)
+            .filter(Interface.device_id == id)
+            .order_by(Interface.if_index.asc())
+            .all()
+        )
+        return interfaces
 
 
 @app.get("/api/devices", response_model=Page[DeviceOut])

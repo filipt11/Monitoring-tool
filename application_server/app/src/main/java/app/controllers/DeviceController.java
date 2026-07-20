@@ -1,6 +1,7 @@
 package app.controllers;
 
 import app.dtos.device.DeviceCreateDto;
+import app.dtos.device.DeviceInterfaceResponse;
 import app.dtos.device.DeviceNoCredentialsResponse;
 import app.dtos.device.DeviceResponse;
 import app.dtos.device.DeviceUpdateDto;
@@ -12,6 +13,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 import static org.springframework.http.HttpStatus.CREATED;
 
@@ -31,6 +34,11 @@ public class DeviceController {
     @GetMapping("/api/devices/{id}")
     public ResponseEntity<DeviceResponse> getDeviceById(@PathVariable Long id) {
         return ResponseEntity.ok(deviceService.getDeviceById(id));
+    }
+
+    @GetMapping("/api/devices/{id}/interfaces")
+    public ResponseEntity<List<DeviceInterfaceResponse>> getDeviceInterfaces(@PathVariable Long id) {
+        return ResponseEntity.ok(deviceService.getDeviceInterfaces(id));
     }
 
     @GetMapping("/api/devices/search/hostname")

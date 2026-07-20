@@ -1,28 +1,48 @@
 package app.services;
 
 import app.dtos.device.DeviceCreateDto;
+import app.dtos.device.DeviceInterfaceResponse;
 import app.dtos.device.DeviceNoCredentialsResponse;
 import app.dtos.device.DeviceResponse;
 import app.dtos.device.DeviceUpdateDto;
 import app.exceptions.DeviceNotFoundException;
+import app.mappers.DeviceInterfaceMapper;
 import app.mappers.DeviceMapper;
 import app.records.MessageResponse;
+import app.repositories.DeviceGroupRepository;
+import app.repositories.DeviceInterfaceRepository;
 import app.repositories.DeviceRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
+
+import java.util.List;
 
 
 @Service
 public class DeviceService {
     private final DeviceRepository deviceRepository;
+    private final DeviceInterfaceRepository deviceInterfaceRepository;
+    private final DeviceGroupRepository deviceGroupRepository;
     private final DeviceMapper deviceMapper;
+    private final DeviceInterfaceMapper deviceInterfaceMapper;
     private final RestClient deviceRestClient;
 
-    public DeviceService(DeviceRepository deviceRepository, DeviceMapper deviceMapper, RestClient deviceRestClient) {
+    public DeviceService(
+            DeviceRepository deviceRepository,
+            DeviceInterfaceRepository deviceInterfaceRepository,
+            DeviceGroupRepository deviceGroupRepository,
+            DeviceMapper deviceMapper,
+            DeviceInterfaceMapper deviceInterfaceMapper,
+            RestClient deviceRestClient
+    ) {
         this.deviceRepository = deviceRepository;
+        this.deviceInterfaceRepository = deviceInterfaceRepository;
+        this.deviceGroupRepository = deviceGroupRepository;
         this.deviceMapper = deviceMapper;
+        this.deviceInterfaceMapper = deviceInterfaceMapper;
         this.deviceRestClient = deviceRestClient;
     }
 
@@ -35,6 +55,16 @@ public class DeviceService {
         return deviceRepository.findById(id)
                 .map(deviceMapper::toResponseDto)
                 .orElseThrow(() -> new DeviceNotFoundException());
+    }
+
+    public List<DeviceInterfaceResponse> getDeviceInterfaces(Long deviceId) {
+        if (!deviceRepository.existsById(deviceId)) {
+            throw new DeviceNotFoundException();
+        }
+
+        return deviceInterfaceMapper.toResponseDtoList(
+                deviceInterfaceRepository.findByDeviceIdOrderByIfIndexAsc(deviceId)
+        );
     }
 
     public Page<DeviceNoCredentialsResponse> searchDevicesByName(Pageable pageable, String hostname) {
@@ -59,7 +89,10 @@ public class DeviceService {
     }
 
     // Use poller API to delete device from database
+    @Transactional
     public MessageResponse deleteDevice(Long id) {
+        deviceGroupRepository.removeDeviceFromAllGroups(id);
+
         return deviceRestClient.delete()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/device/{id}")

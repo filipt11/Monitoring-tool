@@ -175,3 +175,43 @@ def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
         raise ValueError("No active interfaces with statistics found")
 
     return parsed_results
+
+
+def parse_interfaces_catalog(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
+    """Parse all physical interface entries for inventory discovery."""
+
+    phys_interfaces = raw_interfaces["interface-information"][0]["physical-interface"]
+    parsed_results: list[InterfaceData] = []
+
+    for phys in phys_interfaces:
+
+        def get_junos_val(obj, key, default="0"):
+            try:
+                val = obj[key][0]["data"]
+                return val if val is not None else default
+            except (KeyError, IndexError, TypeError):
+                return default
+
+        name = get_junos_val(phys, "name", "unknown")
+        admin_status = get_junos_val(phys, "admin-status", "down")
+
+        speed_raw = get_junos_val(phys, "speed", "0")
+        speed_match = search(r"\d+", speed_raw)
+        speed = int(speed_match.group()) * 10**6 if speed_match else 0
+
+        logical_if = phys.get("logical-interface", [{}])[0]
+        stats = logical_if.get("traffic-statistics", [{}])[0]
+
+        if_data: InterfaceData = {
+            "name": name,
+            "if_index": int(get_junos_val(phys, "local-index", "0")),
+            "in_octets": int(get_junos_val(stats, "input-bytes", "0")),
+            "out_octets": int(get_junos_val(stats, "output-bytes", "0")),
+            "speed": speed,
+            "admin_status": admin_status,
+            "oper_status": get_junos_val(phys, "oper-status", "down"),
+            "mac": get_junos_val(phys, "current-physical-address", "unknown"),
+        }
+        parsed_results.append(if_data)
+
+    return parsed_results

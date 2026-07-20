@@ -5,10 +5,10 @@ import {
   FolderTree,
   Loader2,
   MoreHorizontal,
+  Network,
   Pencil,
   Plus,
   Search,
-  Server,
   Trash2,
 } from "lucide-react";
 import { Fragment, useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
@@ -52,38 +52,40 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getAuthErrorMessage } from "@/contexts/AuthContext";
 import { isAdmin } from "@/lib/auth";
 import {
-  addDevicesToGroup,
-  canEditDeviceGroup,
-  createDeviceGroup,
-  deleteDeviceGroup,
-  fetchDeviceGroupDetail,
-  fetchDeviceGroups,
+  addInterfacesToGroup,
+  canEditInterfaceGroup,
+  createInterfaceGroup,
+  deleteInterfaceGroup,
+  fetchInterfaceGroupDetail,
+  fetchInterfaceGroups,
   getVisibilityLabel,
-  removeDevicesFromGroup,
-  updateDeviceGroup,
-  type DeviceGroup,
-  type DeviceGroupDevice,
-  type DeviceGroupVisibility,
-} from "@/lib/deviceGroupsApi";
-import { fetchDeviceList } from "@/lib/devicesApi";
+  fetchInterfaceCatalog,
+  removeInterfacesFromGroup,
+  updateInterfaceGroup,
+  type InterfaceGroup,
+  type InterfaceGroupMember,
+  type InterfaceGroupVisibility,
+} from "@/lib/interfaceGroupsApi";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
-const GROUP_DEVICE_PAGE_SIZE = 10;
+const GROUP_INTERFACE_PAGE_SIZE = 10;
 const GROUP_MEMBER_FETCH_SIZE = 1000;
 
-function matchesDeviceSearch(device: DeviceGroupDevice, query: string) {
+function matchesInterfaceSearch(iface: InterfaceGroupMember, query: string) {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) {
     return true;
   }
 
   return (
-    (device.hostname ?? "").toLowerCase().includes(normalizedQuery) ||
-    device.ip.toLowerCase().includes(normalizedQuery) ||
-    (device.vendor ?? "").toLowerCase().includes(normalizedQuery) ||
-    (device.model ?? "").toLowerCase().includes(normalizedQuery)
+    iface.deviceHostname.toLowerCase().includes(normalizedQuery) ||
+    iface.deviceIp.toLowerCase().includes(normalizedQuery) ||
+    iface.name.toLowerCase().includes(normalizedQuery) ||
+    String(iface.ifIndex).includes(normalizedQuery) ||
+    iface.adminStatus.toLowerCase().includes(normalizedQuery) ||
+    iface.operStatus.toLowerCase().includes(normalizedQuery)
   );
 }
 
@@ -92,10 +94,10 @@ type GroupFilter = "all" | "mine" | "shared";
 interface GroupFormValues {
   name: string;
   description: string;
-  visibility: DeviceGroupVisibility;
+  visibility: InterfaceGroupVisibility;
 }
 
-function VisibilityBadge({ visibility }: { visibility: DeviceGroupVisibility }) {
+function VisibilityBadge({ visibility }: { visibility: InterfaceGroupVisibility }) {
   return (
     <span
       className={cn(
@@ -114,7 +116,7 @@ function VisibilityBadge({ visibility }: { visibility: DeviceGroupVisibility }) 
 }
 
 function matchesFilter(
-  group: DeviceGroup,
+  group: InterfaceGroup,
   filter: GroupFilter,
   userId: number | undefined,
 ) {
@@ -143,24 +145,24 @@ function toggleExpandedGroup(
   });
 }
 
-function GroupDevicesPanel({
+function GroupInterfacesPanel({
   group,
   editable,
-  onManageDevices,
+  onManageInterfaces,
   refreshKey,
-  onDeviceCountChange,
+  onInterfaceCountChange,
 }: {
-  group: DeviceGroup;
+  group: InterfaceGroup;
   editable: boolean;
-  onManageDevices: () => void;
+  onManageInterfaces: () => void;
   refreshKey: number;
-  onDeviceCountChange?: (groupId: number, deviceCount: number) => void;
+  onInterfaceCountChange?: (groupId: number, interfaceCount: number) => void;
 }) {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState("");
-  const [devices, setDevices] = useState<DeviceGroupDevice[]>([]);
-  const [totalElements, setTotalElements] = useState(group.deviceCount);
+  const [interfaces, setInterfaces] = useState<InterfaceGroupMember[]>([]);
+  const [totalElements, setTotalElements] = useState(group.interfaceCount);
 
   useEffect(() => {
     setPage(0);
@@ -175,19 +177,19 @@ function GroupDevicesPanel({
     let active = true;
     setLoading(true);
 
-    const fetchSize = Math.max(group.deviceCount, GROUP_MEMBER_FETCH_SIZE);
+    const fetchSize = Math.max(group.interfaceCount, GROUP_MEMBER_FETCH_SIZE);
 
-    void fetchDeviceGroupDetail(group.id, 0, fetchSize)
+    void fetchInterfaceGroupDetail(group.id, 0, fetchSize)
       .then((detail) => {
         if (!active) return;
-        setDevices(detail.devices.content);
-        setTotalElements(detail.devices.totalElements);
-        onDeviceCountChange?.(group.id, detail.devices.totalElements);
+        setInterfaces(detail.interfaces.content);
+        setTotalElements(detail.interfaces.totalElements);
+        onInterfaceCountChange?.(group.id, detail.interfaces.totalElements);
       })
       .catch((error) => {
         if (active) {
           toast.error(getAuthErrorMessage(error));
-          setDevices([]);
+          setInterfaces([]);
           setTotalElements(0);
         }
       })
@@ -200,26 +202,26 @@ function GroupDevicesPanel({
     return () => {
       active = false;
     };
-  }, [group.id, group.deviceCount, refreshKey, onDeviceCountChange]);
+  }, [group.id, group.interfaceCount, refreshKey, onInterfaceCountChange]);
 
-  const filteredDevices = useMemo(
-    () => devices.filter((device) => matchesDeviceSearch(device, searchInput)),
-    [devices, searchInput],
+  const filteredInterfaces = useMemo(
+    () => interfaces.filter((iface) => matchesInterfaceSearch(iface, searchInput)),
+    [interfaces, searchInput],
   );
-  const filteredTotal = filteredDevices.length;
+  const filteredTotal = filteredInterfaces.length;
   const totalPages =
-    filteredTotal === 0 ? 0 : Math.ceil(filteredTotal / GROUP_DEVICE_PAGE_SIZE);
-  const visibleDevices = filteredDevices.slice(
-    page * GROUP_DEVICE_PAGE_SIZE,
-    page * GROUP_DEVICE_PAGE_SIZE + GROUP_DEVICE_PAGE_SIZE,
+    filteredTotal === 0 ? 0 : Math.ceil(filteredTotal / GROUP_INTERFACE_PAGE_SIZE);
+  const visibleInterfaces = filteredInterfaces.slice(
+    page * GROUP_INTERFACE_PAGE_SIZE,
+    page * GROUP_INTERFACE_PAGE_SIZE + GROUP_INTERFACE_PAGE_SIZE,
   );
-  const pageStart = filteredTotal === 0 ? 0 : page * GROUP_DEVICE_PAGE_SIZE + 1;
-  const pageEnd = Math.min((page + 1) * GROUP_DEVICE_PAGE_SIZE, filteredTotal);
+  const pageStart = filteredTotal === 0 ? 0 : page * GROUP_INTERFACE_PAGE_SIZE + 1;
+  const pageEnd = Math.min((page + 1) * GROUP_INTERFACE_PAGE_SIZE, filteredTotal);
 
   if (loading) {
     return (
       <div className="text-muted-foreground flex min-h-24 items-center justify-center px-4 py-3 text-sm">
-        Loading devices...
+        Loading interfaces...
       </div>
     );
   }
@@ -227,11 +229,11 @@ function GroupDevicesPanel({
   if (totalElements === 0) {
     return (
       <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-muted-foreground text-sm">No devices in this group.</p>
+        <p className="text-muted-foreground text-sm">No interfaces in this group.</p>
         {editable ? (
-          <Button type="button" variant="outline" size="sm" onClick={onManageDevices}>
+          <Button type="button" variant="outline" size="sm" onClick={onManageInterfaces}>
             <Plus className="size-4" />
-            Add devices
+            Add interfaces
           </Button>
         ) : null}
       </div>
@@ -242,12 +244,12 @@ function GroupDevicesPanel({
     <div className="space-y-3 px-4 py-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-          Devices in {group.name} ({totalElements})
+          Interfaces in {group.name} ({totalElements})
         </p>
         {editable ? (
-          <Button type="button" variant="outline" size="sm" onClick={onManageDevices}>
-            <Server className="size-4" />
-            Manage devices
+          <Button type="button" variant="outline" size="sm" onClick={onManageInterfaces}>
+            <Network className="size-4" />
+            Manage interfaces
           </Button>
         ) : (
           <p className="text-muted-foreground text-xs">Read-only shared group</p>
@@ -259,44 +261,44 @@ function GroupDevicesPanel({
         <Input
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Search by hostname, IP, vendor, or model"
+          placeholder="Search by device, IP, interface, or status"
           className="h-9 pl-9"
         />
       </div>
 
       {filteredTotal === 0 ? (
         <div className="text-muted-foreground rounded-lg border border-dashed px-4 py-6 text-center text-sm">
-          No devices match your search.
+          No interfaces match your search.
         </div>
       ) : (
       <div className="overflow-x-auto rounded-lg border bg-background/60">
         <table className="min-w-full text-sm">
           <thead className="bg-muted/40">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">Hostname</th>
+              <th className="px-3 py-2 text-left font-medium">Device</th>
               <th className="px-3 py-2 text-left font-medium">IP address</th>
-              <th className="px-3 py-2 text-left font-medium">Vendor</th>
-              <th className="px-3 py-2 text-left font-medium">Model</th>
+              <th className="px-3 py-2 text-left font-medium">Interface</th>
+              <th className="px-3 py-2 text-left font-medium">Index</th>
+              <th className="px-3 py-2 text-left font-medium">Admin</th>
+              <th className="px-3 py-2 text-left font-medium">Oper</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {visibleDevices.map((device) => (
-              <tr key={device.id} className="hover:bg-muted/30">
+            {visibleInterfaces.map((iface) => (
+              <tr key={iface.id} className="hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">
                   <Link
-                    to={routes.deviceDetails(String(device.id))}
+                    to={routes.deviceDetails(String(iface.deviceId))}
                     className="text-primary hover:underline"
                   >
-                    {device.hostname || "Unnamed device"}
+                    {iface.deviceHostname || "Unknown device"}
                   </Link>
                 </td>
-                <td className="text-muted-foreground px-3 py-2">{device.ip}</td>
-                <td className="text-muted-foreground px-3 py-2">
-                  {device.vendor || "—"}
-                </td>
-                <td className="text-muted-foreground px-3 py-2">
-                  {device.model || "—"}
-                </td>
+                <td className="text-muted-foreground px-3 py-2">{iface.deviceIp}</td>
+                <td className="px-3 py-2 font-medium">{iface.name}</td>
+                <td className="text-muted-foreground px-3 py-2">{iface.ifIndex}</td>
+                <td className="text-muted-foreground px-3 py-2">{iface.adminStatus}</td>
+                <td className="text-muted-foreground px-3 py-2">{iface.operStatus}</td>
               </tr>
             ))}
           </tbody>
@@ -304,10 +306,10 @@ function GroupDevicesPanel({
       </div>
       )}
 
-      {filteredTotal > GROUP_DEVICE_PAGE_SIZE ? (
+      {filteredTotal > GROUP_INTERFACE_PAGE_SIZE ? (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-muted-foreground text-xs">
-            Showing {pageStart}-{pageEnd} of {filteredTotal} devices
+            Showing {pageStart}-{pageEnd} of {filteredTotal} interfaces
             {searchInput.trim() ? ` (filtered from ${totalElements})` : ""}
           </p>
           <div className="flex items-center gap-2">
@@ -339,29 +341,29 @@ function GroupDevicesPanel({
   );
 }
 
-export function DeviceGroupsPage() {
+export function InterfaceGroupsPage() {
   const { user } = useAuth();
   const admin = isAdmin(user);
   const location = useLocation();
 
-  const [groups, setGroups] = useState<DeviceGroup[]>([]);
+  const [groups, setGroups] = useState<InterfaceGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [groupFilter, setGroupFilter] = useState<GroupFilter>("all");
   const [createOpen, setCreateOpen] = useState(false);
-  const [editGroup, setEditGroup] = useState<DeviceGroup | null>(null);
-  const [deleteGroupTarget, setDeleteGroupTarget] = useState<DeviceGroup | null>(null);
-  const [manageDevicesGroup, setManageDevicesGroup] = useState<DeviceGroup | null>(null);
+  const [editGroup, setEditGroup] = useState<InterfaceGroup | null>(null);
+  const [deleteGroupTarget, setDeleteGroupTarget] = useState<InterfaceGroup | null>(null);
+  const [manageInterfacesGroup, setManageInterfacesGroup] = useState<InterfaceGroup | null>(null);
   const [expandedGroupIds, setExpandedGroupIds] = useState<Set<number>>(() => new Set());
-  const [devicesRefreshKey, setDevicesRefreshKey] = useState(0);
+  const [interfacesRefreshKey, setInterfacesRefreshKey] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
 
     try {
-      const result = await fetchDeviceGroups();
+      const result = await fetchInterfaceGroups();
       setGroups(result.content);
     } catch (error) {
       toast.error(getAuthErrorMessage(error));
@@ -375,10 +377,10 @@ export function DeviceGroupsPage() {
     void loadGroups();
   }, [loadGroups, location.key]);
 
-  const handleDeviceCountChange = useCallback((groupId: number, deviceCount: number) => {
+  const handleInterfaceCountChange = useCallback((groupId: number, interfaceCount: number) => {
     setGroups((current) =>
       current.map((group) =>
-        group.id === groupId ? { ...group, deviceCount } : group,
+        group.id === groupId ? { ...group, interfaceCount } : group,
       ),
     );
   }, []);
@@ -419,7 +421,7 @@ export function DeviceGroupsPage() {
     setActionLoading(true);
 
     try {
-      await deleteDeviceGroup(deleteGroupTarget.id);
+      await deleteInterfaceGroup(deleteGroupTarget.id);
       toast.success(`Group "${deleteGroupTarget.name}" deleted`);
       setDeleteGroupTarget(null);
 
@@ -442,9 +444,9 @@ export function DeviceGroupsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Device Groups</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Interface Groups</h2>
           <p className="text-muted-foreground max-w-2xl text-sm">
-            Organize devices into groups for dashboards and monitoring views.
+            Organize interfaces into groups for dashboards and monitoring views.
             Shared groups are visible to everyone; private groups are only visible
             to you and administrators.
           </p>
@@ -519,13 +521,13 @@ export function DeviceGroupsPage() {
                         <th className="px-4 py-3 text-left font-medium">Owner</th>
                       ) : null}
                       <th className="px-4 py-3 text-left font-medium">Visibility</th>
-                      <th className="px-4 py-3 text-left font-medium">Devices</th>
+                      <th className="px-4 py-3 text-left font-medium">Interfaces</th>
                       <th className="px-4 py-3 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border bg-background/80">
                     {pageGroups.map((group) => {
-                      const editable = canEditDeviceGroup(group, user?.id, admin);
+                      const editable = canEditInterfaceGroup(group, user?.id, admin);
                       const isExpanded = expandedGroupIds.has(group.id);
 
                       return (
@@ -566,7 +568,7 @@ export function DeviceGroupsPage() {
                                   toggleExpandedGroup(group.id, setExpandedGroupIds)
                                 }
                               >
-                                {group.deviceCount}
+                                {group.interfaceCount}
                               </button>
                             </td>
                             <td className="px-4 py-3 text-right">
@@ -587,14 +589,14 @@ export function DeviceGroupsPage() {
                                     }
                                   >
                                     <Eye className="size-4" />
-                                    {isExpanded ? "Hide devices" : "View devices"}
+                                    {isExpanded ? "Hide interfaces" : "View interfaces"}
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    onClick={() => setManageDevicesGroup(group)}
+                                    onClick={() => setManageInterfacesGroup(group)}
                                     disabled={!editable}
                                   >
-                                    <Server className="size-4" />
-                                    Manage devices
+                                    <Network className="size-4" />
+                                    Manage interfaces
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
                                     onClick={() => setEditGroup(group)}
@@ -619,12 +621,12 @@ export function DeviceGroupsPage() {
                           {isExpanded ? (
                             <tr className="bg-muted/20">
                               <td colSpan={admin ? 6 : 5} className="border-t border-border/60 p-0">
-                                <GroupDevicesPanel
+                                <GroupInterfacesPanel
                                   group={group}
                                   editable={editable}
-                                  refreshKey={devicesRefreshKey}
-                                  onManageDevices={() => setManageDevicesGroup(group)}
-                                  onDeviceCountChange={handleDeviceCountChange}
+                                  refreshKey={interfacesRefreshKey}
+                                  onManageInterfaces={() => setManageInterfacesGroup(group)}
+                                  onInterfaceCountChange={handleInterfaceCountChange}
                                 />
                               </td>
                             </tr>
@@ -690,12 +692,12 @@ export function DeviceGroupsPage() {
         }}
       />
 
-      <ManageDevicesDialog
-        group={manageDevicesGroup}
-        onClose={() => setManageDevicesGroup(null)}
+      <ManageInterfacesDialog
+        group={manageInterfacesGroup}
+        onClose={() => setManageInterfacesGroup(null)}
         onSuccess={async () => {
           await loadGroups();
-          setDevicesRefreshKey((current) => current + 1);
+          setInterfacesRefreshKey((current) => current + 1);
         }}
       />
 
@@ -705,7 +707,7 @@ export function DeviceGroupsPage() {
         title="Delete group"
         description={
           deleteGroupTarget
-            ? `This will permanently remove "${deleteGroupTarget.name}" and its device assignments.`
+            ? `This will permanently remove "${deleteGroupTarget.name}" and its interface assignments.`
             : undefined
         }
       >
@@ -780,7 +782,7 @@ function CreateGroupDialog({
         ...(admin ? { visibility: values.visibility } : {}),
       };
 
-      await createDeviceGroup(payload);
+      await createInterfaceGroup(payload);
       toast.success(`Group "${values.name.trim()}" created`);
       await onSuccess();
     } catch (error) {
@@ -889,7 +891,7 @@ function EditGroupDialog({
   onClose,
   onSuccess,
 }: {
-  group: DeviceGroup | null;
+  group: InterfaceGroup | null;
   admin: boolean;
   onClose: () => void;
   onSuccess: () => Promise<void>;
@@ -926,7 +928,7 @@ function EditGroupDialog({
         ...(admin ? { visibility: values.visibility } : {}),
       };
 
-      await updateDeviceGroup(group.id, payload);
+      await updateInterfaceGroup(group.id, payload);
       toast.success(`Group "${values.name.trim()}" updated`);
       await onSuccess();
     } catch (error) {
@@ -1028,44 +1030,42 @@ function EditGroupDialog({
   );
 }
 
-function ManageDevicesDialog({
+function ManageInterfacesDialog({
   group,
   onClose,
   onSuccess,
 }: {
-  group: DeviceGroup | null;
+  group: InterfaceGroup | null;
   onClose: () => void;
   onSuccess: () => Promise<void>;
 }) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [availableDevices, setAvailableDevices] = useState<
-    { id: number; hostname: string; ipAddress: string }[]
-  >([]);
-  const [selectedDeviceIds, setSelectedDeviceIds] = useState<number[]>([]);
-  const [groupDevices, setGroupDevices] = useState<DeviceGroupDevice[]>([]);
+  const [availableInterfaces, setAvailableInterfaces] = useState<InterfaceGroupMember[]>([]);
+  const [selectedInterfaceIds, setSelectedInterfaceIds] = useState<number[]>([]);
+  const [groupInterfaces, setGroupInterfaces] = useState<InterfaceGroupMember[]>([]);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!group) {
-      setAvailableDevices([]);
-      setSelectedDeviceIds([]);
-      setGroupDevices([]);
+      setAvailableInterfaces([]);
+      setSelectedInterfaceIds([]);
+      setGroupInterfaces([]);
       setSearch("");
       return;
     }
 
-    setSelectedDeviceIds([]);
+    setSelectedInterfaceIds([]);
     setSearch("");
 
     let active = true;
     setLoading(true);
 
-    void Promise.all([fetchDeviceList(), fetchDeviceGroupDetail(group.id, 0, 1000)])
-      .then(([deviceList, groupDetail]) => {
+    void Promise.all([fetchInterfaceCatalog(), fetchInterfaceGroupDetail(group.id, 0, 1000)])
+      .then(([catalog, groupDetail]) => {
         if (!active) return;
-        setAvailableDevices(deviceList.devices);
-        setGroupDevices(groupDetail.devices.content);
+        setAvailableInterfaces(catalog.content);
+        setGroupInterfaces(groupDetail.interfaces.content);
       })
       .catch((error) => {
         if (active) {
@@ -1083,10 +1083,10 @@ function ManageDevicesDialog({
     };
   }, [group]);
 
-  const groupDeviceIds = new Set(groupDevices.map((device) => device.id));
+  const groupInterfaceIds = new Set(groupInterfaces.map((iface) => iface.id));
 
-  const addableDevices = availableDevices.filter((device) => {
-    if (groupDeviceIds.has(device.id)) {
+  const addableInterfaces = availableInterfaces.filter((iface) => {
+    if (groupInterfaceIds.has(iface.id)) {
       return false;
     }
 
@@ -1096,31 +1096,32 @@ function ManageDevicesDialog({
     }
 
     return (
-      device.hostname.toLowerCase().includes(query) ||
-      device.ipAddress.toLowerCase().includes(query)
+      iface.deviceHostname.toLowerCase().includes(query) ||
+      iface.deviceIp.toLowerCase().includes(query) ||
+      iface.name.toLowerCase().includes(query)
     );
   });
 
-  const toggleDeviceSelection = (deviceId: number, checked: boolean) => {
-    setSelectedDeviceIds((current) =>
+  const toggleInterfaceSelection = (interfaceId: number, checked: boolean) => {
+    setSelectedInterfaceIds((current) =>
       checked
-        ? [...current, deviceId]
-        : current.filter((id) => id !== deviceId),
+        ? [...current, interfaceId]
+        : current.filter((id) => id !== interfaceId),
     );
   };
 
-  const handleAddDevices = async () => {
-    if (!group || selectedDeviceIds.length === 0) return;
+  const handleAddInterfaces = async () => {
+    if (!group || selectedInterfaceIds.length === 0) return;
 
     setSaving(true);
 
     try {
-      await addDevicesToGroup(group.id, selectedDeviceIds);
-      const detail = await fetchDeviceGroupDetail(group.id, 0, 1000);
-      setGroupDevices(detail.devices.content);
-      setSelectedDeviceIds([]);
+      await addInterfacesToGroup(group.id, selectedInterfaceIds);
+      const detail = await fetchInterfaceGroupDetail(group.id, 0, 1000);
+      setGroupInterfaces(detail.interfaces.content);
+      setSelectedInterfaceIds([]);
       toast.success(
-        `Added ${selectedDeviceIds.length} device${selectedDeviceIds.length === 1 ? "" : "s"} to group`,
+        `Added ${selectedInterfaceIds.length} interface${selectedInterfaceIds.length === 1 ? "" : "s"} to group`,
       );
       await onSuccess();
     } catch (error) {
@@ -1130,16 +1131,16 @@ function ManageDevicesDialog({
     }
   };
 
-  const handleRemoveDevice = async (device: DeviceGroupDevice) => {
+  const handleRemoveInterface = async (iface: InterfaceGroupMember) => {
     if (!group) return;
 
     setSaving(true);
 
     try {
-      await removeDevicesFromGroup(group.id, [device.id]);
-      const detail = await fetchDeviceGroupDetail(group.id, 0, 1000);
-      setGroupDevices(detail.devices.content);
-      toast.success(`Removed ${device.hostname || device.ip} from group`);
+      await removeInterfacesFromGroup(group.id, [iface.id]);
+      const detail = await fetchInterfaceGroupDetail(group.id, 0, 1000);
+      setGroupInterfaces(detail.interfaces.content);
+      toast.success(`Removed ${iface.deviceHostname} — ${iface.name} from group`);
       await onSuccess();
     } catch (error) {
       toast.error(getAuthErrorMessage(error));
@@ -1152,45 +1153,45 @@ function ManageDevicesDialog({
     <Modal
       open={!!group}
       onClose={onClose}
-      title={group ? `Manage devices — ${group.name}` : "Manage devices"}
-      description="Add or remove devices assigned to this group."
+      title={group ? `Manage interfaces — ${group.name}` : "Manage interfaces"}
+      description="Add or remove interfaces assigned to this group."
       className="max-w-2xl"
     >
       {group ? (
         <div className="space-y-6">
           <div>
             <h4 className="mb-2 text-sm font-medium">
-              Devices in group ({groupDevices.length})
+              Interfaces in group ({groupInterfaces.length})
             </h4>
-            {groupDevices.length === 0 ? (
+            {groupInterfaces.length === 0 ? (
               <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
-                No devices in this group yet.
+                No interfaces in this group yet.
               </p>
             ) : (
               <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border p-3">
-                {groupDevices.map((device) => (
+                {groupInterfaces.map((iface) => (
                   <div
-                    key={device.id}
+                    key={iface.id}
                     className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-muted/40"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {device.hostname || "Unnamed device"}
+                        {iface.deviceHostname} — {iface.name}
                       </p>
                       <p className="text-muted-foreground truncate text-xs">
-                        {device.ip}
+                        {iface.deviceIp} · ifIndex {iface.ifIndex}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="link" className="h-auto p-0 text-xs" asChild>
-                        <Link to={routes.deviceDetails(String(device.id))}>View</Link>
+                        <Link to={routes.deviceDetails(String(iface.deviceId))}>View device</Link>
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
                         disabled={saving}
-                        onClick={() => void handleRemoveDevice(device)}
+                        onClick={() => void handleRemoveInterface(iface)}
                       >
                         Remove
                       </Button>
@@ -1202,36 +1203,36 @@ function ManageDevicesDialog({
           </div>
 
           <div>
-            <h4 className="mb-2 text-sm font-medium">Add devices</h4>
+            <h4 className="mb-2 text-sm font-medium">Add interfaces</h4>
             <div className="relative mb-3">
               <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search available devices"
+                placeholder="Search by device or interface name"
                 className="pl-9"
               />
             </div>
 
             {loading ? (
               <div className="text-muted-foreground flex min-h-32 items-center justify-center rounded-lg border border-dashed text-sm">
-                Loading devices...
+                Loading interfaces...
               </div>
-            ) : addableDevices.length === 0 ? (
+            ) : addableInterfaces.length === 0 ? (
               <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
                 {search
-                  ? "No matching devices available to add."
-                  : "All available devices are already in this group."}
+                  ? "No matching interfaces available to add."
+                  : "All available interfaces are already in this group."}
               </p>
             ) : (
               <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border p-3">
-                {addableDevices.map((device) => (
+                {addableInterfaces.map((iface) => (
                   <StyledCheckbox
-                    key={device.id}
-                    label={`${device.hostname} (${device.ipAddress})`}
-                    checked={selectedDeviceIds.includes(device.id)}
+                    key={iface.id}
+                    label={`${iface.deviceHostname} — ${iface.name} (${iface.deviceIp})`}
+                    checked={selectedInterfaceIds.includes(iface.id)}
                     onChange={(event) =>
-                      toggleDeviceSelection(device.id, event.target.checked)
+                      toggleInterfaceSelection(iface.id, event.target.checked)
                     }
                   />
                 ))}
@@ -1244,8 +1245,8 @@ function ManageDevicesDialog({
               </Button>
               <Button
                 type="button"
-                disabled={saving || selectedDeviceIds.length === 0}
-                onClick={() => void handleAddDevices()}
+                disabled={saving || selectedInterfaceIds.length === 0}
+                onClick={() => void handleAddInterfaces()}
               >
                 {saving ? (
                   <>
@@ -1255,7 +1256,7 @@ function ManageDevicesDialog({
                 ) : (
                   <>
                     <Plus className="size-4" />
-                    Add selected ({selectedDeviceIds.length})
+                    Add selected ({selectedInterfaceIds.length})
                   </>
                 )}
               </Button>

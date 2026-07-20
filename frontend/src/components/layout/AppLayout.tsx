@@ -2,6 +2,7 @@ import {
   Activity,
   FolderTree,
   LayoutDashboard,
+  Network,
   Server,
   ServerCog,
   Settings,
@@ -32,7 +33,8 @@ const mainNavItems = [
 ];
 
 const devicesSubNavItems = [
-  { to: routes.deviceGroups, label: "Groups", icon: FolderTree },
+  { to: routes.deviceGroups, label: "Device Groups", icon: FolderTree },
+  { to: routes.interfaceGroups, label: "Interface groups", icon: Network },
 ];
 
 const adminNavItems = [
@@ -66,8 +68,15 @@ function getPageHeader(pathname: string): { title: string; description: string }
 
   if (pathname === routes.deviceGroups) {
     return {
-      title: "Groups",
+      title: "Device Groups",
       description: "Create and manage device groups",
+    };
+  }
+
+  if (pathname === routes.interfaceGroups) {
+    return {
+      title: "Interface groups",
+      description: "Create and manage interface groups",
     };
   }
 
