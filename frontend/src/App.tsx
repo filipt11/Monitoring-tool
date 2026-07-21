@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { Toaster } from "sonner";
 
+import { ScrollLockOverride } from "@/components/ScrollLockOverride";
 import { AdminRoute } from "@/components/AdminRoute";
 import { GuestRoute, ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout, AuthLayout } from "@/components/layout/AppLayout";
@@ -10,6 +11,10 @@ import { AdminAppConfigPage } from "@/pages/admin/AdminAppConfigPage";
 import { AdminManageDevicesPage } from "@/pages/admin/AdminManageDevicesPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { DeviceDetailsPage } from "@/pages/DeviceDetailsPage";
+import { DashboardViewPage } from "@/pages/DashboardViewPage";
+import { DashboardSectionsPage } from "@/pages/DashboardSectionsPage";
+import { DashboardSectionEditPage } from "@/pages/DashboardSectionEditPage";
+import { DashboardsPage } from "@/pages/DashboardsPage";
 import { DeviceGroupsPage } from "@/pages/DeviceGroupsPage";
 import { InterfaceGroupsPage } from "@/pages/InterfaceGroupsPage";
 import { DevicesPage } from "@/pages/DevicesPage";
@@ -30,6 +35,7 @@ function LegacyDeviceDetailsRedirect() {
 export default function App() {
   return (
     <AuthProvider>
+      <ScrollLockOverride />
       <Routes>
         <Route element={<GuestRoute />}>
           <Route element={<AuthLayout />}>
@@ -44,6 +50,20 @@ export default function App() {
             <Route path={routes.devices} element={<DevicesPage />} />
             <Route path={routes.deviceGroups} element={<DeviceGroupsPage />} />
             <Route path={routes.interfaceGroups} element={<InterfaceGroupsPage />} />
+            <Route path={routes.dashboards} element={<DashboardsPage />} />
+            <Route path={`${routes.dashboards}/:dashboardId`} element={<DashboardViewPage />} />
+            <Route
+              path={`${routes.dashboards}/:dashboardId/sections`}
+              element={<DashboardSectionsPage />}
+            />
+            <Route
+              path={`${routes.dashboards}/:dashboardId/sections/new`}
+              element={<DashboardSectionEditPage />}
+            />
+            <Route
+              path={`${routes.dashboards}/:dashboardId/sections/:sectionId/edit`}
+              element={<DashboardSectionEditPage />}
+            />
             <Route path={`${routes.devices}/:deviceId`} element={<DeviceDetailsPage />} />
 
             <Route element={<AdminRoute />}>

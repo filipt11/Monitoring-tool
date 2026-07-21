@@ -115,7 +115,21 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
   }
+}
+
+/* Fallback if ScrollLockOverride has not run yet. */
+body[data-scroll-locked] {
+  overflow: auto !important;
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+  padding-top: 0 !important;
+  margin-right: 0 !important;
+  position: static !important;
 }

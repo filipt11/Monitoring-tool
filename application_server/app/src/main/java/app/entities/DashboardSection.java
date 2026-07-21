@@ -6,7 +6,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -21,7 +24,21 @@ public class DashboardSection {
     private Long id;
     private String name;
     private String graphType;
-    private List<String> metrics;
+
+    @Column(nullable = false)
+    private Integer sortOrder = 0;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DashboardSectionSourceType sourceType;
+
+    @ElementCollection
+    @CollectionTable(
+            name = "dashboard_section_metrics",
+            joinColumns = @JoinColumn(name = "section_id")
+    )
+    @Column(name = "metric")
+    private List<String> metrics = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dashboard_id", nullable = false)
@@ -33,13 +50,21 @@ public class DashboardSection {
             joinColumns = @JoinColumn(name = "section_id"),
             inverseJoinColumns = @JoinColumn(name = "device_id")
     )
-    private List<Device> devices;
+    private Set<Device> devices = new LinkedHashSet<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "device_group_id")
+    private DeviceGroup deviceGroup;
 
     @ManyToMany
     @JoinTable(
-            name = "dashboard_section_device_groups",
+            name = "dashboard_section_interfaces",
             joinColumns = @JoinColumn(name = "section_id"),
-            inverseJoinColumns = @JoinColumn(name = "device_group_id")
+            inverseJoinColumns = @JoinColumn(name = "interface_id")
     )
-    private List<DeviceGroup> deviceGroups;
+    private Set<DeviceInterface> interfaces = new LinkedHashSet<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "interface_group_id")
+    private InterfaceGroup interfaceGroup;
 }

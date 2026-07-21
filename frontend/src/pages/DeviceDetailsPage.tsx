@@ -459,6 +459,7 @@ export function DeviceDetailsPage() {
       </div>
 
       <TimeSeriesChart
+        chartInstanceId={`device-${resolvedDeviceId}-cpu`}
         data={cpuChartData}
         metrics={["cpu_usage"]}
         metricLabels={{ cpu_usage: "CPU Usage (%)" }}
@@ -470,9 +471,11 @@ export function DeviceDetailsPage() {
         isLoading={cpuLoading}
         error={cpuError}
         showMetricToggles={false}
+        chartStyle="area"
       />
 
       <TimeSeriesChart
+        chartInstanceId={`device-${resolvedDeviceId}-memory`}
         data={memoryChartData}
         metrics={["memory_usage_pct"]}
         metricLabels={{ memory_usage_pct: "Memory Usage (%)" }}
@@ -484,6 +487,7 @@ export function DeviceDetailsPage() {
         isLoading={memoryLoading}
         error={memoryError}
         showMetricToggles={false}
+        chartStyle="area"
         valueDecimals={2}
       />
 

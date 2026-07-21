@@ -15,6 +15,8 @@ interface MetricsTableProps {
   onMetricsChange?: (metrics: string[]) => void;
   isLoading?: boolean;
   error?: string | null;
+  hideControls?: boolean;
+  metricLabels?: Record<string, string>;
 }
 
 export const MetricsTable = React.memo(function MetricsTable({
@@ -26,9 +28,13 @@ export const MetricsTable = React.memo(function MetricsTable({
   onMetricsChange,
   isLoading = false,
   error = null,
+  hideControls = false,
+  metricLabels,
 }: MetricsTableProps) {
   const [deviceIds, setDeviceIds] = useState("1,2,3");
   const [activeMetrics, setActiveMetrics] = useState(metrics);
+
+  const formatMetricHeader = (metric: string) => metricLabels?.[metric] ?? metric;
 
   const handleDeviceChange = useCallback(() => {
     const ids = deviceIds.split(",").map((id) => id.trim());
@@ -51,9 +57,12 @@ export const MetricsTable = React.memo(function MetricsTable({
   );
 
   const filteredData = data.filter((row) => {
-    const metricsPresent = activeMetrics.some((metric) => metric in row);
+    const metricsToShow = hideControls ? metrics : activeMetrics;
+    const metricsPresent = metricsToShow.some((metric) => metric in row);
     return metricsPresent;
   });
+
+  const displayedMetrics = hideControls ? metrics : activeMetrics;
 
   return (
     <Card>
@@ -62,37 +71,39 @@ export const MetricsTable = React.memo(function MetricsTable({
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Controls */}
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="table-device-ids">Device IDs</Label>
-            <Input
-              id="table-device-ids"
-              placeholder="1,2,3"
-              value={deviceIds}
-              onChange={(e) => setDeviceIds(e.target.value)}
-            />
-          </div>
-          <div className="flex items-end">
-            <Button onClick={handleDeviceChange} className="w-full">
-              Update Devices
-            </Button>
-          </div>
-        </div>
+        {!hideControls ? (
+          <>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="table-device-ids">Device IDs</Label>
+                <Input
+                  id="table-device-ids"
+                  placeholder="1,2,3"
+                  value={deviceIds}
+                  onChange={(e) => setDeviceIds(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button onClick={handleDeviceChange} className="w-full">
+                  Update Devices
+                </Button>
+              </div>
+            </div>
 
-        {/* Metric toggles */}
-        <div className="flex flex-wrap gap-2">
-          {metrics.map((metric) => (
-            <Button
-              key={metric}
-              variant={activeMetrics.includes(metric) ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleMetricToggle(metric)}
-            >
-              {metric}
-            </Button>
-          ))}
-        </div>
+            <div className="flex flex-wrap gap-2">
+              {metrics.map((metric) => (
+                <Button
+                  key={metric}
+                  variant={activeMetrics.includes(metric) ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleMetricToggle(metric)}
+                >
+                  {formatMetricHeader(metric)}
+                </Button>
+              ))}
+            </div>
+          </>
+        ) : null}
 
         {/* Table */}
         {error && (
@@ -115,9 +126,9 @@ export const MetricsTable = React.memo(function MetricsTable({
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Device</th>
-                  {activeMetrics.map((metric) => (
+                  {displayedMetrics.map((metric) => (
                     <th key={metric} className="px-4 py-3 text-right font-medium">
-                      {metric}
+                      {formatMetricHeader(metric)}
                     </th>
                   ))}
                 </tr>
@@ -131,7 +142,7 @@ export const MetricsTable = React.memo(function MetricsTable({
                         <p className="text-muted-foreground text-xs">ID: {row.deviceId}</p>
                       </div>
                     </td>
-                    {activeMetrics.map((metric) => (
+                    {displayedMetrics.map((metric) => (
                       <td key={metric} className="px-4 py-3 text-right">
                         {metric in row ? (
                           <span className="font-mono">

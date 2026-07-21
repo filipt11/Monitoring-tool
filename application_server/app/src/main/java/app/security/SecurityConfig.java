@@ -42,8 +42,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public static PasswordEncoder passwordEncoder(){
-        return new BCryptPasswordEncoder(12,new SecureRandom());
+    public static PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder(12, new SecureRandom());
     }
 
     @Bean
@@ -65,7 +65,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authorizeRequests ->
                         authorizeRequests
-                                .requestMatchers("/api/auth/**", "/test","/swagger-ui/**","/v3/api-docs/**").permitAll()
+                                .requestMatchers("/api/auth/**", "/test", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                                 .requestMatchers("/administration/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()
                 );
@@ -76,7 +76,8 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
+        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:3000", "http://192.168.1.*:3000"));
+//        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

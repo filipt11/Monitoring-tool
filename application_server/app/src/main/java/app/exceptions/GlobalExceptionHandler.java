@@ -179,6 +179,30 @@ public class GlobalExceptionHandler {
                 .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
     }
 
+    @ExceptionHandler(DashboardNotFoundException.class)
+    public ResponseEntity<ExceptionMessage> handleDashboardNotFound(DashboardNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DashboardAccessDeniedException.class)
+    public ResponseEntity<ExceptionMessage> handleDashboardAccessDenied(DashboardAccessDeniedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DashboardSectionNotFoundException.class)
+    public ResponseEntity<ExceptionMessage> handleDashboardSectionNotFound(DashboardSectionNotFoundException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
+    @ExceptionHandler(DashboardSectionAccessDeniedException.class)
+    public ResponseEntity<ExceptionMessage> handleDashboardSectionAccessDenied(DashboardSectionAccessDeniedException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ExceptionMessage(ex.getMessage(), request.getRequestURI()));
+    }
+
     @ExceptionHandler(RestClientResponseException.class)
     public ResponseEntity<ExceptionMessage> handleRestClientError(
             RestClientResponseException ex,

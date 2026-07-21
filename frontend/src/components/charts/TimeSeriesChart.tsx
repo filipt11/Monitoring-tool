@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import React from "react";
 import {
   Area,
@@ -53,6 +53,53 @@ function formatChartValue(value: number, decimals?: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
+function sanitizeSvgId(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+/** Zoom the Y axis for low-value area charts so the fill remains visible. */
+function computeAreaYDomain(
+  chartData: Record<string, string | number | null | undefined>[],
+  activeMetrics: string[],
+): [number, number] {
+  const values: number[] = [];
+
+  for (const row of chartData) {
+    for (const metric of activeMetrics) {
+      const value = row[metric];
+      if (typeof value === "number" && Number.isFinite(value)) {
+        values.push(value);
+      }
+    }
+  }
+
+  if (values.length === 0) {
+    return [0, 100];
+  }
+
+  const sorted = [...values].sort((left, right) => left - right);
+  const max = sorted[sorted.length - 1] ?? 0;
+  const median = sorted[Math.floor(sorted.length / 2)] ?? max;
+  const p80 = sorted[Math.floor(sorted.length * 0.8)] ?? max;
+
+  // Low-utilization devices (e.g. r-low-1) sit near the bottom of a 0-100 axis,
+  // making area fill look like a plain line. Zoom in when typical values stay low.
+  if (median <= 20) {
+    if (max <= 40) {
+      return [0, Math.max(12, Math.ceil(max * 1.15))];
+    }
+
+    // Occasional spikes on an otherwise low device — zoom to the typical band.
+    return [0, Math.max(20, Math.min(40, Math.ceil(p80 * 1.25)))];
+  }
+
+  if (max <= 40) {
+    return [0, Math.max(12, Math.ceil(max * 1.15))];
+  }
+
+  return [0, Math.min(100, Math.ceil(max * 1.08))];
+}
+
 interface TimeSeriesChartProps {
   data: TimeSeriesChartData[];
   metrics: string[];
@@ -71,6 +118,8 @@ interface TimeSeriesChartProps {
   colors?: string[];
   /** `auto` uses line charts for multi-metric series and area charts for a single metric. */
   chartStyle?: "auto" | "area" | "line";
+  /** Unique id for SVG defs (gradients). Required when multiple charts share metrics on one page. */
+  chartInstanceId?: string;
   /** When false, hides the built-in time range picker (e.g. when a parent controls range). */
   showTimeRangeControl?: boolean;
 }
@@ -90,12 +139,20 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
   valueDecimals,
   colors = DEFAULT_CHART_COLORS,
   chartStyle = "auto",
+  chartInstanceId,
   showTimeRangeControl = true,
 }: TimeSeriesChartProps) {
   const [activeMetrics, setActiveMetrics] = useState(metrics);
 
+  useEffect(() => {
+    setActiveMetrics(metrics);
+  }, [metrics]);
+
+  const resolvedInstanceId = sanitizeSvgId(chartInstanceId ?? title);
+
   const useLineChart =
-    chartStyle === "line" || (chartStyle === "auto" && metrics.length > 1);
+    chartStyle === "line" ||
+    (chartStyle === "auto" && metrics.length > 1);
 
   const handleMetricToggle = (metric: string) => {
     setActiveMetrics((prev) =>
@@ -115,14 +172,17 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
         };
 
         activeMetrics.forEach((metric) => {
-          if (metric in row) {
-            newRow[metric] = row[metric] ?? null;
-          }
+          newRow[metric] = metric in row ? (row[metric] ?? null) : null;
         });
 
         return newRow;
       });
   }, [data, activeMetrics]);
+
+  const areaYDomain = useMemo(
+    () => computeAreaYDomain(chartData, activeMetrics),
+    [activeMetrics, chartData],
+  );
 
   const shouldShowMetricToggles = showMetricToggles && metrics.length > 1;
 
@@ -216,12 +276,16 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
             ) : (
               <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                 <defs>
-                  {activeMetrics.map((metric, idx) => (
-                    <linearGradient key={metric} id={`gradient-${metric}`} x1="0" y1="0" x2="0" y2="1">
+                  {activeMetrics.map((metric, idx) => {
+                    const gradientId = `gradient-${resolvedInstanceId}-${sanitizeSvgId(metric)}`;
+
+                    return (
+                    <linearGradient key={metric} id={gradientId} x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor={colors[idx % colors.length]} stopOpacity={0.22} />
                       <stop offset="95%" stopColor={colors[idx % colors.length]} stopOpacity={0} />
                     </linearGradient>
-                  ))}
+                    );
+                  })}
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
                 <XAxis
@@ -232,6 +296,7 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
                 />
                 <YAxis
+                  domain={areaYDomain}
                   tickFormatter={(value) => formatChartValue(Number(value), valueDecimals)}
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
                 />
@@ -246,20 +311,25 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
                   }}
                 />
                 <Legend />
-                {activeMetrics.map((metric, idx) => (
+                {activeMetrics.map((metric, idx) => {
+                  const gradientId = `gradient-${resolvedInstanceId}-${sanitizeSvgId(metric)}`;
+
+                  return (
                   <Area
                     key={metric}
                     type="linear"
                     dataKey={metric}
                     name={formatMetricLabel(metric, metricLabels)}
                     stroke={colors[idx % colors.length]}
-                    fill={`url(#gradient-${metric})`}
+                    fill={`url(#${gradientId})`}
                     strokeWidth={2}
-                    connectNulls={false}
+                    baseValue={0}
+                    connectNulls
                     isAnimationActive={false}
                     dot={false}
                   />
-                ))}
+                  );
+                })}
               </AreaChart>
             )}
           </ResponsiveContainer>

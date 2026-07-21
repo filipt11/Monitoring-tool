@@ -2,6 +2,7 @@ import {
   Activity,
   FolderTree,
   LayoutDashboard,
+  LayoutPanelTop,
   Network,
   Server,
   ServerCog,
@@ -29,12 +30,16 @@ import { cn, getInitials } from "@/lib/utils";
 
 const mainNavItems = [
   { to: routes.mainPage, label: "Main Page", icon: LayoutDashboard, end: true },
-  { to: routes.devices, label: "Devices", icon: Server },
-];
-
-const devicesSubNavItems = [
-  { to: routes.deviceGroups, label: "Device Groups", icon: FolderTree },
-  { to: routes.interfaceGroups, label: "Interface groups", icon: Network },
+  {
+    to: routes.devices,
+    label: "Devices",
+    icon: Server,
+    subItems: [
+      { to: routes.deviceGroups, label: "Device Groups", icon: FolderTree },
+      { to: routes.interfaceGroups, label: "Interface groups", icon: Network },
+    ],
+  },
+  { to: routes.dashboards, label: "Dashboards", icon: LayoutPanelTop, end: true },
 ];
 
 const adminNavItems = [
@@ -77,6 +82,27 @@ function getPageHeader(pathname: string): { title: string; description: string }
     return {
       title: "Interface groups",
       description: "Create and manage interface groups",
+    };
+  }
+
+  if (pathname === routes.dashboards) {
+    return {
+      title: "Dashboards",
+      description: "Create and view custom monitoring dashboards",
+    };
+  }
+
+  if (/^\/dashboards\/\d+\/sections(\/new|\/\d+\/edit)?$/.test(pathname)) {
+    return {
+      title: "Edit sections",
+      description: "Configure dashboard chart sections",
+    };
+  }
+
+  if (/^\/dashboards\/\d+$/.test(pathname)) {
+    return {
+      title: "Dashboard",
+      description: "Live metrics and charts",
     };
   }
 
@@ -172,20 +198,18 @@ export function AppLayout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-4">
-          {mainNavItems.map(({ to, label, icon, end }) => (
+          {mainNavItems.map(({ to, label, icon, end, subItems }) => (
             <div key={to}>
               <NavItem to={to} label={label} icon={icon} end={end} />
-              {to === routes.devices
-                ? devicesSubNavItems.map((item) => (
-                    <NavItem
-                      key={item.to}
-                      to={item.to}
-                      label={item.label}
-                      icon={item.icon}
-                      nested
-                    />
-                  ))
-                : null}
+              {subItems?.map((item) => (
+                <NavItem
+                  key={item.to}
+                  to={item.to}
+                  label={item.label}
+                  icon={item.icon}
+                  nested
+                />
+              ))}
             </div>
           ))}
 

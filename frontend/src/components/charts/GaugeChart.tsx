@@ -18,6 +18,14 @@ interface GaugeChartProps {
   hideControls?: boolean;
 }
 
+function formatGaugeNumber(value: number, unit?: string): string {
+  if (unit === "B" || unit === "bps") {
+    return Math.round(value).toString();
+  }
+
+  return value.toFixed(2);
+}
+
 function GaugeDisplay({
   value,
   max,
@@ -80,29 +88,29 @@ function GaugeDisplay({
 
       <div className="text-center">
         <div className={`text-2xl font-bold ${statusColor}`}>
-          {value}
+          {formatGaugeNumber(value, unit)}
           {unit}
         </div>
-        <p className="text-xs text-muted-foreground">
-          of {max}
+        <p className="text-muted-foreground text-xs">
+          of {formatGaugeNumber(max, unit)}
           {unit}
         </p>
       </div>
 
       {/* Threshold indicators */}
       <div className="w-full space-y-1 text-xs">
-        {thresholdCritical && (
+        {thresholdCritical ? (
           <p className="text-destructive">
-            🔴 Critical: ≥ {thresholdCritical}
+            🔴 Critical: ≥ {formatGaugeNumber(thresholdCritical, unit)}
             {unit}
           </p>
-        )}
-        {thresholdWarning && (
+        ) : null}
+        {thresholdWarning ? (
           <p className="text-amber-400">
-            🟡 Warning: ≥ {thresholdWarning}
+            🟡 Warning: ≥ {formatGaugeNumber(thresholdWarning, unit)}
             {unit}
           </p>
-        )}
+        ) : null}
       </div>
     </div>
   );

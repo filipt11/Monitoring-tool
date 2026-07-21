@@ -1,33 +1,89 @@
 import { Check } from "lucide-react";
-import type { ComponentProps } from "react";
+import { useId, type ChangeEvent, type KeyboardEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
-interface StyledCheckboxProps extends Omit<ComponentProps<"input">, "type"> {
+interface StyledCheckboxProps {
   label: string;
+  checked?: boolean;
+  disabled?: boolean;
+  id?: string;
+  name?: string;
+  className?: string;
+  onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
+  onBlur?: () => void;
 }
 
 export function StyledCheckbox({
   label,
   className,
   id,
-  ...props
+  checked = false,
+  disabled = false,
+  onChange,
+  onBlur,
 }: StyledCheckboxProps) {
-  const inputId = id ?? props.name;
+  const generatedId = useId();
+  const checkboxId = id ?? generatedId;
+  const labelId = `${checkboxId}-label`;
+
+  const handleToggle = () => {
+    if (disabled) {
+      return;
+    }
+
+    onChange?.({
+      target: { checked: !checked },
+      currentTarget: { checked: !checked },
+    } as ChangeEvent<HTMLInputElement>);
+  };
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) {
+      return;
+    }
+
+    if (event.key === " " || event.key === "Enter") {
+      event.preventDefault();
+      handleToggle();
+    }
+  };
 
   return (
-    <label
-      htmlFor={inputId}
+    <div
+      role="checkbox"
+      aria-checked={checked}
+      aria-labelledby={labelId}
+      aria-disabled={disabled}
+      tabIndex={disabled ? -1 : 0}
+      id={checkboxId}
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={handleToggle}
+      onKeyDown={handleKeyDown}
+      onBlur={onBlur}
       className={cn(
-        "flex cursor-pointer items-center gap-3 select-none",
+        "flex cursor-pointer items-center gap-3 rounded-md select-none outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        disabled && "cursor-not-allowed opacity-50",
         className,
       )}
     >
-      <input id={inputId} type="checkbox" className="peer sr-only" {...props} />
-      <span className="border-input bg-background peer-focus-visible:ring-ring/50 flex size-5 shrink-0 items-center justify-center rounded-md border shadow-xs transition-all peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:ring-[3px] peer-disabled:cursor-not-allowed peer-disabled:opacity-50 peer-checked:[&>svg]:opacity-100">
-        <Check className="text-primary-foreground size-3.5 opacity-0 transition-opacity" />
+      <span
+        aria-hidden
+        className={cn(
+          "border-input bg-background flex size-5 shrink-0 items-center justify-center rounded-md border shadow-xs transition-all",
+          checked && "border-primary bg-primary",
+        )}
+      >
+        <Check
+          className={cn(
+            "text-primary-foreground size-3.5 transition-opacity",
+            checked ? "opacity-100" : "opacity-0",
+          )}
+        />
       </span>
-      <span className="text-sm leading-none font-medium">{label}</span>
-    </label>
+      <span id={labelId} className="text-sm leading-none font-medium">
+        {label}
+      </span>
+    </div>
   );
 }

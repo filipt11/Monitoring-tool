@@ -22,6 +22,9 @@ public class Dashboard {
     private String name;
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    private DeviceGroupVisibility visibility = DeviceGroupVisibility.PRIVATE;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private MyUser owner;
