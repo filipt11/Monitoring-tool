@@ -62,6 +62,13 @@ public class InterfaceGroupService {
                 .map(this::toMemberResponse);
     }
 
+    @Transactional(readOnly = true)
+    public InterfaceGroupMemberResponse getInterfaceById(Long id) {
+        DeviceInterface deviceInterface = deviceInterfaceRepository.findById(id)
+                .orElseThrow(InterfaceNotFoundException::new);
+        return toMemberResponse(deviceInterface);
+    }
+
     @Transactional
     public InterfaceGroupCreateResponseDto createInterfaceGroup(
             InterfaceGroupCreateDto interfaceGroupCreateDto,
@@ -223,8 +230,7 @@ public class InterfaceGroupService {
                 deviceInterface.getSpeedBps(),
                 deviceInterface.getAdminStatus(),
                 deviceInterface.getOperStatus(),
-                deviceInterface.getDiscoveredAt(),
-                deviceInterface.getLastSeenAt()
+                deviceInterface.getDiscoveredAt()
         );
     }
 

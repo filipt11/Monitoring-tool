@@ -52,6 +52,11 @@ public class InterfaceGroupController {
         return ResponseEntity.ok(interfaceGroupService.getInterfaceCatalog(pageable));
     }
 
+    @GetMapping("/api/interfaces/{id}")
+    public ResponseEntity<InterfaceGroupMemberResponse> getInterfaceById(@PathVariable Long id) {
+        return ResponseEntity.ok(interfaceGroupService.getInterfaceById(id));
+    }
+
     @PostMapping("/api/interface-group")
     public ResponseEntity<InterfaceGroupCreateResponseDto> createInterfaceGroup(
             @RequestBody @Valid InterfaceGroupCreateDto interfaceGroupCreateDto,

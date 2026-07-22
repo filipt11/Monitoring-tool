@@ -26,6 +26,21 @@ public class DataAccessController {
                 end
         ));
     }
+
+    @GetMapping("/api/data/metrics/devices/summary")
+    public ResponseEntity<?> getDeviceMetricsSummary(
+            @RequestParam List<String> deviceIds,
+            @RequestParam List<String> metrics,
+            @RequestParam Instant start,
+            @RequestParam Instant end
+    ) {
+        return ResponseEntity.ok(dataAccessService.getDeviceMetricsSummary(
+                deviceIds,
+                metrics,
+                start,
+                end
+        ));
+    }
     
     @GetMapping("/api/data/metrics/devices/availability")
     public ResponseEntity<?> getDeviceAvailability(
@@ -42,6 +57,21 @@ public class DataAccessController {
     @GetMapping("/api/data/metrics/interfaces")
     public ResponseEntity<?> getInterfaceMetrics(@RequestParam List<String> interfaces, @RequestParam List<String> metrics, @RequestParam Instant start, @RequestParam Instant end) {
         return ResponseEntity.ok(dataAccessService.getInterfaceMetrics(
+                interfaces,
+                metrics,
+                start,
+                end
+        ));
+    }
+
+    @GetMapping("/api/data/metrics/interfaces/summary")
+    public ResponseEntity<?> getInterfaceMetricsSummary(
+            @RequestParam List<String> interfaces,
+            @RequestParam List<String> metrics,
+            @RequestParam Instant start,
+            @RequestParam Instant end
+    ) {
+        return ResponseEntity.ok(dataAccessService.getInterfaceMetricsSummary(
                 interfaces,
                 metrics,
                 start,

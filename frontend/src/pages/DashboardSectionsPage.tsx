@@ -18,6 +18,7 @@ import { getAuthErrorMessage } from "@/contexts/AuthContext";
 import { isAdmin } from "@/lib/auth";
 import {
   canEditDashboard,
+  copyDashboardSection,
   deleteDashboardSection,
   fetchDashboard,
   fetchDashboardSections,
@@ -39,6 +40,7 @@ export function DashboardSectionsPage() {
   const [deleteTarget, setDeleteTarget] = useState<DashboardSectionSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [copyingSectionId, setCopyingSectionId] = useState<number | null>(null);
   const editable = dashboard
     ? canEditDashboard(dashboard, user?.id, admin)
     : false;
@@ -112,6 +114,25 @@ export function DashboardSectionsPage() {
       setSavingOrder(false);
     }
   };
+
+  const handleCopy = async (section: DashboardSectionSummary) => {
+    setCopyingSectionId(section.id);
+
+    try {
+      const created = await copyDashboardSection(
+        resolvedDashboardId,
+        section.id,
+        sections.map((entry) => entry.name),
+      );
+      toast.success(`Section copied as "${created.name}"`);
+      await loadData();
+    } catch (error) {
+      toast.error(getAuthErrorMessage(error));
+    } finally {
+      setCopyingSectionId(null);
+    }
+  };
+
   if (loading || !dashboard) {
     return (
       <div className="text-muted-foreground flex min-h-60 items-center justify-center gap-2 text-sm">
@@ -124,29 +145,23 @@ export function DashboardSectionsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-3">
-          <Button type="button" variant="ghost" size="sm" asChild className="-ml-2 w-fit">
-            <Link to={routes.dashboardView(String(resolvedDashboardId))}>
-              <ArrowLeft className="size-4" />
-              Back to dashboard
-            </Link>
-          </Button>
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Edit sections</h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Manage chart sections for <span className="font-medium">{dashboard.name}</span>
-            </p>
-          </div>
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Edit sections</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Manage chart sections for <span className="font-medium">{dashboard.name}</span>
+          </p>
         </div>
 
-        {editable ? (
-          <Button type="button" asChild>
-            <Link to={routes.dashboardSectionNew(String(resolvedDashboardId))}>
-              <Plus className="size-4" />
-              Add section
-            </Link>
-          </Button>
-        ) : null}
+        <div className="flex flex-wrap gap-2">
+          {editable ? (
+            <Button type="button" asChild>
+              <Link to={routes.dashboardSectionNew(String(resolvedDashboardId))}>
+                <Plus className="size-4" />
+                Add section
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {sections.length === 0 ? (
@@ -176,8 +191,20 @@ export function DashboardSectionsPage() {
           savingOrder={savingOrder}
           onReorder={(reorderedSections) => void handleReorder(reorderedSections)}
           onDelete={setDeleteTarget}
+          onCopy={(section) => void handleCopy(section)}
+          copyingSectionId={copyingSectionId}
         />
       )}
+
+      <div className="flex justify-end pt-2">
+        <Button type="button" variant="outline" asChild>
+          <Link to={routes.dashboardView(String(resolvedDashboardId))}>
+            <ArrowLeft className="size-4" />
+            Back to dashboard
+          </Link>
+        </Button>
+      </div>
+
       <Modal
         open={deleteTarget != null}
         onClose={() => setDeleteTarget(null)}

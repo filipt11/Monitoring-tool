@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Loader2, Pencil, Trash2 } from "lucide-react";
+import { GripVertical, Loader2, Copy, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ interface DashboardSectionsSortableTableProps {
   savingOrder: boolean;
   onReorder: (sections: DashboardSectionSummary[]) => void;
   onDelete: (section: DashboardSectionSummary) => void;
+  onCopy: (section: DashboardSectionSummary) => void;
+  copyingSectionId?: number | null;
 }
 
 interface SortableSectionRowProps {
@@ -39,6 +41,9 @@ interface SortableSectionRowProps {
   editable: boolean;
   dragDisabled: boolean;
   onDelete: (section: DashboardSectionSummary) => void;
+  onCopy: (section: DashboardSectionSummary) => void;
+  copying: boolean;
+  actionsDisabled: boolean;
 }
 
 function SortableSectionRow({
@@ -47,6 +52,9 @@ function SortableSectionRow({
   editable,
   dragDisabled,
   onDelete,
+  onCopy,
+  copying,
+  actionsDisabled,
 }: SortableSectionRowProps) {
   const metricLabels = getMetricLabels(section.metrics);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -90,7 +98,21 @@ function SortableSectionRow({
       {editable ? (
         <td className="px-4 py-3 text-right">
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={actionsDisabled}
+              onClick={() => onCopy(section)}
+            >
+              {copying ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+              Copy
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild disabled={actionsDisabled}>
               <Link
                 to={routes.dashboardSectionEdit(String(dashboardId), String(section.id))}
               >
@@ -103,6 +125,7 @@ function SortableSectionRow({
               variant="outline"
               size="sm"
               className="text-destructive hover:text-destructive"
+              disabled={actionsDisabled}
               onClick={() => onDelete(section)}
             >
               <Trash2 className="size-4" />
@@ -122,7 +145,10 @@ export function DashboardSectionsSortableTable({
   savingOrder,
   onReorder,
   onDelete,
+  onCopy,
+  copyingSectionId = null,
 }: DashboardSectionsSortableTableProps) {
+  const actionsDisabled = savingOrder || copyingSectionId != null;
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -188,8 +214,11 @@ export function DashboardSectionsSortableTable({
                     dashboardId={dashboardId}
                     section={section}
                     editable={editable}
-                    dragDisabled={savingOrder}
+                    dragDisabled={savingOrder || copyingSectionId != null}
                     onDelete={onDelete}
+                    onCopy={onCopy}
+                    copying={copyingSectionId === section.id}
+                    actionsDisabled={actionsDisabled}
                   />
                 ))}
               </tbody>

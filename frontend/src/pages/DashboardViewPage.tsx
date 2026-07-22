@@ -1,5 +1,5 @@
-import { ArrowLeft, Loader2, Pencil, Plus, Settings2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, FileDown, Loader2, Pencil, Plus, Settings2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -47,6 +47,8 @@ import {
 } from "@/lib/dashboardsApi";
 import { routes } from "@/lib/routes";
 import { createDefaultMetricsRange, type DateRange } from "@/lib/timeRangePresets";
+import { formatAppChartDateTime } from "@/lib/dateFormat";
+import { exportElementToPdf, sanitizePdfFilename } from "@/lib/exportDashboardPdf";
 import { cn } from "@/lib/utils";
 
 interface DashboardSettingsValues {
@@ -86,7 +88,22 @@ export function DashboardViewPage() {
   const [loading, setLoading] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [metricsRange, setMetricsRange] = useState<DateRange>(createDefaultMetricsRange);
+  const [sectionLoadingById, setSectionLoadingById] = useState<Record<number, boolean>>({});
+  const exportRef = useRef<HTMLDivElement>(null);
+
+  const isMetricsRefreshing = Object.values(sectionLoadingById).some(Boolean);
+
+  const handleSectionLoadingChange = useCallback((sectionId: number, loading: boolean) => {
+    setSectionLoadingById((prev) => {
+      if (prev[sectionId] === loading) {
+        return prev;
+      }
+
+      return { ...prev, [sectionId]: loading };
+    });
+  }, []);
 
   const editable = dashboard
     ? canEditDashboard(dashboard, user?.id, admin)
@@ -167,6 +184,32 @@ export function DashboardViewPage() {
     }
   };
 
+  const handleExportPdf = async () => {
+    if (!dashboard || !exportRef.current || sections.length === 0) {
+      return;
+    }
+
+    setExportingPdf(true);
+    const toastId = toast.loading("Generating PDF report…");
+
+    try {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      });
+
+      const filename = sanitizePdfFilename(dashboard.name);
+      await exportElementToPdf(exportRef.current, filename);
+      toast.success("PDF report downloaded", { id: toastId });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to export dashboard to PDF.",
+        { id: toastId },
+      );
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   if (loading || !dashboard) {
     return (
       <div className="text-muted-foreground flex min-h-60 items-center justify-center gap-2 text-sm">
@@ -178,32 +221,47 @@ export function DashboardViewPage() {
 
   return (
     <div className="space-y-6">
+      {exportingPdf ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
+          role="status"
+          aria-live="polite"
+          aria-label="Generating PDF report"
+        >
+          <div className="bg-card flex flex-col items-center gap-3 rounded-xl border px-8 py-6 shadow-lg">
+            <Loader2 className="text-primary size-8 animate-spin" />
+            <div className="text-center">
+              <p className="text-sm font-medium">Generating PDF report…</p>
+              <p className="text-muted-foreground mt-1 text-xs">
+                Your download will start automatically when it is ready.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
-          <Button type="button" variant="ghost" size="sm" asChild className="-ml-2 w-fit">
+          <Button type="button" variant="ghost" size="sm" asChild className="-ml-2 w-fit" data-pdf-exclude>
             <Link to={routes.dashboards}>
               <ArrowLeft className="size-4" />
               Back to dashboards
             </Link>
           </Button>
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-semibold tracking-tight">{dashboard.name}</h2>
-              <VisibilityBadge visibility={dashboard.visibility} />
-            </div>
-            {dashboard.description ? (
-              <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
-                {dashboard.description}
-              </p>
-            ) : null}
-            <p className="text-muted-foreground mt-2 text-xs">
-              Owner: {dashboard.ownerUsername ?? "Unknown"} · {sections.length} section
-              {sections.length === 1 ? "" : "s"}
-            </p>
-          </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" data-pdf-exclude>
+          {sections.length > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleExportPdf()}
+              disabled={exportingPdf}
+            >
+              <FileDown className="size-4" />
+              Export PDF
+            </Button>
+          ) : null}
           {editable ? (
             <>
               <Button type="button" variant="outline" onClick={() => setSettingsOpen(true)}>
@@ -221,6 +279,29 @@ export function DashboardViewPage() {
         </div>
       </div>
 
+      <div ref={exportRef} className="space-y-6 rounded-lg">
+        <div data-pdf-block="header">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 className="text-2xl font-semibold tracking-tight">{dashboard.name}</h2>
+            <VisibilityBadge visibility={dashboard.visibility} />
+          </div>
+          {dashboard.description ? (
+            <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
+              {dashboard.description}
+            </p>
+          ) : null}
+          <p className="text-muted-foreground mt-2 text-xs">
+            Owner: {dashboard.ownerUsername ?? "Unknown"} · {sections.length} section
+            {sections.length === 1 ? "" : "s"}
+          </p>
+          {sections.length > 0 ? (
+            <p className="text-muted-foreground mt-2 text-xs">
+              Time range: {formatAppChartDateTime(metricsRange.start)} –{" "}
+              {formatAppChartDateTime(metricsRange.end)}
+            </p>
+          ) : null}
+        </div>
+
       {sections.length === 0 ? (
         <Card>
           <CardHeader>
@@ -232,7 +313,7 @@ export function DashboardViewPage() {
             </CardDescription>
           </CardHeader>
           {editable ? (
-            <CardContent>
+            <CardContent data-pdf-exclude>
               <Button type="button" asChild>
                 <Link to={routes.dashboardSections(String(resolvedDashboardId))}>
                   <Plus className="size-4" />
@@ -244,12 +325,17 @@ export function DashboardViewPage() {
         </Card>
       ) : (
         <>
-          <MetricsTimeRangeControl
-            idPrefix="dashboard"
-            start={metricsRange.start}
-            end={metricsRange.end}
-            onApply={(start, end) => setMetricsRange({ start, end })}
-          />
+          <div data-pdf-exclude>
+            <MetricsTimeRangeControl
+              idPrefix="dashboard"
+              start={metricsRange.start}
+              end={metricsRange.end}
+              onApply={(start, end, meta) =>
+                setMetricsRange({ start, end, refreshToken: meta?.refreshToken })
+              }
+              isRefreshing={isMetricsRefreshing}
+            />
+          </div>
 
           <div className="grid grid-cols-1 gap-6">
             {sectionDetails.map((section) => (
@@ -258,11 +344,13 @@ export function DashboardViewPage() {
                 dashboardId={resolvedDashboardId}
                 section={section}
                 range={metricsRange}
+                onLoadingChange={(loading) => handleSectionLoadingChange(section.id, loading)}
               />
             ))}
           </div>
         </>
       )}
+      </div>
 
       <Modal
         open={settingsOpen}

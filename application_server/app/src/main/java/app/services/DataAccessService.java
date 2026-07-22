@@ -4,7 +4,9 @@ import app.dtos.data.AvailabilityBucketDto;
 import app.dtos.data.DataPointDto;
 import app.dtos.data.DeviceAvailabilityDto;
 import app.dtos.data.DeviceMetricsDto;
+import app.dtos.data.DeviceMetricsSummaryDto;
 import app.dtos.data.InterfaceMetricsDto;
+import app.dtos.data.InterfaceMetricsSummaryDto;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 @Service
 public class DataAccessService {
     private static final Logger log = LoggerFactory.getLogger(DataAccessService.class);
+    private static final String TIMESERIES_AGGREGATE_WINDOW =
+            "aggregateWindow(every: 5m, fn: last, createEmpty: false, timeSrc: \"_start\")";
 
     private final InfluxDBClient influxDBClient;
 
@@ -50,6 +54,7 @@ public class DataAccessService {
                         "|> range(start: %s, stop: %s) " +
                         "|> filter(fn: (r) => contains(value: r.id, set: %s)) " +
                         "|> filter(fn: (r) => contains(value: r._field, set: %s)) " +
+                        "|> " + TIMESERIES_AGGREGATE_WINDOW + " " +
                         "|> pivot(rowKey:[\"_time\", \"id\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
                 bucket, start.toString(), end.toString(), devicesArr, metricsArr
         );
@@ -84,6 +89,129 @@ public class DataAccessService {
                         entry.getValue()
                 ))
                 .collect(Collectors.toList());
+    }
+
+    public List<DeviceMetricsSummaryDto> getDeviceMetricsSummary(
+            List<String> deviceIds,
+            List<String> metrics,
+            Instant start,
+            Instant end) {
+
+        if (deviceIds == null || deviceIds.isEmpty() || metrics == null || metrics.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String devicesArr = "[\"" + String.join("\", \"", deviceIds) + "\"]";
+        String metricsArr = "[\"" + String.join("\", \"", metrics) + "\"]";
+
+        String flux = String.format(
+                "from(bucket: \"%s\") " +
+                        "|> range(start: %s, stop: %s) " +
+                        "|> filter(fn: (r) => contains(value: r.id, set: %s)) " +
+                        "|> filter(fn: (r) => contains(value: r._field, set: %s)) " +
+                        "|> group(columns: [\"id\", \"_field\"]) " +
+                        "|> mean()",
+                bucket, start.toString(), end.toString(), devicesArr, metricsArr
+        );
+
+        Map<String, Map<String, Double>> valuesByDevice = new HashMap<>();
+
+        for (FluxTable table : influxDBClient.getQueryApi().query(flux)) {
+            for (FluxRecord record : table.getRecords()) {
+                String deviceId = (String) record.getValueByKey("id");
+                String metric = resolveMetricName(record);
+                Object rawValue = record.getValue();
+
+                if (deviceId == null || metric == null || !(rawValue instanceof Number number)) {
+                    continue;
+                }
+
+                valuesByDevice
+                        .computeIfAbsent(deviceId, ignored -> new HashMap<>())
+                        .put(metric, number.doubleValue());
+            }
+        }
+
+        return deviceIds.stream()
+                .filter(valuesByDevice::containsKey)
+                .map(deviceId -> new DeviceMetricsSummaryDto(deviceId, valuesByDevice.get(deviceId)))
+                .collect(Collectors.toList());
+    }
+
+    public List<InterfaceMetricsSummaryDto> getInterfaceMetricsSummary(
+            List<String> interfaces,
+            List<String> metrics,
+            Instant start,
+            Instant end) {
+
+        if (interfaces == null || interfaces.isEmpty() || metrics == null || metrics.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String deviceInterfaceFilter = interfaces.stream()
+                .map(pair -> {
+                    String[] parts = pair.split(":");
+                    return String.format("(r[\"device_id\"] == \"%s\" and r[\"if_index\"] == \"%s\")",
+                            parts[0], parts[1]);
+                })
+                .collect(Collectors.joining(" or "));
+
+        String metricsFilter = metrics.stream()
+                .map(metric -> String.format("r[\"_field\"] == \"%s\"", metric))
+                .collect(Collectors.joining(" or "));
+
+        String fluxQuery = String.format(
+                "from(bucket: \"%s\")\n" +
+                        "  |> range(start: %s, stop: %s)\n" +
+                        "  |> filter(fn: (r) => r[\"_measurement\"] == \"interface_statistics\")\n" +
+                        "  |> filter(fn: (r) => %s)\n" +
+                        "  |> filter(fn: (r) => %s)\n" +
+                        "  |> group(columns: [\"device_id\", \"if_index\", \"_field\"])\n" +
+                        "  |> mean()",
+                bucket, start.toString(), end.toString(), deviceInterfaceFilter, metricsFilter
+        );
+
+        Map<String, Map<String, Double>> valuesByInterface = new HashMap<>();
+
+        for (FluxTable table : influxDBClient.getQueryApi().query(fluxQuery)) {
+            for (FluxRecord record : table.getRecords()) {
+                String deviceId = (String) record.getValueByKey("device_id");
+                Object ifIndexValue = record.getValueByKey("if_index");
+                String metric = resolveMetricName(record);
+                Object rawValue = record.getValue();
+
+                if (deviceId == null || ifIndexValue == null || metric == null || !(rawValue instanceof Number number)) {
+                    continue;
+                }
+
+                String ifIndex = String.valueOf(ifIndexValue);
+                String compositeKey = deviceId + ":" + ifIndex;
+                valuesByInterface
+                        .computeIfAbsent(compositeKey, ignored -> new HashMap<>())
+                        .put(metric, number.doubleValue());
+            }
+        }
+
+        return interfaces.stream()
+                .filter(valuesByInterface::containsKey)
+                .map(pair -> {
+                    String[] parts = pair.split(":");
+                    return new InterfaceMetricsSummaryDto(
+                            parts[0],
+                            parts[1],
+                            valuesByInterface.get(pair)
+                    );
+                })
+                .collect(Collectors.toList());
+    }
+
+    private String resolveMetricName(FluxRecord record) {
+        Object fieldFromColumn = record.getValueByKey("_field");
+        if (fieldFromColumn instanceof String fieldName) {
+            return fieldName;
+        }
+
+        return record.getField();
     }
 
     public List<DeviceAvailabilityDto> getDeviceAvailability(
@@ -174,6 +302,7 @@ public class DataAccessService {
                         "  |> filter(fn: (r) => r[\"_measurement\"] == \"interface_statistics\")\n" +
                         "  |> filter(fn: (r) => %s)\n" +
                         "  |> filter(fn: (r) => %s)\n" +
+                        "  |> " + TIMESERIES_AGGREGATE_WINDOW + "\n" +
                         "  |> pivot(rowKey:[\"_time\", \"device_id\", \"if_index\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
                 bucket, start.toString(), end.toString(), deviceInterfaceFilter, metricsFilter
         );

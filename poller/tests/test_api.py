@@ -710,7 +710,6 @@ def test_get_device_interfaces_success(read_client_factory):
         admin_status="up",
         oper_status="up",
         discovered_at="2026-01-01T00:00:00Z",
-        last_seen_at="2026-01-01T00:00:00Z",
     )
 
     mock_db.query.return_value.filter.return_value.first.return_value = existing_device

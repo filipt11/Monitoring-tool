@@ -2,6 +2,8 @@ package app.dtos.device;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.time.Instant;
+
 public record DeviceResponse(
         @Schema(example = "1")
         Long id,
@@ -28,5 +30,8 @@ public record DeviceResponse(
         Integer port,
         
         @Schema(example = "false")
-        Boolean https) {
+        Boolean https,
+
+        @Schema(example = "2026-05-19T00:00:00Z")
+        Instant createdAt) {
 }

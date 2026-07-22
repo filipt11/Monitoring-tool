@@ -25,14 +25,11 @@ function dateKey(date: Date): string {
 }
 
 function formatCompactHour(hour: number): string {
-  const period = hour < 12 ? "AM" : "PM";
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour} ${period}`;
+  return `${pad(hour)}:00`;
 }
 
 function formatHourRange(hour: number): string {
-  const nextHour = (hour + 1) % 24;
-  return `${formatCompactHour(hour)} – ${formatCompactHour(nextHour)}`;
+  return `${formatCompactHour(hour)} – ${formatCompactHour((hour + 1) % 24)}`;
 }
 
 function cellClassName(status: "up" | "down" | "unknown" | undefined): string {

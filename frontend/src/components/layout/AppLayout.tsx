@@ -34,10 +34,13 @@ const mainNavItems = [
     to: routes.devices,
     label: "Devices",
     icon: Server,
-    subItems: [
-      { to: routes.deviceGroups, label: "Device Groups", icon: FolderTree },
-      { to: routes.interfaceGroups, label: "Interface groups", icon: Network },
-    ],
+    subItems: [{ to: routes.deviceGroups, label: "Device Groups", icon: FolderTree }],
+  },
+  {
+    to: routes.interfaces,
+    label: "Interfaces",
+    icon: Network,
+    subItems: [{ to: routes.interfaceGroups, label: "Interface Groups", icon: FolderTree }],
   },
   { to: routes.dashboards, label: "Dashboards", icon: LayoutPanelTop, end: true },
 ];
@@ -78,9 +81,16 @@ function getPageHeader(pathname: string): { title: string; description: string }
     };
   }
 
+  if (pathname === routes.interfaces) {
+    return {
+      title: "Interfaces",
+      description: "Browse and monitor all discovered interfaces",
+    };
+  }
+
   if (pathname === routes.interfaceGroups) {
     return {
-      title: "Interface groups",
+      title: "Interface Groups",
       description: "Create and manage interface groups",
     };
   }
@@ -110,6 +120,13 @@ function getPageHeader(pathname: string): { title: string; description: string }
     return {
       title: "Device details",
       description: "Live metrics and availability for this device",
+    };
+  }
+
+  if (pathname.startsWith(`${routes.interfaces}/`)) {
+    return {
+      title: "Interface details",
+      description: "Utilization and throughput for this interface",
     };
   }
 

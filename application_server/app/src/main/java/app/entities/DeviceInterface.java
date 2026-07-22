@@ -29,8 +29,7 @@ import java.time.Instant;
                 speed_bps,
                 admin_status,
                 oper_status,
-                discovered_at,
-                last_seen_at
+                discovered_at
             FROM interfaces
         """)
 public class DeviceInterface {
@@ -59,7 +58,4 @@ public class DeviceInterface {
 
     @Column(name = "discovered_at")
     private Instant discoveredAt;
-
-    @Column(name = "last_seen_at")
-    private Instant lastSeenAt;
 }

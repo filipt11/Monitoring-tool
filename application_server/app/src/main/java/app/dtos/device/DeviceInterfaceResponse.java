@@ -30,9 +30,6 @@ public record DeviceInterfaceResponse(
         String operStatus,
 
         @Schema(example = "2026-07-20T15:34:55.793661Z")
-        Instant discoveredAt,
-
-        @Schema(example = "2026-07-20T15:34:55.793661Z")
-        Instant lastSeenAt
+        Instant discoveredAt
 ) {
 }

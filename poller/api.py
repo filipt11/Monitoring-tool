@@ -4,7 +4,7 @@ from .config import (
     API_PORT,
 )
 from loguru import logger
-from .models import Device, DeviceCreate, DeviceOut, DeviceUpdate, Interface, InterfaceOut
+from .models import Device, DeviceCreate, DeviceOut, DeviceUpdate, Interface, InterfaceOut, utc_now
 from fastapi import FastAPI, HTTPException, status
 import uvicorn
 from .cisco_polling import fetch_cisco_data_async
@@ -165,6 +165,7 @@ async def add_device(device_in: DeviceCreate):
                     hostname=hostname,
                     model=model,
                     https=device_in.https,
+                    created_at=utc_now(),
                 )
                 db.add(new_device)
 

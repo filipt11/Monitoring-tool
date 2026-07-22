@@ -287,15 +287,20 @@ function GroupInterfacesPanel({
             {visibleInterfaces.map((iface) => (
               <tr key={iface.id} className="hover:bg-muted/30">
                 <td className="px-3 py-2 font-medium">
-                  <Link
-                    to={routes.deviceDetails(String(iface.deviceId))}
-                    className="text-primary hover:underline"
-                  >
-                    {iface.deviceHostname || "Unknown device"}
-                  </Link>
+                  <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                    <Link to={routes.deviceDetails(String(iface.deviceId))}>
+                      {iface.deviceHostname || "Unknown device"}
+                    </Link>
+                  </Button>
                 </td>
                 <td className="text-muted-foreground px-3 py-2">{iface.deviceIp}</td>
-                <td className="px-3 py-2 font-medium">{iface.name}</td>
+                <td className="px-3 py-2 font-medium">
+                  <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                    <Link to={routes.interfaceDetails(String(iface.id))}>
+                      {iface.name}
+                    </Link>
+                  </Button>
+                </td>
                 <td className="text-muted-foreground px-3 py-2">{iface.ifIndex}</td>
                 <td className="text-muted-foreground px-3 py-2">{iface.adminStatus}</td>
                 <td className="text-muted-foreground px-3 py-2">{iface.operStatus}</td>
@@ -1176,7 +1181,11 @@ function ManageInterfacesDialog({
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {iface.deviceHostname} — {iface.name}
+                        <Button variant="link" className="h-auto p-0 text-sm" asChild>
+                          <Link to={routes.interfaceDetails(String(iface.id))}>
+                            {iface.deviceHostname} — {iface.name}
+                          </Link>
+                        </Button>
                       </p>
                       <p className="text-muted-foreground truncate text-xs">
                         {iface.deviceIp} · ifIndex {iface.ifIndex}
@@ -1184,6 +1193,9 @@ function ManageInterfacesDialog({
                     </div>
                     <div className="flex items-center gap-2">
                       <Button variant="link" className="h-auto p-0 text-xs" asChild>
+                        <Link to={routes.interfaceDetails(String(iface.id))}>View interface</Link>
+                      </Button>
+                      <Button variant="link" className="text-muted-foreground h-auto p-0 text-xs" asChild>
                         <Link to={routes.deviceDetails(String(iface.deviceId))}>View device</Link>
                       </Button>
                       <Button

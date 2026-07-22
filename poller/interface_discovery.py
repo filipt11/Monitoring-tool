@@ -61,7 +61,6 @@ def sync_device_interfaces(
             existing.speed_bps = speed
             existing.admin_status = iface.get("admin_status")
             existing.oper_status = iface.get("oper_status")
-            existing.last_seen_at = now
             synced.append(existing)
             continue
 
@@ -74,7 +73,6 @@ def sync_device_interfaces(
             admin_status=iface.get("admin_status"),
             oper_status=iface.get("oper_status"),
             discovered_at=now,
-            last_seen_at=now,
         )
         db.add(new_interface)
         synced.append(new_interface)

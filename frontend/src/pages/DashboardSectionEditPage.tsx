@@ -47,10 +47,6 @@ export function DashboardSectionEditPage() {
     navigate(sectionsRoute);
   }, [navigate, sectionsRoute]);
 
-  const goBackToDashboard = useCallback(() => {
-    navigate(viewRoute);
-  }, [navigate, viewRoute]);
-
   useEffect(() => {
     if (!Number.isFinite(resolvedDashboardId)) {
       navigate(routes.dashboards);
@@ -146,7 +142,7 @@ export function DashboardSectionEditPage() {
         <CardHeader>
           <CardTitle>{isEditing ? section?.name ?? "Section" : "New section"}</CardTitle>
           <CardDescription>
-            Save to return to the dashboard view, or cancel to go back to the sections list.
+            Save to return to the sections list, or cancel to discard changes.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -154,7 +150,7 @@ export function DashboardSectionEditPage() {
             dashboardId={resolvedDashboardId}
             section={isEditing ? section : null}
             onCancel={goBackToSections}
-            onSaved={goBackToDashboard}
+            onSaved={goBackToSections}
           />
         </CardContent>
       </Card>

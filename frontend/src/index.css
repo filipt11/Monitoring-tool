@@ -133,3 +133,36 @@ body[data-scroll-locked] {
   margin-right: 0 !important;
   position: static !important;
 }
+
+/* Light print-friendly palette applied only while generating a dashboard PDF. */
+.pdf-export-mode {
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #ffffff;
+  --card-foreground: #18181b;
+  --popover: #ffffff;
+  --popover-foreground: #18181b;
+  --primary: #18181b;
+  --primary-foreground: #fafafa;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #dc2626;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #a1a1aa;
+  --chart-1: #2563eb;
+  --chart-2: #0891b2;
+  --chart-3: #4f46e5;
+  --chart-4: #ca8a04;
+  --chart-5: #ea580c;
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+
+.pdf-export-mode [data-pdf-exclude] {
+  display: none !important;
+}

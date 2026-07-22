@@ -15,10 +15,13 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { TimeSeriesChartData } from "@/lib/charts.types";
+import type { TimeRangeApplyMeta } from "@/lib/timeRangePresets";
+import { formatAppChartDateTime } from "@/lib/dateFormat";
+import { fillTimeSeriesGaps } from "@/lib/fillTimeSeriesGaps";
 import { MetricsTimeRangeControl } from "./MetricsTimeRangeControl";
 
 const DEFAULT_CHART_COLORS = [
-  "oklch(0.72 0.14 245)",
+  "#38bdf8",
   "var(--color-chart-2)",
   "var(--color-chart-3)",
   "var(--color-chart-4)",
@@ -37,12 +40,7 @@ function formatMetricLabel(metric: string, labels?: Record<string, string>): str
 }
 
 function formatAxisTime(timeMs: number): string {
-  return new Date(timeMs).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatAppChartDateTime(new Date(timeMs));
 }
 
 function formatChartValue(value: number, decimals?: number): string {
@@ -51,6 +49,17 @@ function formatChartValue(value: number, decimals?: number): string {
   }
 
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function resolveChartValueFormatter(
+  formatValue?: (value: number) => string,
+  valueDecimals?: number,
+): (value: number) => string {
+  if (formatValue) {
+    return formatValue;
+  }
+
+  return (value: number) => formatChartValue(value, valueDecimals);
 }
 
 function sanitizeSvgId(value: string): string {
@@ -108,12 +117,18 @@ interface TimeSeriesChartProps {
   description?: string;
   initialStart: Date;
   initialEnd: Date;
-  onDateRangeChange?: (start: Date, end: Date) => void;
+  onDateRangeChange?: (start: Date, end: Date, meta?: TimeRangeApplyMeta) => void;
   isLoading?: boolean;
   error?: string | null;
   showMetricToggles?: boolean;
   /** Number of decimal places for tooltip and Y-axis values. */
   valueDecimals?: number;
+  /** Custom formatter for tooltip and Y-axis values (overrides valueDecimals). */
+  formatValue?: (value: number) => string;
+  /** Fixed Y-axis domain. When omitted, Recharts auto-scales. */
+  yDomain?: [number, number];
+  /** Use a step line instead of a straight line (useful for up/down status). */
+  stepLine?: boolean;
   /** Line/fill colors per metric. Defaults to theme chart colors (blue first). */
   colors?: string[];
   /** `auto` uses line charts for multi-metric series and area charts for a single metric. */
@@ -137,6 +152,9 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
   error = null,
   showMetricToggles = true,
   valueDecimals,
+  formatValue,
+  yDomain,
+  stepLine = false,
   colors = DEFAULT_CHART_COLORS,
   chartStyle = "auto",
   chartInstanceId,
@@ -149,6 +167,10 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
   }, [metrics]);
 
   const resolvedInstanceId = sanitizeSvgId(chartInstanceId ?? title);
+  const displayValue = useMemo(
+    () => resolveChartValueFormatter(formatValue, valueDecimals),
+    [formatValue, valueDecimals],
+  );
 
   const useLineChart =
     chartStyle === "line" ||
@@ -163,26 +185,40 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    return [...data]
-      .sort((left, right) => left.timeMs - right.timeMs)
-      .map((row) => {
-        const newRow: Record<string, string | number | null | undefined> = {
-          timestamp: row.timestamp,
-          timeMs: row.timeMs,
-        };
+    const filled = fillTimeSeriesGaps({
+      data,
+      metrics: activeMetrics,
+      rangeStart: initialStart,
+      rangeEnd: initialEnd,
+      formatTimestamp: (date) => formatAxisTime(date.getTime()),
+    });
 
-        activeMetrics.forEach((metric) => {
-          newRow[metric] = metric in row ? (row[metric] ?? null) : null;
-        });
+    return filled.map((row) => {
+      const newRow: Record<string, string | number | null | undefined> = {
+        timestamp: row.timestamp,
+        timeMs: row.timeMs,
+      };
 
-        return newRow;
+      activeMetrics.forEach((metric) => {
+        newRow[metric] = metric in row ? (row[metric] ?? null) : null;
       });
-  }, [data, activeMetrics]);
+
+      return newRow;
+    });
+  }, [activeMetrics, data, initialEnd, initialStart]);
 
   const areaYDomain = useMemo(
     () => computeAreaYDomain(chartData, activeMetrics),
     [activeMetrics, chartData],
   );
+
+  const formatTooltipValue = (value: unknown) => {
+    if (value == null || typeof value !== "number" || !Number.isFinite(value)) {
+      return "No data";
+    }
+
+    return displayValue(value);
+  };
 
   const shouldShowMetricToggles = showMetricToggles && metrics.length > 1;
 
@@ -198,8 +234,9 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
             idPrefix="timeseries"
             start={initialStart}
             end={initialEnd}
-            onApply={(start, end) => onDateRangeChange?.(start, end)}
+            onApply={(start, end, meta) => onDateRangeChange?.(start, end, meta)}
             disabled={isLoading}
+            isRefreshing={isLoading}
           />
         )}
 
@@ -245,12 +282,15 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
                 />
                 <YAxis
-                  tickFormatter={(value) => formatChartValue(Number(value), valueDecimals)}
+                  domain={yDomain}
+                  allowDecimals={yDomain == null}
+                  ticks={yDomain ? [yDomain[0], yDomain[1]] : undefined}
+                  tickFormatter={(value) => displayValue(Number(value))}
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
                 />
                 <Tooltip
                   labelFormatter={(value) => formatAxisTime(Number(value))}
-                  formatter={(value) => formatChartValue(Number(value), valueDecimals)}
+                  formatter={(value) => formatTooltipValue(value)}
                   contentStyle={{
                     backgroundColor: "var(--color-popover)",
                     borderColor: "var(--color-border)",
@@ -262,7 +302,7 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
                 {activeMetrics.map((metric, idx) => (
                   <Line
                     key={metric}
-                    type="linear"
+                    type={stepLine ? "stepAfter" : "linear"}
                     dataKey={metric}
                     name={formatMetricLabel(metric, metricLabels)}
                     stroke={colors[idx % colors.length]}
@@ -297,12 +337,12 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
                 />
                 <YAxis
                   domain={areaYDomain}
-                  tickFormatter={(value) => formatChartValue(Number(value), valueDecimals)}
+                  tickFormatter={(value) => displayValue(Number(value))}
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
                 />
                 <Tooltip
                   labelFormatter={(value) => formatAxisTime(Number(value))}
-                  formatter={(value) => formatChartValue(Number(value), valueDecimals)}
+                  formatter={(value) => formatTooltipValue(value)}
                   contentStyle={{
                     backgroundColor: "var(--color-popover)",
                     borderColor: "var(--color-border)",
@@ -324,7 +364,7 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
                     fill={`url(#${gradientId})`}
                     strokeWidth={2}
                     baseValue={0}
-                    connectNulls
+                    connectNulls={false}
                     isAnimationActive={false}
                     dot={false}
                   />

@@ -18,6 +18,8 @@ import { DashboardsPage } from "@/pages/DashboardsPage";
 import { DeviceGroupsPage } from "@/pages/DeviceGroupsPage";
 import { InterfaceGroupsPage } from "@/pages/InterfaceGroupsPage";
 import { DevicesPage } from "@/pages/DevicesPage";
+import { InterfacesPage } from "@/pages/InterfacesPage";
+import { InterfaceDetailsPage } from "@/pages/InterfaceDetailsPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MainPage } from "@/pages/MainPage";
 import { RegisterPage } from "@/pages/RegisterPage";
@@ -48,6 +50,7 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path={routes.mainPage} element={<MainPage />} />
             <Route path={routes.devices} element={<DevicesPage />} />
+            <Route path={routes.interfaces} element={<InterfacesPage />} />
             <Route path={routes.deviceGroups} element={<DeviceGroupsPage />} />
             <Route path={routes.interfaceGroups} element={<InterfaceGroupsPage />} />
             <Route path={routes.dashboards} element={<DashboardsPage />} />
@@ -65,6 +68,7 @@ export default function App() {
               element={<DashboardSectionEditPage />}
             />
             <Route path={`${routes.devices}/:deviceId`} element={<DeviceDetailsPage />} />
+            <Route path={`${routes.interfaces}/:interfaceId`} element={<InterfaceDetailsPage />} />
 
             <Route element={<AdminRoute />}>
               <Route path={routes.admin.users} element={<AdminUsersPage />} />

@@ -4,7 +4,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TimeSeriesChart, HeatmapChart } from "@/components/charts";
+import { TimeSeriesChart, HeatmapChart, MetricsTimeRangeControl } from "@/components/charts";
 import { DeviceInterfacesPanel } from "@/components/device/DeviceInterfacesPanel";
 import {
   DEVICE_STATUS_UP,
@@ -22,7 +22,12 @@ import {
 } from "@/lib/charts.types";
 import { cn } from "@/lib/utils";
 import { routes } from "@/lib/routes";
-import { createDefaultMetricsRange } from "@/lib/timeRangePresets";
+import { createDefaultMetricsRange, type DateRange } from "@/lib/timeRangePresets";
+import { formatAppChartDateTime, formatAppDate, formatAppDateTime } from "@/lib/dateFormat";
+import {
+  formatAvailabilityChartValue,
+  toAvailabilityPercentScale,
+} from "@/lib/formatAvailability";
 
 const HEATMAP_RANGE_MS = 14 * 24 * 60 * 60 * 1000;
 const HIGH_UTILIZATION_THRESHOLD = 90;
@@ -39,12 +44,7 @@ interface LatestSnapshot {
 }
 
 function formatChartTimestamp(date: Date): string {
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatAppChartDateTime(date);
 }
 
 function getHeatmapRange() {
@@ -55,7 +55,7 @@ function getHeatmapRange() {
   };
 }
 
-function createDefaultRange() {
+function createDefaultRange(): DateRange {
   return createDefaultMetricsRange();
 }
 
@@ -68,8 +68,7 @@ export function DeviceDetailsPage() {
   const [activeView, setActiveView] = useState<DeviceDetailsView>("device");
   const [deviceInfo, setDeviceInfo] = useState<DeviceInfo | null>(null);
 
-  const [cpuRange, setCpuRange] = useState(createDefaultRange);
-  const [memoryRange, setMemoryRange] = useState(createDefaultRange);
+  const [metricsRange, setMetricsRange] = useState<DateRange>(createDefaultRange);
 
   const [cpuChartData, setCpuChartData] = useState<TimeSeriesChartData[]>([]);
   const [cpuLoading, setCpuLoading] = useState(true);
@@ -78,6 +77,10 @@ export function DeviceDetailsPage() {
   const [memoryChartData, setMemoryChartData] = useState<TimeSeriesChartData[]>([]);
   const [memoryLoading, setMemoryLoading] = useState(true);
   const [memoryError, setMemoryError] = useState<string | null>(null);
+
+  const [availabilityChartData, setAvailabilityChartData] = useState<TimeSeriesChartData[]>([]);
+  const [availabilityChartLoading, setAvailabilityChartLoading] = useState(true);
+  const [availabilityChartError, setAvailabilityChartError] = useState<string | null>(null);
 
   const [latestSnapshot, setLatestSnapshot] = useState<LatestSnapshot | null>(null);
 
@@ -91,6 +94,32 @@ export function DeviceDetailsPage() {
     () => deviceInfo?.hostname ?? `Device ${resolvedDeviceId}`,
     [deviceInfo, resolvedDeviceId],
   );
+
+  const deviceDescription = useMemo(() => {
+    const parts: string[] = [];
+
+    if (deviceInfo?.ip) {
+      parts.push(deviceInfo.ip);
+    }
+
+    if (deviceInfo?.createdAt) {
+      parts.push(
+        `Created ${formatAppDate(new Date(deviceInfo.createdAt), {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })}`,
+      );
+    }
+
+    parts.push(
+      activeView === "device"
+        ? "Live CPU, memory, and availability data pulled from the monitoring backend."
+        : "Discovered interfaces and utilization metrics for this device.",
+    );
+
+    return parts.join(" · ");
+  }, [activeView, deviceInfo?.createdAt, deviceInfo?.ip]);
 
   useEffect(() => {
     let active = true;
@@ -118,9 +147,9 @@ export function DeviceDetailsPage() {
       try {
         const response = await fetchDeviceMetrics({
           deviceIds: [resolvedDeviceId],
-          metrics: ["cpu_usage", "status"],
-          start: cpuRange.start,
-          end: cpuRange.end,
+          metrics: ["cpu_usage"],
+          start: metricsRange.start,
+          end: metricsRange.end,
         });
 
         if (!active) return;
@@ -146,14 +175,11 @@ export function DeviceDetailsPage() {
 
         setCpuChartData(chartRows);
 
-        const latestStatus = findLatestPointWithField(points, "status");
         const latestCpu = findLatestPointWithField(points, "cpu_usage");
 
         setLatestSnapshot((prev) => ({
-          status: latestStatus?.values?.status ?? prev?.status,
-          statusTimestamp: latestStatus?.timestamp ?? prev?.statusTimestamp,
+          ...prev,
           cpuUsage: latestCpu?.values?.cpu_usage ?? prev?.cpuUsage,
-          memoryUsagePct: prev?.memoryUsagePct,
         }));
       } catch (fetchError) {
         if (active) {
@@ -172,7 +198,7 @@ export function DeviceDetailsPage() {
     return () => {
       active = false;
     };
-  }, [resolvedDeviceId, cpuRange]);
+  }, [resolvedDeviceId, metricsRange]);
 
   useEffect(() => {
     let active = true;
@@ -185,8 +211,8 @@ export function DeviceDetailsPage() {
         const response = await fetchDeviceMetrics({
           deviceIds: [resolvedDeviceId],
           metrics: ["memory_usage_pct"],
-          start: memoryRange.start,
-          end: memoryRange.end,
+          start: metricsRange.start,
+          end: metricsRange.end,
         });
 
         if (!active) return;
@@ -240,7 +266,73 @@ export function DeviceDetailsPage() {
     return () => {
       active = false;
     };
-  }, [resolvedDeviceId, memoryRange]);
+  }, [resolvedDeviceId, metricsRange]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadAvailabilityMetrics() {
+      setAvailabilityChartLoading(true);
+      setAvailabilityChartError(null);
+
+      try {
+        const response = await fetchDeviceMetrics({
+          deviceIds: [resolvedDeviceId],
+          metrics: ["status"],
+          start: metricsRange.start,
+          end: metricsRange.end,
+        });
+
+        if (!active) return;
+
+        const deviceMetrics =
+          response.find((entry) => entry.deviceId === resolvedDeviceId) ?? response[0];
+        const points = deviceMetrics?.dataPoints ?? [];
+
+        const chartRows: TimeSeriesChartData[] = points.flatMap((point) => {
+          if (point.values?.status == null) {
+            return [];
+          }
+
+          const timestamp = new Date(point.timestamp);
+          return [
+            {
+              timeMs: timestamp.getTime(),
+              timestamp: formatChartTimestamp(timestamp),
+              status: toAvailabilityPercentScale(point.values.status),
+            },
+          ];
+        });
+
+        setAvailabilityChartData(chartRows);
+
+        const latestStatus = findLatestPointWithField(points, "status");
+
+        setLatestSnapshot((prev) => ({
+          ...prev,
+          status: latestStatus?.values?.status ?? prev?.status,
+          statusTimestamp: latestStatus?.timestamp ?? prev?.statusTimestamp,
+        }));
+      } catch (fetchError) {
+        if (active) {
+          setAvailabilityChartError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Failed to load availability metrics.",
+          );
+          setAvailabilityChartData([]);
+        }
+      } finally {
+        if (active) setAvailabilityChartLoading(false);
+      }
+    }
+
+    void loadAvailabilityMetrics();
+
+    return () => {
+      active = false;
+    };
+  }, [resolvedDeviceId, metricsRange]);
 
   useEffect(() => {
     let active = true;
@@ -296,12 +388,8 @@ export function DeviceDetailsPage() {
     };
   }, [resolvedDeviceId]);
 
-  const handleCpuRangeChange = useCallback((start: Date, end: Date) => {
-    setCpuRange({ start, end });
-  }, []);
-
-  const handleMemoryRangeChange = useCallback((start: Date, end: Date) => {
-    setMemoryRange({ start, end });
+  const handleMetricsRangeChange = useCallback((start: Date, end: Date, meta?: { refreshToken?: number }) => {
+    setMetricsRange({ start, end, refreshToken: meta?.refreshToken });
   }, []);
 
   const isOnline = latestSnapshot?.status === DEVICE_STATUS_UP;
@@ -333,10 +421,7 @@ export function DeviceDetailsPage() {
             {deviceTitle} Monitoring
           </h2>
           <p className="text-muted-foreground text-sm">
-            {deviceInfo?.ip ? `${deviceInfo.ip} · ` : ""}
-            {activeView === "device"
-              ? "Live CPU, memory, and availability data pulled from the monitoring backend."
-              : "Discovered interfaces and utilization metrics for this device."}
+            {deviceDescription}
           </p>
         </div>
 
@@ -396,7 +481,7 @@ export function DeviceDetailsPage() {
             </div>
             <p className="text-muted-foreground text-xs">
               {latestSnapshot?.statusTimestamp
-                ? `Last seen ${new Date(latestSnapshot.statusTimestamp).toLocaleString([], {
+                ? `Last seen ${formatAppDateTime(new Date(latestSnapshot.statusTimestamp), {
                     month: "short",
                     day: "numeric",
                     hour: "2-digit",
@@ -458,6 +543,15 @@ export function DeviceDetailsPage() {
         </Card>
       </div>
 
+      <MetricsTimeRangeControl
+        idPrefix="device-metrics"
+        start={metricsRange.start}
+        end={metricsRange.end}
+        onApply={handleMetricsRangeChange}
+        disabled={cpuLoading || memoryLoading || availabilityChartLoading}
+        isRefreshing={cpuLoading || memoryLoading || availabilityChartLoading}
+      />
+
       <TimeSeriesChart
         chartInstanceId={`device-${resolvedDeviceId}-cpu`}
         data={cpuChartData}
@@ -465,12 +559,12 @@ export function DeviceDetailsPage() {
         metricLabels={{ cpu_usage: "CPU Usage (%)" }}
         title="CPU Usage"
         description="CPU utilization over the selected time range."
-        initialStart={cpuRange.start}
-        initialEnd={cpuRange.end}
-        onDateRangeChange={handleCpuRangeChange}
+        initialStart={metricsRange.start}
+        initialEnd={metricsRange.end}
         isLoading={cpuLoading}
         error={cpuError}
         showMetricToggles={false}
+        showTimeRangeControl={false}
         chartStyle="area"
       />
 
@@ -481,12 +575,12 @@ export function DeviceDetailsPage() {
         metricLabels={{ memory_usage_pct: "Memory Usage (%)" }}
         title="Memory Usage"
         description="Memory utilization over the selected time range."
-        initialStart={memoryRange.start}
-        initialEnd={memoryRange.end}
-        onDateRangeChange={handleMemoryRangeChange}
+        initialStart={metricsRange.start}
+        initialEnd={metricsRange.end}
         isLoading={memoryLoading}
         error={memoryError}
         showMetricToggles={false}
+        showTimeRangeControl={false}
         chartStyle="area"
         valueDecimals={2}
       />
@@ -499,6 +593,26 @@ export function DeviceDetailsPage() {
         description="Last 14 days of hourly availability (aggregated on the server). An hour is marked down if the device was unreachable at any point during that hour."
         isLoading={availabilityLoading}
         error={availabilityError}
+      />
+
+      <TimeSeriesChart
+        chartInstanceId={`device-${resolvedDeviceId}-availability`}
+        data={availabilityChartData}
+        metrics={["status"]}
+        metricLabels={{ status: "Availability" }}
+        title="Availability"
+        description="Device reachability over the selected time range (100% = up, 0% = down)."
+        initialStart={metricsRange.start}
+        initialEnd={metricsRange.end}
+        isLoading={availabilityChartLoading}
+        error={availabilityChartError}
+        showMetricToggles={false}
+        showTimeRangeControl={false}
+        chartStyle="line"
+        formatValue={formatAvailabilityChartValue}
+        yDomain={[0, 100]}
+        stepLine
+        colors={["#22c55e"]}
       />
         </>
       )}

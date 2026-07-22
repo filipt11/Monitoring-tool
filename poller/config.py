@@ -47,6 +47,45 @@ def _migrate_interfaces_speed_bps_to_bigint() -> None:
     logger.info("Migrated interfaces.speed_bps column to BIGINT")
 
 
+def _migrate_devices_created_at() -> None:
+    """Add created_at to devices for monitoring UI display."""
+
+    inspector = inspect(engine)
+    if not inspector.has_table("devices"):
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("devices")}
+
+    with engine.begin() as connection:
+        if "created_at" not in columns:
+            connection.execute(
+                text("ALTER TABLE devices ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW()")
+            )
+            logger.info("Added devices.created_at column")
+        else:
+            connection.execute(
+                text("ALTER TABLE devices ALTER COLUMN created_at SET DEFAULT NOW()")
+            )
+            logger.info("Ensured devices.created_at default is NOW()")
+
+
+def _migrate_drop_interfaces_last_seen_at() -> None:
+    """Remove unused last_seen_at column from interfaces."""
+
+    inspector = inspect(engine)
+    if not inspector.has_table("interfaces"):
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("interfaces")}
+    if "last_seen_at" not in columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE interfaces DROP COLUMN last_seen_at"))
+
+    logger.info("Dropped interfaces.last_seen_at column")
+
+
 def init_db() -> None:
     """Initalizing Connection with Postgres DB"""
 
@@ -55,6 +94,8 @@ def init_db() -> None:
     try:
         Base.metadata.create_all(engine)
         _migrate_interfaces_speed_bps_to_bigint()
+        _migrate_devices_created_at()
+        _migrate_drop_interfaces_last_seen_at()
         logger.success("Successfully initialized Postgres DB")
     except Exception as e:
         logger.error(f"Database error: {e}")

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import DateTime, ForeignKey, String, Integer, BigInteger, Boolean, UniqueConstraint, func
@@ -6,6 +6,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .config import Base
 from typing import Optional
 from typing import TypedDict
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Device(Base):
@@ -22,6 +26,12 @@ class Device(Base):
     password: Mapped[str] = mapped_column(String(100), nullable=False)
     port: Mapped[int] = mapped_column(Integer)
     https: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        default=utc_now,
+        server_default=func.now(),
+        nullable=True,
+    )
 
     __table_args__ = (UniqueConstraint("ip", "port", name="_ip_port_uc"),)
 
@@ -53,11 +63,6 @@ class Interface(Base):
         server_default=func.now(),
         nullable=False,
     )
-    last_seen_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
-    )
 
     device: Mapped["Device"] = relationship(back_populates="interfaces")
 
@@ -78,7 +83,6 @@ class InterfaceOut(BaseModel):
     admin_status: str | None = None
     oper_status: str | None = None
     discovered_at: datetime
-    last_seen_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -118,6 +122,7 @@ class DeviceOut(BaseModel):
     username: str
     password: str
     https: bool
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

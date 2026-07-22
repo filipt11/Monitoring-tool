@@ -4,10 +4,10 @@ import { GaugeChart, MetricsTable, TimeSeriesChart } from "@/components/charts";
 import {
   buildDeviceChartPanels,
   buildDeviceGaugeData,
-  buildDeviceTableData,
+  buildDeviceTableDataFromSummary,
   buildInterfaceChartPanels,
   buildInterfaceGaugeData,
-  buildInterfaceTableData,
+  buildInterfaceTableDataFromSummary,
   hasResolvedSources,
   shouldPanelUseAreaFill,
   type DashboardChartPanel,
@@ -20,12 +20,17 @@ import type { DashboardSectionDetail } from "@/lib/dashboardsApi";
 import {
   getDisplayMetricLabels,
   getMetricMaxValues,
+  getPanelFormatValue,
+  getPanelYDomain,
   scaleDashboardChartPanel,
   scaleMetricForDisplay,
+  shouldPanelUseStepLine,
 } from "@/lib/dashboardMetricFormat";
 import {
   fetchDeviceMetrics,
+  fetchDeviceMetricsSummary,
   fetchInterfaceMetrics,
+  fetchInterfaceMetricsSummary,
   type DeviceMetricsApiResponse,
   type InterfaceMetricsApiResponse,
 } from "@/lib/metricsApi";
@@ -37,14 +42,26 @@ interface DashboardSectionWidgetProps {
   dashboardId: number;
   section: DashboardSectionDetail;
   range: DateRange;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 export function DashboardSectionWidget({
   dashboardId,
   section,
   range,
+  onLoadingChange,
 }: DashboardSectionWidgetProps) {
+  const rangeKey = useMemo(
+    () => `${range.start.getTime()}:${range.end.getTime()}:${range.refreshToken ?? ""}`,
+    [range.end, range.refreshToken, range.start],
+  );
   const [loading, setLoading] = useState(true);
+  const [trackedRangeKey, setTrackedRangeKey] = useState(rangeKey);
+
+  if (rangeKey !== trackedRangeKey) {
+    setTrackedRangeKey(rangeKey);
+    setLoading(true);
+  }
   const [error, setError] = useState<string | null>(null);
   const [chartPanels, setChartPanels] = useState<DashboardChartPanel[]>([]);
   const [gaugeData, setGaugeData] = useState<GaugeChartData[]>([]);
@@ -60,21 +77,9 @@ export function DashboardSectionWidget({
     [section.metrics, tableData],
   );
 
-  const displayTableData = useMemo(
-    () =>
-      tableData.map((row) => {
-        const formattedRow = { ...row };
-
-        for (const metric of section.metrics) {
-          const value = row[metric];
-          if (typeof value === "number") {
-            formattedRow[metric] = scaleMetricForDisplay(metric, value).text;
-          }
-        }
-
-        return formattedRow;
-      }),
-    [section.metrics, tableData],
+  const formatTableMetricValue = useCallback(
+    (metric: string, value: number) => scaleMetricForDisplay(metric, value).text,
+    [],
   );
 
   const loadMetrics = useCallback(async () => {
@@ -89,6 +94,39 @@ export function DashboardSectionWidget({
         setGaugeData([]);
         setTableData([]);
         setError("No data sources configured for this section.");
+        return;
+      }
+
+      if (section.graphType === "table") {
+        if (sources.scope === "device") {
+          const summary = await fetchDeviceMetricsSummary({
+            deviceIds: sources.deviceIds,
+            metrics: section.metrics,
+            start: range.start,
+            end: range.end,
+          });
+
+          setChartPanels([]);
+          setGaugeData([]);
+          setTableData(
+            buildDeviceTableDataFromSummary(summary, section.metrics, sources.deviceLabels),
+          );
+          return;
+        }
+
+        const interfaceKeys = sources.interfaces.map((entry) => entry.metricKey);
+        const summary = await fetchInterfaceMetricsSummary({
+          interfaces: interfaceKeys,
+          metrics: section.metrics,
+          start: range.start,
+          end: range.end,
+        });
+
+        setChartPanels([]);
+        setGaugeData([]);
+        setTableData(
+          buildInterfaceTableDataFromSummary(summary, section.metrics, sources.interfaces),
+        );
         return;
       }
 
@@ -109,7 +147,7 @@ export function DashboardSectionWidget({
           buildDeviceChartPanels(response, section.metrics, sources.deviceLabels, layout),
         );
         setGaugeData(buildDeviceGaugeData(response, section.metrics, sources.deviceLabels));
-        setTableData(buildDeviceTableData(response, section.metrics, sources.deviceLabels));
+        setTableData([]);
         return;
       }
 
@@ -125,7 +163,7 @@ export function DashboardSectionWidget({
         buildInterfaceChartPanels(response, section.metrics, sources.interfaces, layout),
       );
       setGaugeData(buildInterfaceGaugeData(response, section.metrics, sources.interfaces));
-      setTableData(buildInterfaceTableData(response, section.metrics, sources.interfaces));
+      setTableData([]);
     } catch (fetchError) {
       setChartPanels([]);
       setGaugeData([]);
@@ -136,37 +174,45 @@ export function DashboardSectionWidget({
     } finally {
       setLoading(false);
     }
-  }, [range.end, range.start, section]);
+  }, [range.end, range.refreshToken, range.start, section]);
 
   useEffect(() => {
     void loadMetrics();
   }, [loadMetrics, dashboardId]);
 
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
+
   if (section.graphType === "gauge") {
     return (
-      <GaugeChart
-        data={gaugeData}
-        title={section.name}
-        description={`Gauge view · ${section.metrics.length} metric(s)`}
-        isLoading={loading}
-        error={error}
-        hideControls
-      />
+      <div data-pdf-block="chart">
+        <GaugeChart
+          data={gaugeData}
+          title={section.name}
+          description={`Gauge view · ${section.metrics.length} metric(s)`}
+          isLoading={loading}
+          error={error}
+          hideControls
+        />
+      </div>
     );
   }
 
   if (section.graphType === "table") {
     return (
-      <MetricsTable
-        data={displayTableData}
-        metrics={section.metrics}
-        title={section.name}
-        description="Latest values for selected sources"
-        isLoading={loading}
-        error={error}
-        hideControls
-        metricLabels={tableMetricLabels}
-      />
+      <div data-pdf-block="chart">
+        <MetricsTable
+          data={tableData}
+          metrics={section.metrics}
+          title={section.name}
+          isLoading={loading}
+          error={error}
+          hideControls
+          metricLabels={tableMetricLabels}
+          formatMetricValue={formatTableMetricValue}
+        />
+      </div>
     );
   }
 
@@ -210,22 +256,26 @@ export function DashboardSectionWidget({
         </div>
       ) : (
         displayPanels.map((panel) => (
-          <TimeSeriesChart
-            key={panel.id}
-            chartInstanceId={panel.id}
-            data={panel.data}
-            metrics={panel.seriesKeys}
-            metricLabels={panel.metricLabels}
-            title={panel.title}
-            initialStart={range.start}
-            initialEnd={range.end}
-            isLoading={loading}
-            error={error}
-            valueDecimals={panel.valueDecimals}
-            chartStyle={shouldPanelUseAreaFill(panel) ? "area" : "line"}
-            showMetricToggles={false}
-            showTimeRangeControl={false}
-          />
+          <div key={panel.id} data-pdf-block="chart" data-pdf-section-title={section.name}>
+            <TimeSeriesChart
+              chartInstanceId={panel.id}
+              data={panel.data}
+              metrics={panel.seriesKeys}
+              metricLabels={panel.metricLabels}
+              title={panel.title}
+              initialStart={range.start}
+              initialEnd={range.end}
+              isLoading={loading}
+              error={error}
+              valueDecimals={panel.valueDecimals}
+              formatValue={getPanelFormatValue(panel)}
+              yDomain={getPanelYDomain(panel)}
+              stepLine={shouldPanelUseStepLine(panel)}
+              chartStyle={shouldPanelUseAreaFill(panel) ? "area" : "line"}
+              showMetricToggles={false}
+              showTimeRangeControl={false}
+            />
+          </div>
         ))
       )}
     </div>

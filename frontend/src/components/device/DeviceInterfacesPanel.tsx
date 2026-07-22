@@ -20,27 +20,19 @@ import {
   type InterfaceMetricsApiResponse,
 } from "@/lib/metricsApi";
 import { createDefaultMetricsRange } from "@/lib/timeRangePresets";
+import {
+  buildInterfaceSpeedChartData,
+  buildInterfaceUtilChartData,
+  INTERFACE_ALL_METRICS,
+  INTERFACE_CHART_COLORS,
+  INTERFACE_SPEED_METRICS,
+  INTERFACE_UTIL_METRICS,
+} from "@/lib/interfaceMetricsCharts";
 import { bpsMetricLabels, scaleBpsChartData } from "@/lib/formatBps";
+import { formatPercentValue } from "@/lib/formatPercent";
 import { cn } from "@/lib/utils";
 
-const INTERFACE_UTIL_METRICS = ["in_util_pct", "out_util_pct"] as const;
-const INTERFACE_SPEED_METRICS = ["in_bps", "out_bps"] as const;
-const INTERFACE_ALL_METRICS = [
-  ...INTERFACE_UTIL_METRICS,
-  ...INTERFACE_SPEED_METRICS,
-] as const;
 const HIGH_UTILIZATION_THRESHOLD = 90;
-/** Inbound = cyan-blue, outbound = pink/magenta (cyberpunk-style pair). */
-const INTERFACE_CHART_COLORS = ["#38bdf8", "#db2777"];
-
-function formatChartTimestamp(date: Date): string {
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function isInterfaceUp(iface: DeviceInterfaceInfo): boolean {
   return iface.adminStatus === "up" && iface.operStatus === "up";
@@ -59,58 +51,6 @@ function sortInterfacesForDisplay(
 
     return left.ifIndex - right.ifIndex;
   });
-}
-
-function buildUtilChartData(
-  dataPoints: InterfaceMetricsApiResponse["dataPoints"],
-): TimeSeriesChartData[] {
-  return dataPoints
-    .flatMap((point) => {
-      const inUtil = point.values?.in_util_pct;
-      const outUtil = point.values?.out_util_pct;
-
-      if (inUtil == null && outUtil == null) {
-        return [];
-      }
-
-      const timestamp = new Date(point.timestamp);
-      return [
-        {
-          timeMs: timestamp.getTime(),
-          timestamp: formatChartTimestamp(timestamp),
-          in_util_pct:
-            inUtil != null ? Math.round(inUtil * 100) / 100 : null,
-          out_util_pct:
-            outUtil != null ? Math.round(outUtil * 100) / 100 : null,
-        },
-      ];
-    })
-    .sort((left, right) => left.timeMs - right.timeMs);
-}
-
-function buildSpeedChartData(
-  dataPoints: InterfaceMetricsApiResponse["dataPoints"],
-): TimeSeriesChartData[] {
-  return dataPoints
-    .flatMap((point) => {
-      const inBps = point.values?.in_bps;
-      const outBps = point.values?.out_bps;
-
-      if (inBps == null && outBps == null) {
-        return [];
-      }
-
-      const timestamp = new Date(point.timestamp);
-      return [
-        {
-          timeMs: timestamp.getTime(),
-          timestamp: formatChartTimestamp(timestamp),
-          in_bps: inBps != null ? Math.round(inBps) : null,
-          out_bps: outBps != null ? Math.round(outBps) : null,
-        },
-      ];
-    })
-    .sort((left, right) => left.timeMs - right.timeMs);
 }
 
 function interfaceDescription(iface: DeviceInterfaceInfo): string {
@@ -227,8 +167,8 @@ export function DeviceInterfacesPanel({ deviceId }: DeviceInterfacesPanelProps) 
             const latestOut = findLatestPointWithField(points, "out_util_pct");
 
             next[key] = {
-              utilData: buildUtilChartData(points),
-              speedData: buildSpeedChartData(points),
+              utilData: buildInterfaceUtilChartData(points),
+              speedData: buildInterfaceSpeedChartData(points),
               loading: false,
               error: null,
               latestInUtil: latestIn?.values?.in_util_pct,
@@ -268,8 +208,8 @@ export function DeviceInterfacesPanel({ deviceId }: DeviceInterfacesPanelProps) 
     };
   }, [deviceId, interfaces, metricsRange]);
 
-  const handleMetricsRangeChange = useCallback((start: Date, end: Date) => {
-    setMetricsRange({ start, end });
+  const handleMetricsRangeChange = useCallback((start: Date, end: Date, meta?: { refreshToken?: number }) => {
+    setMetricsRange({ start, end, refreshToken: meta?.refreshToken });
   }, []);
 
   const summary = useMemo(() => {
@@ -391,7 +331,7 @@ export function DeviceInterfacesPanel({ deviceId }: DeviceInterfacesPanelProps) 
                 summary.peakUtil > HIGH_UTILIZATION_THRESHOLD && "text-destructive",
               )}
             >
-              {summary.peakUtil > 0 ? `${Math.round(summary.peakUtil * 10) / 10}%` : "—"}
+              {summary.peakUtil > 0 ? formatPercentValue(summary.peakUtil) : "—"}
             </div>
             <p className="text-muted-foreground text-xs">
               Highest recent in/out util across interfaces
@@ -411,6 +351,7 @@ export function DeviceInterfacesPanel({ deviceId }: DeviceInterfacesPanelProps) 
             end={metricsRange.end}
             onApply={handleMetricsRangeChange}
             disabled={metricsLoading}
+            isRefreshing={metricsLoading}
           />
         </CardContent>
       </Card>
@@ -454,6 +395,7 @@ export function DeviceInterfacesPanel({ deviceId }: DeviceInterfacesPanelProps) 
               showTimeRangeControl={false}
               chartStyle="line"
               valueDecimals={2}
+              formatValue={formatPercentValue}
               colors={INTERFACE_CHART_COLORS}
             />
           );

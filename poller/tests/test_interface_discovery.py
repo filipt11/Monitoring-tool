@@ -17,7 +17,6 @@ def test_sync_device_interfaces_creates_and_updates():
         admin_status="up",
         oper_status="up",
         discovered_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
-        last_seen_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
     )
 
     def query_side_effect(model):

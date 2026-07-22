@@ -8,6 +8,7 @@ import lombok.ToString;
 import org.hibernate.annotations.Immutable;
 import org.hibernate.annotations.Subselect;
 
+import java.time.Instant;
 import java.util.List;
 
 @Getter
@@ -27,7 +28,8 @@ import java.util.List;
                 username,
                 password,
                 port,
-                https
+                https,
+                created_at
             FROM devices
         """)
 public class Device {
@@ -43,6 +45,9 @@ public class Device {
     private String password;
     private Integer port;
     private boolean https;
+
+    @Column(name = "created_at")
+    private Instant createdAt;
 
     @ManyToMany(mappedBy = "devices")
     private List<DeviceGroup> deviceGroups;
