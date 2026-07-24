@@ -7,6 +7,7 @@ import app.dtos.data.DeviceMetricsDto;
 import app.dtos.data.DeviceMetricsSummaryDto;
 import app.dtos.data.InterfaceMetricsDto;
 import app.dtos.data.InterfaceMetricsSummaryDto;
+import app.utils.MetricsAggregation;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
@@ -24,8 +25,6 @@ import java.util.stream.Collectors;
 @Service
 public class DataAccessService {
     private static final Logger log = LoggerFactory.getLogger(DataAccessService.class);
-    private static final String TIMESERIES_AGGREGATE_WINDOW =
-            "aggregateWindow(every: 5m, fn: last, createEmpty: false, timeSrc: \"_start\")";
 
     private final InfluxDBClient influxDBClient;
 
@@ -48,13 +47,14 @@ public class DataAccessService {
 
         String devicesArr = "[\"" + String.join("\", \"", deviceIds) + "\"]";
         String metricsArr = "[\"" + String.join("\", \"", metrics) + "\"]";
+        String aggregateWindow = MetricsAggregation.buildAggregateWindowClause(start, end);
 
         String flux = String.format(
                 "from(bucket: \"%s\") " +
                         "|> range(start: %s, stop: %s) " +
                         "|> filter(fn: (r) => contains(value: r.id, set: %s)) " +
                         "|> filter(fn: (r) => contains(value: r._field, set: %s)) " +
-                        "|> " + TIMESERIES_AGGREGATE_WINDOW + " " +
+                        "|> " + aggregateWindow + " " +
                         "|> pivot(rowKey:[\"_time\", \"id\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
                 bucket, start.toString(), end.toString(), devicesArr, metricsArr
         );
@@ -295,6 +295,7 @@ public class DataAccessService {
         String metricsFilter = metrics.stream()
                 .map(m -> String.format("r[\"_field\"] == \"%s\"", m))
                 .collect(Collectors.joining(" or "));
+        String aggregateWindow = MetricsAggregation.buildAggregateWindowClause(start, end);
 
         String fluxQuery = String.format(
                 "from(bucket: \"%s\")\n" +
@@ -302,7 +303,7 @@ public class DataAccessService {
                         "  |> filter(fn: (r) => r[\"_measurement\"] == \"interface_statistics\")\n" +
                         "  |> filter(fn: (r) => %s)\n" +
                         "  |> filter(fn: (r) => %s)\n" +
-                        "  |> " + TIMESERIES_AGGREGATE_WINDOW + "\n" +
+                        "  |> " + aggregateWindow + "\n" +
                         "  |> pivot(rowKey:[\"_time\", \"device_id\", \"if_index\"], columnKey: [\"_field\"], valueColumn: \"_value\")",
                 bucket, start.toString(), end.toString(), deviceInterfaceFilter, metricsFilter
         );

@@ -166,3 +166,27 @@ body[data-scroll-locked] {
 .pdf-export-mode [data-pdf-exclude] {
   display: none !important;
 }
+
+.horizontal-bar-chart .horizontal-bar-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 20rem) minmax(8rem, 1fr) auto;
+  column-gap: 0.75rem;
+  row-gap: 0.75rem;
+  align-items: center;
+}
+
+.horizontal-bar-chart .horizontal-bar-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.horizontal-bar-chart .horizontal-bar-track {
+  width: 100%;
+  min-width: 0;
+}
+
+.pdf-export-mode .horizontal-bar-chart .horizontal-bar-rows {
+  grid-template-columns: minmax(0, 24rem) minmax(8rem, 1fr) auto;
+}

@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { GaugeChart, MetricsTable, TimeSeriesChart } from "@/components/charts";
+import { GaugeChart, HorizontalBarChart, MetricsTable, TimeSeriesChart } from "@/components/charts";
 import {
   buildDeviceChartPanels,
-  buildDeviceGaugeData,
+  buildDeviceGaugeDataFromSummary,
   buildDeviceTableDataFromSummary,
+  buildHorizontalBarPanels,
   buildInterfaceChartPanels,
-  buildInterfaceGaugeData,
+  buildInterfaceGaugeDataFromSummary,
   buildInterfaceTableDataFromSummary,
+  getGaugeFetchMetrics,
   hasResolvedSources,
   shouldPanelUseAreaFill,
   type DashboardChartPanel,
 } from "@/lib/dashboardChartData";
 import {
+  isSummaryGraphType,
   isTimeseriesGraphType,
   resolveTimeseriesLayout,
 } from "@/lib/dashboardConfig";
@@ -82,6 +85,11 @@ export function DashboardSectionWidget({
     [],
   );
 
+  const barPanels = useMemo(
+    () => buildHorizontalBarPanels(tableData, section.metrics),
+    [section.metrics, tableData],
+  );
+
   const loadMetrics = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -97,36 +105,58 @@ export function DashboardSectionWidget({
         return;
       }
 
-      if (section.graphType === "table") {
+      if (isSummaryGraphType(section.graphType)) {
         if (sources.scope === "device") {
+          const fetchMetrics =
+            section.graphType === "gauge"
+              ? getGaugeFetchMetrics(section.metrics)
+              : section.metrics;
           const summary = await fetchDeviceMetricsSummary({
             deviceIds: sources.deviceIds,
-            metrics: section.metrics,
+            metrics: fetchMetrics,
             start: range.start,
             end: range.end,
           });
 
           setChartPanels([]);
-          setGaugeData([]);
-          setTableData(
-            buildDeviceTableDataFromSummary(summary, section.metrics, sources.deviceLabels),
-          );
+          if (section.graphType === "gauge") {
+            setGaugeData(
+              buildDeviceGaugeDataFromSummary(summary, section.metrics, sources.deviceLabels),
+            );
+            setTableData([]);
+          } else {
+            setGaugeData([]);
+            setTableData(
+              buildDeviceTableDataFromSummary(summary, section.metrics, sources.deviceLabels),
+            );
+          }
           return;
         }
 
         const interfaceKeys = sources.interfaces.map((entry) => entry.metricKey);
+        const fetchMetrics =
+          section.graphType === "gauge"
+            ? getGaugeFetchMetrics(section.metrics)
+            : section.metrics;
         const summary = await fetchInterfaceMetricsSummary({
           interfaces: interfaceKeys,
-          metrics: section.metrics,
+          metrics: fetchMetrics,
           start: range.start,
           end: range.end,
         });
 
         setChartPanels([]);
-        setGaugeData([]);
-        setTableData(
-          buildInterfaceTableDataFromSummary(summary, section.metrics, sources.interfaces),
-        );
+        if (section.graphType === "gauge") {
+          setGaugeData(
+            buildInterfaceGaugeDataFromSummary(summary, section.metrics, sources.interfaces),
+          );
+          setTableData([]);
+        } else {
+          setGaugeData([]);
+          setTableData(
+            buildInterfaceTableDataFromSummary(summary, section.metrics, sources.interfaces),
+          );
+        }
         return;
       }
 
@@ -146,7 +176,7 @@ export function DashboardSectionWidget({
         setChartPanels(
           buildDeviceChartPanels(response, section.metrics, sources.deviceLabels, layout),
         );
-        setGaugeData(buildDeviceGaugeData(response, section.metrics, sources.deviceLabels));
+        setGaugeData([]);
         setTableData([]);
         return;
       }
@@ -162,7 +192,7 @@ export function DashboardSectionWidget({
       setChartPanels(
         buildInterfaceChartPanels(response, section.metrics, sources.interfaces, layout),
       );
-      setGaugeData(buildInterfaceGaugeData(response, section.metrics, sources.interfaces));
+      setGaugeData([]);
       setTableData([]);
     } catch (fetchError) {
       setChartPanels([]);
@@ -190,12 +220,29 @@ export function DashboardSectionWidget({
         <GaugeChart
           data={gaugeData}
           title={section.name}
-          description={`Gauge view · ${section.metrics.length} metric(s)`}
+          description={`Mean over selected period · ${section.metrics.length} metric(s)`}
           isLoading={loading}
           error={error}
           hideControls
         />
       </div>
+    );
+  }
+
+  if (section.graphType === "horizontal_bar") {
+    const barDescription =
+      barPanels.length === 1 && barPanels[0]
+        ? `${barPanels[0].title} · mean over selected period · sorted highest to lowest`
+        : "Mean over selected period · sorted highest to lowest";
+
+    return (
+      <HorizontalBarChart
+        panels={barPanels}
+        title={section.name}
+        description={barDescription}
+        isLoading={loading}
+        error={error}
+      />
     );
   }
 

@@ -17,6 +17,8 @@ interface DateTimePickerProps {
   disabled?: boolean;
   id?: string;
   className?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 function TimeColumn({
@@ -76,8 +78,25 @@ export function DateTimePicker({
   disabled = false,
   id,
   className,
+  open: openProp,
+  onOpenChange,
 }: DateTimePickerProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : uncontrolledOpen;
+
+  const setOpen = (next: boolean) => {
+    if (!isControlled) {
+      setUncontrolledOpen(next);
+    }
+    onOpenChange?.(next);
+  };
+
+  useEffect(() => {
+    if (disabled && open) {
+      setOpen(false);
+    }
+  }, [disabled, open]);
 
   const updateDatePart = (date: Date | undefined) => {
     if (!date) {
@@ -133,6 +152,7 @@ export function DateTimePicker({
         avoidCollisions={false}
         sticky="partial"
         onOpenAutoFocus={(event) => event.preventDefault()}
+        onCloseAutoFocus={(event) => event.preventDefault()}
       >
         <div className="flex">
           <div className="relative shrink-0">

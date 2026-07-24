@@ -1,4 +1,5 @@
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { CalendarRange, Clock3, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import {
   type TimeRangeApplyMeta,
   type TimeRangePresetId,
 } from "@/lib/timeRangePresets";
+import { formatMetricsAggregationLabel } from "@/lib/metricsAggregation";
 import { cn } from "@/lib/utils";
 
 interface MetricsTimeRangeControlProps {
@@ -38,14 +40,24 @@ export function MetricsTimeRangeControl({
   );
   const [customStartValue, setCustomStartValue] = useState(() => new Date(start));
   const [customEndValue, setCustomEndValue] = useState(() => new Date(end));
+  const [startPickerOpen, setStartPickerOpen] = useState(false);
+  const [endPickerOpen, setEndPickerOpen] = useState(false);
   const [pendingLoading, setPendingLoading] = useState(false);
   const prevDisabledRef = useRef(disabled);
+  const keepCustomPresetRef = useRef(false);
   const showLoading = pendingLoading || isRefreshing;
 
   useEffect(() => {
-    setActivePreset(detectPresetFromRange({ start, end }));
     setCustomStartValue(new Date(start));
     setCustomEndValue(new Date(end));
+
+    if (keepCustomPresetRef.current) {
+      keepCustomPresetRef.current = false;
+      setActivePreset("custom");
+      return;
+    }
+
+    setActivePreset(detectPresetFromRange({ start, end }));
   }, [start, end]);
 
   useEffect(() => {
@@ -77,6 +89,10 @@ export function MetricsTimeRangeControl({
   );
 
   const rangeSummary = useMemo(() => formatRangeSummary(start, end), [start, end]);
+  const aggregationSummary = useMemo(
+    () => formatMetricsAggregationLabel(start, end),
+    [start, end],
+  );
 
   const handlePresetSelect = useCallback(
     (presetId: TimeRangePresetId) => {
@@ -101,9 +117,35 @@ export function MetricsTimeRangeControl({
       return;
     }
 
+    flushSync(() => {
+      setStartPickerOpen(false);
+      setEndPickerOpen(false);
+    });
+
+    keepCustomPresetRef.current = true;
     setActivePreset("custom");
     applyRange(customStartValue, customEndValue);
   }, [applyRange, customStartValue, customEndValue]);
+
+  const handleStartPickerOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && showLoading) {
+        return;
+      }
+      setStartPickerOpen(open);
+    },
+    [showLoading],
+  );
+
+  const handleEndPickerOpenChange = useCallback(
+    (open: boolean) => {
+      if (open && showLoading) {
+        return;
+      }
+      setEndPickerOpen(open);
+    },
+    [showLoading],
+  );
 
   const handleRefresh = useCallback(() => {
     const refreshed = refreshMetricsRange({ start, end }, activePreset);
@@ -180,6 +222,8 @@ export function MetricsTimeRangeControl({
         <span>
           Showing{" "}
           <span className="text-foreground font-medium">{rangeSummary}</span>
+          {" · "}
+          <span className="text-foreground font-medium">{aggregationSummary}</span> resolution
         </span>
         {showLoading ? (
           <span className="text-primary inline-flex items-center gap-1 font-medium">
@@ -200,6 +244,8 @@ export function MetricsTimeRangeControl({
               value={customStartValue}
               onChange={setCustomStartValue}
               disabled={disabled}
+              open={showLoading ? false : startPickerOpen}
+              onOpenChange={handleStartPickerOpenChange}
             />
           </div>
 
@@ -212,6 +258,8 @@ export function MetricsTimeRangeControl({
               value={customEndValue}
               onChange={setCustomEndValue}
               disabled={disabled}
+              open={showLoading ? false : endPickerOpen}
+              onOpenChange={handleEndPickerOpenChange}
             />
           </div>
 

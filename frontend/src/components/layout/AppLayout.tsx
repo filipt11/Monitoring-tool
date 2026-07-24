@@ -28,21 +28,41 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn, getInitials } from "@/lib/utils";
 
-const mainNavItems = [
-  { to: routes.mainPage, label: "Main Page", icon: LayoutDashboard, end: true },
+type NavSubItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+type MainNavItem =
+  | {
+      kind: "link";
+      to: string;
+      label: string;
+      icon: LucideIcon;
+      end?: boolean;
+    }
+  | {
+      kind: "section";
+      label: string;
+      icon: LucideIcon;
+      subItems: NavSubItem[];
+    };
+
+const mainNavItems: MainNavItem[] = [
+  { kind: "link", to: routes.mainPage, label: "Main Page", icon: LayoutDashboard, end: true },
+  { kind: "link", to: routes.devices, label: "Devices", icon: Server, end: true },
+  { kind: "link", to: routes.interfaces, label: "Interfaces", icon: Network, end: true },
   {
-    to: routes.devices,
-    label: "Devices",
-    icon: Server,
-    subItems: [{ to: routes.deviceGroups, label: "Device Groups", icon: FolderTree }],
+    kind: "section",
+    label: "Groups",
+    icon: FolderTree,
+    subItems: [
+      { to: routes.deviceGroups, label: "Device Groups", icon: FolderTree },
+      { to: routes.interfaceGroups, label: "Interface Groups", icon: FolderTree },
+    ],
   },
-  {
-    to: routes.interfaces,
-    label: "Interfaces",
-    icon: Network,
-    subItems: [{ to: routes.interfaceGroups, label: "Interface Groups", icon: FolderTree }],
-  },
-  { to: routes.dashboards, label: "Dashboards", icon: LayoutPanelTop, end: true },
+  { kind: "link", to: routes.dashboards, label: "Dashboards", icon: LayoutPanelTop, end: true },
 ];
 
 const adminNavItems = [
@@ -190,6 +210,46 @@ function NavItem({
   );
 }
 
+function NavSection({
+  label,
+  icon: Icon,
+  subItems,
+}: {
+  label: string;
+  icon: LucideIcon;
+  subItems: NavSubItem[];
+}) {
+  const { pathname } = useLocation();
+  const isActiveSection = subItems.some(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+  );
+
+  return (
+    <div>
+      <div
+        className={cn(
+          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+          isActiveSection
+            ? "text-sidebar-accent-foreground"
+            : "text-muted-foreground",
+        )}
+      >
+        <Icon className="size-4 shrink-0" />
+        <span className="truncate">{label}</span>
+      </div>
+      {subItems.map((item) => (
+        <NavItem
+          key={item.to}
+          to={item.to}
+          label={item.label}
+          icon={item.icon}
+          nested
+        />
+      ))}
+    </div>
+  );
+}
+
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -215,20 +275,24 @@ export function AppLayout() {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 p-4">
-          {mainNavItems.map(({ to, label, icon, end, subItems }) => (
-            <div key={to}>
-              <NavItem to={to} label={label} icon={icon} end={end} />
-              {subItems?.map((item) => (
-                <NavItem
-                  key={item.to}
-                  to={item.to}
-                  label={item.label}
-                  icon={item.icon}
-                  nested
-                />
-              ))}
-            </div>
-          ))}
+          {mainNavItems.map((item) =>
+            item.kind === "link" ? (
+              <NavItem
+                key={item.to}
+                to={item.to}
+                label={item.label}
+                icon={item.icon}
+                end={item.end}
+              />
+            ) : (
+              <NavSection
+                key={item.label}
+                label={item.label}
+                icon={item.icon}
+                subItems={item.subItems}
+              />
+            ),
+          )}
 
           {isAdmin(user) && (
             <>

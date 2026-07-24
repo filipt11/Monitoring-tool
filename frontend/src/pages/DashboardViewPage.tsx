@@ -1,4 +1,4 @@
-import { ArrowLeft, FileDown, Loader2, Pencil, Plus, Settings2 } from "lucide-react";
+import { ArrowLeft, FileDown, FileSpreadsheet, Loader2, Pencil, Plus, Settings2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -49,6 +49,7 @@ import { routes } from "@/lib/routes";
 import { createDefaultMetricsRange, type DateRange } from "@/lib/timeRangePresets";
 import { formatAppChartDateTime } from "@/lib/dateFormat";
 import { exportElementToPdf, sanitizePdfFilename } from "@/lib/exportDashboardPdf";
+import { exportDashboardToCsv } from "@/lib/exportDashboardCsv";
 import { cn } from "@/lib/utils";
 
 interface DashboardSettingsValues {
@@ -89,6 +90,7 @@ export function DashboardViewPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const [metricsRange, setMetricsRange] = useState<DateRange>(createDefaultMetricsRange);
   const [sectionLoadingById, setSectionLoadingById] = useState<Record<number, boolean>>({});
   const exportRef = useRef<HTMLDivElement>(null);
@@ -210,6 +212,33 @@ export function DashboardViewPage() {
     }
   };
 
+  const handleExportCsv = async () => {
+    if (!dashboard || sectionDetails.length === 0) {
+      return;
+    }
+
+    setExportingCsv(true);
+    const toastId = toast.loading("Generating CSV report…");
+
+    try {
+      await exportDashboardToCsv({
+        dashboard,
+        sections: sectionDetails,
+        range: metricsRange,
+      });
+      toast.success("CSV report downloaded", { id: toastId });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to export dashboard to CSV.",
+        { id: toastId },
+      );
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  const isExporting = exportingPdf || exportingCsv;
+
   if (loading || !dashboard) {
     return (
       <div className="text-muted-foreground flex min-h-60 items-center justify-center gap-2 text-sm">
@@ -221,17 +250,19 @@ export function DashboardViewPage() {
 
   return (
     <div className="space-y-6">
-      {exportingPdf ? (
+      {isExporting ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm"
           role="status"
           aria-live="polite"
-          aria-label="Generating PDF report"
+          aria-label={exportingPdf ? "Generating PDF report" : "Generating CSV report"}
         >
           <div className="bg-card flex flex-col items-center gap-3 rounded-xl border px-8 py-6 shadow-lg">
             <Loader2 className="text-primary size-8 animate-spin" />
             <div className="text-center">
-              <p className="text-sm font-medium">Generating PDF report…</p>
+              <p className="text-sm font-medium">
+                {exportingPdf ? "Generating PDF report…" : "Generating CSV report…"}
+              </p>
               <p className="text-muted-foreground mt-1 text-xs">
                 Your download will start automatically when it is ready.
               </p>
@@ -240,66 +271,88 @@ export function DashboardViewPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-3">
-          <Button type="button" variant="ghost" size="sm" asChild className="-ml-2 w-fit" data-pdf-exclude>
+      <div ref={exportRef} className="space-y-6 rounded-lg">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            asChild
+            className="-ml-2 order-1 w-fit lg:col-start-1 lg:row-start-1"
+            data-pdf-exclude
+          >
             <Link to={routes.dashboards}>
               <ArrowLeft className="size-4" />
               Back to dashboards
             </Link>
           </Button>
-        </div>
 
-        <div className="flex flex-wrap gap-2" data-pdf-exclude>
-          {sections.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void handleExportPdf()}
-              disabled={exportingPdf}
-            >
-              <FileDown className="size-4" />
-              Export PDF
-            </Button>
-          ) : null}
-          {editable ? (
-            <>
-              <Button type="button" variant="outline" onClick={() => setSettingsOpen(true)}>
-                <Settings2 className="size-4" />
-                Dashboard settings
-              </Button>
-              <Button type="button" variant="outline" asChild>
-                <Link to={routes.dashboardSections(String(resolvedDashboardId))}>
-                  <Pencil className="size-4" />
-                  Edit sections
-                </Link>
-              </Button>
-            </>
-          ) : null}
-        </div>
-      </div>
-
-      <div ref={exportRef} className="space-y-6 rounded-lg">
-        <div data-pdf-block="header">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-2xl font-semibold tracking-tight">{dashboard.name}</h2>
-            <VisibilityBadge visibility={dashboard.visibility} />
+          <div
+            className="order-3 flex flex-col items-end gap-2 lg:col-start-2 lg:row-start-1 lg:row-span-2"
+            data-pdf-exclude
+          >
+            {editable ? (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setSettingsOpen(true)}>
+                  <Settings2 className="size-4" />
+                  Dashboard settings
+                </Button>
+                <Button type="button" variant="outline" asChild>
+                  <Link to={routes.dashboardSections(String(resolvedDashboardId))}>
+                    <Pencil className="size-4" />
+                    Edit sections
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
+            {sections.length > 0 ? (
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handleExportPdf()}
+                  disabled={isExporting}
+                >
+                  <FileDown className="size-4" />
+                  Export PDF
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handleExportCsv()}
+                  disabled={isExporting}
+                >
+                  <FileSpreadsheet className="size-4" />
+                  Export CSV
+                </Button>
+              </div>
+            ) : null}
           </div>
-          {dashboard.description ? (
-            <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
-              {dashboard.description}
-            </p>
-          ) : null}
-          <p className="text-muted-foreground mt-2 text-xs">
-            Owner: {dashboard.ownerUsername ?? "Unknown"} · {sections.length} section
-            {sections.length === 1 ? "" : "s"}
-          </p>
-          {sections.length > 0 ? (
+
+          <div
+            data-pdf-block="header"
+            className="order-2 min-w-0 lg:col-start-1 lg:row-start-2"
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="text-2xl font-semibold tracking-tight">{dashboard.name}</h2>
+              <VisibilityBadge visibility={dashboard.visibility} />
+            </div>
+            {dashboard.description ? (
+              <p className="text-muted-foreground mt-1 max-w-3xl text-sm">
+                {dashboard.description}
+              </p>
+            ) : null}
             <p className="text-muted-foreground mt-2 text-xs">
-              Time range: {formatAppChartDateTime(metricsRange.start)} –{" "}
-              {formatAppChartDateTime(metricsRange.end)}
+              Owner: {dashboard.ownerUsername ?? "Unknown"} · {sections.length} section
+              {sections.length === 1 ? "" : "s"}
             </p>
-          ) : null}
+            {sections.length > 0 ? (
+              <p className="text-muted-foreground mt-2 text-xs">
+                Time range: {formatAppChartDateTime(metricsRange.start)} –{" "}
+                {formatAppChartDateTime(metricsRange.end)}
+              </p>
+            ) : null}
+          </div>
         </div>
 
       {sections.length === 0 ? (

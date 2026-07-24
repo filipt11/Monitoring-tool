@@ -18,6 +18,7 @@ import type { TimeSeriesChartData } from "@/lib/charts.types";
 import type { TimeRangeApplyMeta } from "@/lib/timeRangePresets";
 import { formatAppChartDateTime } from "@/lib/dateFormat";
 import { fillTimeSeriesGaps } from "@/lib/fillTimeSeriesGaps";
+import { resolveMetricsBucketMs } from "@/lib/metricsAggregation";
 import { MetricsTimeRangeControl } from "./MetricsTimeRangeControl";
 
 const DEFAULT_CHART_COLORS = [
@@ -185,11 +186,14 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
   const chartData = useMemo(() => {
     if (!data || data.length === 0) return [];
 
+    const bucketMs = resolveMetricsBucketMs(initialStart, initialEnd);
+
     const filled = fillTimeSeriesGaps({
       data,
       metrics: activeMetrics,
       rangeStart: initialStart,
       rangeEnd: initialEnd,
+      bucketMs,
       formatTimestamp: (date) => formatAxisTime(date.getTime()),
     });
 
@@ -206,6 +210,11 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
       return newRow;
     });
   }, [activeMetrics, data, initialEnd, initialStart]);
+
+  const xDomain = useMemo(
+    (): [number, number] => [initialStart.getTime(), initialEnd.getTime()],
+    [initialEnd, initialStart],
+  );
 
   const areaYDomain = useMemo(
     () => computeAreaYDomain(chartData, activeMetrics),
@@ -277,7 +286,7 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
                 <XAxis
                   dataKey="timeMs"
                   type="number"
-                  domain={["dataMin", "dataMax"]}
+                  domain={xDomain}
                   tickFormatter={formatAxisTime}
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
                 />
@@ -331,7 +340,7 @@ export const TimeSeriesChart = React.memo(function TimeSeriesChart({
                 <XAxis
                   dataKey="timeMs"
                   type="number"
-                  domain={["dataMin", "dataMax"]}
+                  domain={xDomain}
                   tickFormatter={formatAxisTime}
                   tick={{ fill: "var(--color-muted-foreground)", fontSize: 12 }}
                 />

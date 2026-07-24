@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-
+import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ export function DateTimeRangeControl({
 }: DateTimeRangeControlProps) {
   const [startValue, setStartValue] = useState(() => new Date(start));
   const [endValue, setEndValue] = useState(() => new Date(end));
+  const [startPickerOpen, setStartPickerOpen] = useState(false);
+  const [endPickerOpen, setEndPickerOpen] = useState(false);
 
   useEffect(() => {
     setStartValue(new Date(start));
@@ -39,6 +41,11 @@ export function DateTimeRangeControl({
     if (startValue.getTime() >= endValue.getTime()) {
       return;
     }
+
+    flushSync(() => {
+      setStartPickerOpen(false);
+      setEndPickerOpen(false);
+    });
 
     onApply(startValue, endValue);
   }, [startValue, endValue, onApply]);
@@ -60,6 +67,8 @@ export function DateTimeRangeControl({
           value={startValue}
           onChange={setStartValue}
           disabled={disabled}
+          open={startPickerOpen}
+          onOpenChange={setStartPickerOpen}
         />
       </div>
       <div className="space-y-2">
@@ -69,6 +78,8 @@ export function DateTimeRangeControl({
           value={endValue}
           onChange={setEndValue}
           disabled={disabled}
+          open={endPickerOpen}
+          onOpenChange={setEndPickerOpen}
         />
       </div>
       <div className="flex items-end">

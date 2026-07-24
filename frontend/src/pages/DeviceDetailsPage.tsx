@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { routes } from "@/lib/routes";
 import { createDefaultMetricsRange, type DateRange } from "@/lib/timeRangePresets";
 import { formatAppChartDateTime, formatAppDate, formatAppDateTime } from "@/lib/dateFormat";
+import { formatPercentValue } from "@/lib/formatPercent";
 import {
   formatAvailabilityChartValue,
   toAvailabilityPercentScale,
@@ -508,7 +509,7 @@ export function DeviceDetailsPage() {
                 isCpuCritical && "text-destructive",
               )}
             >
-              {cpuUsage != null ? `${cpuUsage}%` : "—"}
+              {cpuUsage != null ? formatPercentValue(cpuUsage, { decimals: 2 }) : "—"}
             </div>
             <p className="text-muted-foreground text-xs">
               {isCpuCritical ? "High utilization" : "Most recent sample"}
