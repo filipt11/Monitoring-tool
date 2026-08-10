@@ -1,3 +1,56 @@
+"""FastAPI application simulating Cisco IOS XE or Juniper network devices.
+
+The simulator exposes vendor-specific HTTP endpoints that return realistic
+RESTCONF (Cisco) or RPC-style (Juniper) JSON payloads. Device behaviour
+(CPU, memory, interface counters) is driven by a :class:`~simulator.devices.BaseDevice`
+subclass selected at startup from environment variables.
+
+Environment Variables:
+    DEVICE_PROFILE (str): Utilization preset. Accepted values are
+        ``high_utilized``, ``low_utilized``, ``average_utilized``, or
+        ``custom``. Any other value (including the default ``standard``)
+        falls back to :class:`~simulator.devices.AverageUtilizedCiscoDevice`.
+    DEVICE_IP (str): Simulated device IP address. Default: ``0.0.0.0``.
+    DEVICE_HOSTNAME (str): Simulated hostname. Default: ``s-cat-def-1``.
+    DEVICE_VENDOR (str): Device vendor, ``cisco`` or ``juniper``. Default:
+        ``cisco``.
+    DEVICE_MODEL (str): Hardware model string returned in inventory/system
+        responses. Default: ``Catalyst 9000``.
+    DEVICE_USERNAME (str): HTTP Basic auth username. Default: ``admin``.
+    DEVICE_PASSWORD (str): HTTP Basic auth password. Default: ``123``.
+    DEVICE_PORT (int): Uvicorn listen port. Default: ``443``.
+    DEVICE_IS_HTTPS (str): Whether the simulated device uses HTTPS
+        (informational only). Truthy values: ``true``, ``1``, ``yes``.
+        Default: ``false``.
+
+    When ``DEVICE_PROFILE=custom``, the following optional variables override
+    fields on :class:`~simulator.logic.CustomProfile`:
+
+    DEVICE_MEAN, DEVICE_DEVIATION, DEVICE_MIN_VAL, DEVICE_MAX_VAL,
+    DEVICE_SPIKE_CHANCE, DEVICE_SPIKE_MIN, DEVICE_SPIKE_MAX,
+    DEVICE_SPIKE_MEAN, DEVICE_SPIKE_DEVIATION, DEVICE_DROP_CHANCE,
+    DEVICE_DROP_MIN, DEVICE_DROP_MAX, DEVICE_DROP_MEAN,
+    DEVICE_DROP_DEVIATION.
+
+Attributes:
+    app (fastapi.FastAPI): Root FastAPI application instance.
+    security (fastapi.security.HTTPBasic): HTTP Basic authentication scheme.
+    PROFILE (str): Lowercased value of ``DEVICE_PROFILE``.
+    IP (str): Simulated device IP address.
+    HOSTNAME (str): Simulated device hostname.
+    VENDOR (str): Lowercased device vendor (``cisco`` or ``juniper``).
+    MODEL (str): Device model string.
+    USERNAME (str): Expected HTTP Basic username.
+    PASSWORD (str): Expected HTTP Basic password.
+    PORT (int): Server listen port.
+    HTTPS (bool): Whether HTTPS is enabled for the simulated device.
+    device (simulator.devices.BaseDevice): Active simulated device instance.
+    cisco_router (fastapi.APIRouter): RESTCONF routes for Cisco devices
+        (prefix ``/restconf/data``).
+    juniper_router (fastapi.APIRouter): RPC routes for Juniper devices
+        (prefix ``/rpc``).
+"""
+
 from fastapi import APIRouter, FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from simulator import devices
@@ -77,7 +130,21 @@ else:
 
 
 def authenticate(credentials: HTTPBasicCredentials = Depends(security)) -> str:
-    """Validate HTTP Basic credentials for all simulator endpoints."""
+    """Validate HTTP Basic credentials for all simulator endpoints.
+
+    Args:
+        credentials: Username and password extracted from the
+            ``Authorization: Basic`` header by FastAPI's dependency injection.
+
+    Returns:
+        The authenticated username when credentials match ``USERNAME`` and
+        ``PASSWORD``.
+
+    Raises:
+        fastapi.HTTPException: With status code ``401 Unauthorized`` when the
+            username or password does not match. The response includes a
+            ``WWW-Authenticate: Basic`` header.
+    """
 
     is_user_ok = secrets.compare_digest(credentials.username, USERNAME)
     is_pass_ok = secrets.compare_digest(credentials.password, PASSWORD)
@@ -97,7 +164,18 @@ cisco_router = APIRouter(prefix="/restconf/data")
 
 @cisco_router.get("/health")
 async def health():
-    """Return status 'OK' if API started correctly."""
+    """Health-check endpoint for the Cisco RESTCONF simulator.
+
+    Returns:
+        dict: A JSON object with a single key:
+
+        .. code-block:: json
+
+            {"status": "OK"}
+
+    Note:
+        This route requires HTTP Basic authentication (applied at router level).
+    """
 
     return {"status": "OK"}
 
@@ -106,14 +184,36 @@ async def health():
     "/Cisco-IOS-XE-process-cpu-oper{colon}cpu-usage/cpu-utilization/five-seconds"
 )
 async def cpu_usage():
-    """Return data regarding device CPU usage."""
+    """Return simulated five-second CPU utilization (Cisco RESTCONF).
+
+    Returns:
+        dict: RESTCONF payload keyed by
+            ``Cisco-IOS-XE-process-cpu-oper:five-seconds``. The value is an
+            integer percentage in the range ``0``–``100``, produced by
+            :meth:`~simulator.devices.BaseDevice.get_cpu`.
+
+    Note:
+        Requires HTTP Basic authentication.
+    """
 
     return {"Cisco-IOS-XE-process-cpu-oper:five-seconds": device.get_cpu()}
 
 
 @cisco_router.get("/Cisco-IOS-XE-memory-oper{colon}memory-statistics")
 async def memory_usage():
-    """Return data regarding device Memory statistics."""
+    """Return simulated processor memory statistics (Cisco RESTCONF).
+
+    Returns:
+        dict: RESTCONF payload under
+            ``Cisco-IOS-XE-memory-oper:memory-statistics`` containing a
+            ``memory-statistic`` list. The ``Processor`` entry reflects live
+            values from :meth:`~simulator.devices.BaseDevice.get_total_memory`
+            and :meth:`~simulator.devices.BaseDevice.get_used_memory`; other
+            entries are static placeholders.
+
+    Note:
+        Requires HTTP Basic authentication.
+    """
 
     total_memory = device.get_total_memory()
     used_memory = device.get_used_memory()
@@ -155,7 +255,17 @@ async def memory_usage():
     "/Cisco-IOS-XE-device-hardware-oper{colon}device-hardware-data/device-hardware/device-inventory"
 )
 async def get_model():
-    """Return data in JSON format containing data regarding device inventory."""
+    """Return simulated device hardware inventory (Cisco RESTCONF).
+
+    Returns:
+        dict: RESTCONF payload under
+            ``Cisco-IOS-XE-device-hardware-oper:device-inventory``. The list
+            contains chassis, DRAM, and CPU entries. ``hw-description`` fields
+            for chassis entries use :attr:`~simulator.devices.BaseDevice.model`.
+
+    Note:
+        Requires HTTP Basic authentication.
+    """
 
     return {
         "Cisco-IOS-XE-device-hardware-oper:device-inventory": [
@@ -209,14 +319,35 @@ async def get_model():
 
 @cisco_router.get("/Cisco-IOS-XE-native{colon}native/hostname")
 async def get_hostname():
-    """Return device current hostname."""
+    """Return the simulated device hostname (Cisco RESTCONF).
+
+    Returns:
+        dict: RESTCONF payload mapping
+            ``Cisco-IOS-XE-native:hostname`` to
+            :attr:`~simulator.devices.BaseDevice.hostname`.
+
+    Note:
+        Requires HTTP Basic authentication.
+    """
 
     return {"Cisco-IOS-XE-native:hostname": device.hostname}
 
 
 @cisco_router.get("/ietf-interfaces{colon}interfaces-state")
 async def get_interfaces_state():
-    """Return data regarding device interfaces statistics."""
+    """Return simulated interface state and traffic counters (Cisco RESTCONF).
+
+    Returns:
+        dict: RESTCONF payload under ``ietf-interfaces:interfaces-state``
+            with an ``interface`` list. Each interface includes admin/oper
+            status, speed, MAC address, and ``statistics`` with
+            ``in-octets`` / ``out-octets`` counters from
+            :meth:`~simulator.devices.BaseDevice.get_interfaces`.
+
+    Note:
+        Requires HTTP Basic authentication. Timestamp fields
+        (``last-change``, ``discontinuity-time``) are static placeholders.
+    """
 
     raw_interfaces = device.get_interfaces()
 
@@ -261,7 +392,19 @@ juniper_router = APIRouter(prefix="/rpc")
 
 @juniper_router.post("/get-interface-information")
 async def get_interface_information():
-    """Return simulated Juniper interface information including traffic statistics."""
+    """Return simulated Juniper interface information (RPC).
+
+    Returns:
+        dict: Juniper RPC-style payload with key ``interface-information``
+            containing a ``physical-interface`` list. Each entry mirrors
+            Juniper's ``get-interface-information`` output, including logical
+            sub-interfaces with byte counters sourced from
+            :meth:`~simulator.devices.BaseDevice.get_interfaces`.
+
+    Note:
+        Requires HTTP Basic authentication. Most fields outside counters and
+        status are static placeholders.
+    """
 
     raw_interfaces = device.get_interfaces()
 
@@ -370,7 +513,18 @@ async def get_interface_information():
 
 @juniper_router.post("/get-route-engine-information")
 async def get_route_engine_information():
-    """Return simulated Juniper route engine CPU and memory statistics."""
+    """Return simulated Juniper route-engine CPU and memory statistics (RPC).
+
+    Returns:
+        dict: Juniper RPC-style payload under ``route-engine-information``.
+            ``cpu-idle`` is derived as ``100 - get_cpu()``; memory fields use
+            :meth:`~simulator.devices.BaseDevice.get_total_memory` and
+            :meth:`~simulator.devices.BaseDevice.get_used_memory`.
+
+    Note:
+        Requires HTTP Basic authentication. Load averages and secondary CPU
+        fields are static placeholders.
+    """
 
     cpu_idle = int(100 - device.get_cpu())
     total_memory = device.get_total_memory()
@@ -442,7 +596,18 @@ async def get_route_engine_information():
 
 @juniper_router.post("/get-system-information")
 async def get_system_information():
-    """Return simulated Juniper system information including hostname and model."""
+    """Return simulated Juniper system information (RPC).
+
+    Returns:
+        dict: Juniper RPC-style payload under ``system-information`` with
+            ``host-name`` from :attr:`~simulator.devices.BaseDevice.hostname`
+            and ``hardware-model`` from
+            :attr:`~simulator.devices.BaseDevice.model`. OS version and serial
+            number are static placeholders.
+
+    Note:
+        Requires HTTP Basic authentication.
+    """
 
     return {
         "system-information": [
@@ -466,7 +631,14 @@ elif VENDOR == "juniper":
 
 
 def main() -> None: # pragma: no cover
-    """Start the simulator FastAPI server with uvicorn."""
+    """Start the simulator FastAPI server with Uvicorn.
+
+    Binds to ``0.0.0.0`` on :data:`PORT`. Vendor-specific routes are already
+    registered on :data:`app` at import time based on :data:`VENDOR`.
+
+    Raises:
+        OSError: If the configured port is already in use or cannot be bound.
+    """
 
     uvicorn.run(app, host="0.0.0.0", port=PORT)
 

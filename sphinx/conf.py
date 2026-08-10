@@ -43,6 +43,17 @@ napoleon_numpy_docstring = True
 napoleon_include_private_members = False
 napoleon_include_special_members = False
 
+autodoc_mock_imports = [
+	'fastapi',
+	'fastapi.security',
+	'uvicorn',
+	'httpx',
+	'loguru',
+	'influxdb_client',
+	'sqlalchemy',
+	'pydantic_settings',
+]
+
 # Autodoc member order
 autodoc_member_order = 'bysource'
 

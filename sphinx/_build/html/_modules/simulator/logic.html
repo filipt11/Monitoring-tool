@@ -74,7 +74,19 @@
            <div itemprop="articleBody">
              
   <h1>Source code for simulator.logic</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span></span><span class="sd">&quot;&quot;&quot;Randomized utilization and traffic-counter logic for the device simulator.</span>
+
+<span class="sd">Provides CPU and memory percentage generators for high, average, and low</span>
+<span class="sd">utilization profiles, plus a configurable :class:`CustomProfile` model.</span>
+<span class="sd">Interface byte counters grow proportionally to link speed and elapsed time</span>
+<span class="sd">since the previous poll.</span>
+
+<span class="sd">Attributes:</span>
+<span class="sd">    last_sim_times (dict[str, float]): Timestamp of the last counter update</span>
+<span class="sd">        per key, used by :func:`get_dynamic_interval` to compute elapsed</span>
+<span class="sd">        seconds between successive calls.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">time</span><span class="w"> </span><span class="kn">import</span> <span class="n">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
@@ -86,7 +98,43 @@
 <div class="viewcode-block" id="CustomProfile">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.CustomProfile">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">CustomProfile</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Custom profile used to build utilization logic for custom utilized devices&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pydantic model defining a custom CPU/memory utilization distribution.</span>
+
+<span class="sd">    Values are expressed as percentages in the range ``0``–``100``. Spike and</span>
+<span class="sd">    drop probabilities must sum to at most ``100``. Used by</span>
+<span class="sd">    :class:`~simulator.devices.customUtilizedCiscoDevice` and</span>
+<span class="sd">    :class:`~simulator.devices.customUtilizedJuniperDevice`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        mean (float): Centre of the normal distribution for baseline</span>
+<span class="sd">            utilization. Default: ``30.0``.</span>
+<span class="sd">        deviation (float): Standard deviation for baseline utilization.</span>
+<span class="sd">            Default: ``5.0``.</span>
+<span class="sd">        min_val (int): Lower bound for baseline utilization samples.</span>
+<span class="sd">            Default: ``1``.</span>
+<span class="sd">        max_val (int): Upper bound for baseline utilization samples.</span>
+<span class="sd">            Default: ``100``.</span>
+<span class="sd">        spike_chance_pct (float): Probability (``0``–``100``) of a spike event</span>
+<span class="sd">            on each call. Default: ``3.0``.</span>
+<span class="sd">        spike_min (int): Minimum spike utilization percentage.</span>
+<span class="sd">            Default: ``50``.</span>
+<span class="sd">        spike_max (int): Maximum spike utilization percentage.</span>
+<span class="sd">            Default: ``100``.</span>
+<span class="sd">        spike_mean (float): Centre of the normal distribution during a spike.</span>
+<span class="sd">            Default: ``75.0``.</span>
+<span class="sd">        spike_deviation (float): Standard deviation during a spike.</span>
+<span class="sd">            Default: ``10.0``.</span>
+<span class="sd">        drop_chance_pct (float): Probability (``0``–``100``) of a drop event</span>
+<span class="sd">            on each call. Default: ``1.0``.</span>
+<span class="sd">        drop_min (int): Minimum drop utilization percentage.</span>
+<span class="sd">            Default: ``1``.</span>
+<span class="sd">        drop_max (int): Maximum drop utilization percentage.</span>
+<span class="sd">            Default: ``10``.</span>
+<span class="sd">        drop_mean (float): Centre of the normal distribution during a drop.</span>
+<span class="sd">            Default: ``5.0``.</span>
+<span class="sd">        drop_deviation (float): Standard deviation during a drop.</span>
+<span class="sd">            Default: ``2.0``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># Normal</span>
     <span class="n">mean</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30.0</span>
@@ -113,7 +161,14 @@
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">clamp_values_0_100</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;function to clamp values between 0 and 100.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clamp every numeric field to the range ``0``–``100``.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            v: Field value after Pydantic coercion.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The input value, clamped to ``[0, 100]`` when it is numeric.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="k">return</span> <span class="mi">0</span>
         <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
@@ -125,8 +180,15 @@
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.CustomProfile.validate_total_chance">[docs]</a>
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">&quot;after&quot;</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">validate_total_chance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;CustomProfile&quot;</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;function to validate total chance for spike and drop.&quot;&quot;&quot;</span>
-        
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure combined spike and drop probability does not exceed 100%.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            The validated profile instance.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: When ``spike_chance_pct + drop_chance_pct`` exceeds</span>
+<span class="sd">                ``100``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">total_chance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">spike_chance_pct</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_chance_pct</span>
         <span class="k">if</span> <span class="n">total_chance</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
@@ -136,11 +198,20 @@
 </div>
 
 
+
 <div class="viewcode-block" id="get_high_utilized_cpu">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_high_utilized_cpu">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_high_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of usage for permanently high utilized CPU with occasionally drops&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate CPU usage for a persistently high-utilization device.</span>
 
+<span class="sd">    Distribution:</span>
+<span class="sd">        * ``5%`` chance: spike to ``100``.</span>
+<span class="sd">        * ``3%`` chance: drop to a Gaussian around ``40`` (minimum ``5``).</span>
+<span class="sd">        * Otherwise: Gaussian around ``85`` (clamped to ``70``–``100``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Integer CPU utilization percentage in the range ``0``–``100``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
 
     <span class="c1"># 5% chance for 100% spike</span>
@@ -160,8 +231,16 @@
 <div class="viewcode-block" id="get_average_utilized_cpu">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_average_utilized_cpu">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_average_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of usage for average utilized CPU with occasional deviations&quot;&quot;&quot;</span>
-    
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate CPU usage for an average-utilization device.</span>
+
+<span class="sd">    Distribution:</span>
+<span class="sd">        * ``5%`` chance: spike to ``60``–``100``.</span>
+<span class="sd">        * ``3%`` chance: drop to a Gaussian around ``20`` (minimum ``5``).</span>
+<span class="sd">        * Otherwise: Gaussian around ``40`` (clamped to ``20``–``60``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Integer CPU utilization percentage in the range ``0``–``100``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
 
     <span class="c1"># 5% chance for spike</span>
@@ -181,8 +260,16 @@
 <div class="viewcode-block" id="get_low_utilized_cpu">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_low_utilized_cpu">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_low_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of usage for low utilized CPU with occasional spikes&quot;&quot;&quot;</span>
-    
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate CPU usage for a low-utilization device.</span>
+
+<span class="sd">    Distribution:</span>
+<span class="sd">        * ``5%`` chance: moderate spike to ``11``–``25``.</span>
+<span class="sd">        * ``1%`` chance: large spike (Gaussian around ``70``, capped at ``100``).</span>
+<span class="sd">        * Otherwise: Gaussian around ``8`` (clamped to ``1``–``20``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Integer CPU utilization percentage in the range ``0``–``100``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
 
     <span class="c1"># 5% chance for spike</span>
@@ -202,8 +289,17 @@
 <div class="viewcode-block" id="get_high_utilized_ram">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_high_utilized_ram">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_high_utilized_ram</span><span class="p">(</span><span class="n">total_memory</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of usage for high utilized RAM&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate used memory for a high-utilization device.</span>
 
+<span class="sd">    Samples from a Gaussian centred at ``70%`` of ``total_memory`` with</span>
+<span class="sd">    ``1%`` relative standard deviation, then clamps to ``[0, total_memory]``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        total_memory: Total installed memory in bytes.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Used memory in bytes, in the range ``0``–``total_memory``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mu</span> <span class="o">=</span> <span class="n">total_memory</span> <span class="o">*</span> <span class="mf">0.7</span>
     <span class="n">sigma</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">*</span> <span class="mf">0.01</span>
     <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
@@ -215,8 +311,17 @@
 <div class="viewcode-block" id="get_average_utilized_ram">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_average_utilized_ram">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_average_utilized_ram</span><span class="p">(</span><span class="n">total_memory</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of usage for average utilized RAM&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate used memory for an average-utilization device.</span>
 
+<span class="sd">    Samples from a Gaussian centred at ``50%`` of ``total_memory`` with</span>
+<span class="sd">    ``1%`` relative standard deviation, then clamps to ``[0, total_memory]``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        total_memory: Total installed memory in bytes.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Used memory in bytes, in the range ``0``–``total_memory``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mu</span> <span class="o">=</span> <span class="n">total_memory</span> <span class="o">*</span> <span class="mf">0.5</span>
     <span class="n">sigma</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">*</span> <span class="mf">0.01</span>
     <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
@@ -228,8 +333,17 @@
 <div class="viewcode-block" id="get_low_utilized_ram">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_low_utilized_ram">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_low_utilized_ram</span><span class="p">(</span><span class="n">total_memory</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of usage for low utilized RAM&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate used memory for a low-utilization device.</span>
 
+<span class="sd">    Samples from a Gaussian centred at ``30%`` of ``total_memory`` with</span>
+<span class="sd">    ``1%`` relative standard deviation, then clamps to ``[0, total_memory]``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        total_memory: Total installed memory in bytes.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Used memory in bytes, in the range ``0``–``total_memory``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mu</span> <span class="o">=</span> <span class="n">total_memory</span> <span class="o">*</span> <span class="mf">0.3</span>
     <span class="n">sigma</span> <span class="o">=</span> <span class="n">mu</span> <span class="o">*</span> <span class="mf">0.01</span>
     <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="n">mu</span><span class="p">,</span> <span class="n">sigma</span><span class="p">)</span>
@@ -241,8 +355,19 @@
 <div class="viewcode-block" id="get_dynamic_interval">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_dynamic_interval">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_dynamic_interval</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Calculate how much time passed since last polling&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return elapsed seconds since the last call with the same key.</span>
 
+<span class="sd">    Updates :data:`last_sim_times` on every invocation. The first call for</span>
+<span class="sd">    a given key returns ``0.0`` because no prior timestamp exists.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        key: Unique identifier, typically</span>
+<span class="sd">            ``&quot;{hostname}_{interface_name}_{in|out}&quot;``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Seconds elapsed since the previous call with ``key``, or ``0.0`` on</span>
+<span class="sd">        the first call.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="p">()</span>
     <span class="n">prev_time</span> <span class="o">=</span> <span class="n">last_sim_times</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 
@@ -260,13 +385,25 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">increase_interface_counter</span><span class="p">(</span>
     <span class="n">previous_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">declared_speed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of counter for average utilized interfaces</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Advance an interface byte counter at average utilization.</span>
 
-<span class="sd">    previous_value - previous value of counter</span>
-<span class="sd">    declared_speed - interface speed</span>
-<span class="sd">    key - identifier of deivce and its interface with optional in/out sufix(for example: r-high-1_Vlan2_in)</span>
+<span class="sd">    Computes increment as::</span>
+
+<span class="sd">        speed_bytes * uniform(0.20, 0.40) * interval</span>
+
+<span class="sd">    where ``speed_bytes = declared_speed / 8`` and ``interval`` comes from</span>
+<span class="sd">    :func:`get_dynamic_interval`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        previous_value: Current cumulative counter value in bytes.</span>
+<span class="sd">        declared_speed: Interface link speed in bits per second.</span>
+<span class="sd">        key: Counter identifier passed to :func:`get_dynamic_interval`</span>
+<span class="sd">            (e.g. ``&quot;r-high-1_Vlan2_in&quot;``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``previous_value`` plus the computed increment (always ``&gt;=``</span>
+<span class="sd">        ``previous_value`` when ``interval &gt; 0``).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
     <span class="n">interval</span> <span class="o">=</span> <span class="n">get_dynamic_interval</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
     <span class="n">speed_bytes</span> <span class="o">=</span> <span class="n">declared_speed</span> <span class="o">/</span> <span class="mi">8</span>
     <span class="n">utilization</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.20</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">)</span>
@@ -281,13 +418,21 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">increase_interface_counter_for_higher_utilized</span><span class="p">(</span>
     <span class="n">previous_value</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">declared_speed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="nb">float</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of counter for higher utilized interfaces</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Advance an interface byte counter at high utilization.</span>
 
-<span class="sd">    previous_value - previous value of counter</span>
-<span class="sd">    declared_speed - interface speed</span>
-<span class="sd">    key - identifier of deivce and its interface with optional in/out sufix(for example: r-high-1_Vlan2_in)</span>
+<span class="sd">    Same algorithm as :func:`increase_interface_counter` but samples</span>
+<span class="sd">    utilization uniformly from ``0.75``–``0.95``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        previous_value: Current cumulative counter value in bytes.</span>
+<span class="sd">        declared_speed: Interface link speed in bits per second.</span>
+<span class="sd">        key: Counter identifier passed to :func:`get_dynamic_interval`</span>
+<span class="sd">            (e.g. ``&quot;r-high-1_Vlan2_in&quot;``).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``previous_value`` plus the computed increment (always ``&gt;=``</span>
+<span class="sd">        ``previous_value`` when ``interval &gt; 0``).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-
     <span class="n">interval</span> <span class="o">=</span> <span class="n">get_dynamic_interval</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
     <span class="n">speed_bytes</span> <span class="o">=</span> <span class="n">declared_speed</span> <span class="o">/</span> <span class="mi">8</span>
     <span class="n">utilization</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.95</span><span class="p">)</span>
@@ -302,8 +447,24 @@
 <span class="k">def</span><span class="w"> </span><span class="nf">get_custom_utilized_cpu</span><span class="p">(</span>
     <span class="n">profile</span><span class="p">:</span> <span class="n">CustomProfile</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of usage for CPU with custom utilization pattern&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate CPU usage using a :class:`CustomProfile` distribution.</span>
 
+<span class="sd">    On each call a random value selects one of three scenarios:</span>
+
+<span class="sd">    * **Spike** (probability ``spike_chance_pct``): Gaussian around</span>
+<span class="sd">      ``spike_mean``, clamped to ``[spike_min, spike_max]``.</span>
+<span class="sd">    * **Drop** (probability ``drop_chance_pct``): Gaussian around</span>
+<span class="sd">      ``drop_mean``, clamped to ``[drop_min, drop_max]``.</span>
+<span class="sd">    * **Normal** (remaining probability): Gaussian around ``mean``,</span>
+<span class="sd">      clamped to ``[min_val, max_val]``.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        profile: Utilization parameters defining means, bounds, and event</span>
+<span class="sd">            probabilities.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Integer CPU utilization percentage.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
     <span class="c1"># spike scenario</span>
     <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">profile</span><span class="o">.</span><span class="n">spike_chance_pct</span> <span class="o">/</span> <span class="mi">100</span><span class="p">:</span>
@@ -327,10 +488,23 @@
 <div class="viewcode-block" id="get_custom_utilized_ram">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_custom_utilized_ram">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_custom_utilized_ram</span><span class="p">(</span>
- <span class="n">total_memory</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="n">CustomProfile</span>
+    <span class="n">total_memory</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">profile</span><span class="p">:</span> <span class="n">CustomProfile</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate values of usage for RAM with custom utilization pattern&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Simulate used memory using a :class:`CustomProfile` distribution.</span>
 
+<span class="sd">    Uses the same three-scenario model as :func:`get_custom_utilized_cpu`,</span>
+<span class="sd">    then converts the resulting percentage to bytes::</span>
+
+<span class="sd">        int((result / 100) * total_memory)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        total_memory: Total installed memory in bytes.</span>
+<span class="sd">        profile: Utilization parameters defining means, bounds, and event</span>
+<span class="sd">            probabilities.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Used memory in bytes derived from the sampled utilization percentage.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
 
     <span class="c1"># spike scenario</span>

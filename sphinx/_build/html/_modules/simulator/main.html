@@ -74,7 +74,60 @@
            <div itemprop="articleBody">
              
   <h1>Source code for simulator.main</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
+<span></span><span class="sd">&quot;&quot;&quot;FastAPI application simulating Cisco IOS XE or Juniper network devices.</span>
+
+<span class="sd">The simulator exposes vendor-specific HTTP endpoints that return realistic</span>
+<span class="sd">RESTCONF (Cisco) or RPC-style (Juniper) JSON payloads. Device behaviour</span>
+<span class="sd">(CPU, memory, interface counters) is driven by a :class:`~simulator.devices.BaseDevice`</span>
+<span class="sd">subclass selected at startup from environment variables.</span>
+
+<span class="sd">Environment Variables:</span>
+<span class="sd">    DEVICE_PROFILE (str): Utilization preset. Accepted values are</span>
+<span class="sd">        ``high_utilized``, ``low_utilized``, ``average_utilized``, or</span>
+<span class="sd">        ``custom``. Any other value (including the default ``standard``)</span>
+<span class="sd">        falls back to :class:`~simulator.devices.AverageUtilizedCiscoDevice`.</span>
+<span class="sd">    DEVICE_IP (str): Simulated device IP address. Default: ``0.0.0.0``.</span>
+<span class="sd">    DEVICE_HOSTNAME (str): Simulated hostname. Default: ``s-cat-def-1``.</span>
+<span class="sd">    DEVICE_VENDOR (str): Device vendor, ``cisco`` or ``juniper``. Default:</span>
+<span class="sd">        ``cisco``.</span>
+<span class="sd">    DEVICE_MODEL (str): Hardware model string returned in inventory/system</span>
+<span class="sd">        responses. Default: ``Catalyst 9000``.</span>
+<span class="sd">    DEVICE_USERNAME (str): HTTP Basic auth username. Default: ``admin``.</span>
+<span class="sd">    DEVICE_PASSWORD (str): HTTP Basic auth password. Default: ``123``.</span>
+<span class="sd">    DEVICE_PORT (int): Uvicorn listen port. Default: ``443``.</span>
+<span class="sd">    DEVICE_IS_HTTPS (str): Whether the simulated device uses HTTPS</span>
+<span class="sd">        (informational only). Truthy values: ``true``, ``1``, ``yes``.</span>
+<span class="sd">        Default: ``false``.</span>
+
+<span class="sd">    When ``DEVICE_PROFILE=custom``, the following optional variables override</span>
+<span class="sd">    fields on :class:`~simulator.logic.CustomProfile`:</span>
+
+<span class="sd">    DEVICE_MEAN, DEVICE_DEVIATION, DEVICE_MIN_VAL, DEVICE_MAX_VAL,</span>
+<span class="sd">    DEVICE_SPIKE_CHANCE, DEVICE_SPIKE_MIN, DEVICE_SPIKE_MAX,</span>
+<span class="sd">    DEVICE_SPIKE_MEAN, DEVICE_SPIKE_DEVIATION, DEVICE_DROP_CHANCE,</span>
+<span class="sd">    DEVICE_DROP_MIN, DEVICE_DROP_MAX, DEVICE_DROP_MEAN,</span>
+<span class="sd">    DEVICE_DROP_DEVIATION.</span>
+
+<span class="sd">Attributes:</span>
+<span class="sd">    app (fastapi.FastAPI): Root FastAPI application instance.</span>
+<span class="sd">    security (fastapi.security.HTTPBasic): HTTP Basic authentication scheme.</span>
+<span class="sd">    PROFILE (str): Lowercased value of ``DEVICE_PROFILE``.</span>
+<span class="sd">    IP (str): Simulated device IP address.</span>
+<span class="sd">    HOSTNAME (str): Simulated device hostname.</span>
+<span class="sd">    VENDOR (str): Lowercased device vendor (``cisco`` or ``juniper``).</span>
+<span class="sd">    MODEL (str): Device model string.</span>
+<span class="sd">    USERNAME (str): Expected HTTP Basic username.</span>
+<span class="sd">    PASSWORD (str): Expected HTTP Basic password.</span>
+<span class="sd">    PORT (int): Server listen port.</span>
+<span class="sd">    HTTPS (bool): Whether HTTPS is enabled for the simulated device.</span>
+<span class="sd">    device (simulator.devices.BaseDevice): Active simulated device instance.</span>
+<span class="sd">    cisco_router (fastapi.APIRouter): RESTCONF routes for Cisco devices</span>
+<span class="sd">        (prefix ``/restconf/data``).</span>
+<span class="sd">    juniper_router (fastapi.APIRouter): RPC routes for Juniper devices</span>
+<span class="sd">        (prefix ``/rpc``).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.security</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPBasic</span><span class="p">,</span> <span class="n">HTTPBasicCredentials</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">devices</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
@@ -155,7 +208,21 @@
 <div class="viewcode-block" id="authenticate">
 <a class="viewcode-back" href="../../simulator/main.html#simulator.main.authenticate">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">authenticate</span><span class="p">(</span><span class="n">credentials</span><span class="p">:</span> <span class="n">HTTPBasicCredentials</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">security</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate HTTP Basic credentials for all simulator endpoints.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate HTTP Basic credentials for all simulator endpoints.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        credentials: Username and password extracted from the</span>
+<span class="sd">            ``Authorization: Basic`` header by FastAPI&#39;s dependency injection.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The authenticated username when credentials match ``USERNAME`` and</span>
+<span class="sd">        ``PASSWORD``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        fastapi.HTTPException: With status code ``401 Unauthorized`` when the</span>
+<span class="sd">            username or password does not match. The response includes a</span>
+<span class="sd">            ``WWW-Authenticate: Basic`` header.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">is_user_ok</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">compare_digest</span><span class="p">(</span><span class="n">credentials</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="n">USERNAME</span><span class="p">)</span>
     <span class="n">is_pass_ok</span> <span class="o">=</span> <span class="n">secrets</span><span class="o">.</span><span class="n">compare_digest</span><span class="p">(</span><span class="n">credentials</span><span class="o">.</span><span class="n">password</span><span class="p">,</span> <span class="n">PASSWORD</span><span class="p">)</span>
@@ -174,33 +241,58 @@
 <span class="n">cisco_router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/restconf/data&quot;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="health">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.health">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return status &#39;OK&#39; if API started correctly.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Health-check endpoint for the Cisco RESTCONF simulator.</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}</span></div>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A JSON object with a single key:</span>
+
+<span class="sd">        .. code-block:: json</span>
+
+<span class="sd">            {&quot;status&quot;: &quot;OK&quot;}</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        This route requires HTTP Basic authentication (applied at router level).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}</span>
 
 
-
-<div class="viewcode-block" id="cpu_usage">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.cpu_usage">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="s2">&quot;/Cisco-IOS-XE-process-cpu-oper</span><span class="si">{colon}</span><span class="s2">cpu-usage/cpu-utilization/five-seconds&quot;</span>
 <span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">cpu_usage</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return data regarding device CPU usage.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated five-second CPU utilization (Cisco RESTCONF).</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Cisco-IOS-XE-process-cpu-oper:five-seconds&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">()}</span></div>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: RESTCONF payload keyed by</span>
+<span class="sd">            ``Cisco-IOS-XE-process-cpu-oper:five-seconds``. The value is an</span>
+<span class="sd">            integer percentage in the range ``0``–``100``, produced by</span>
+<span class="sd">            :meth:`~simulator.devices.BaseDevice.get_cpu`.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Requires HTTP Basic authentication.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Cisco-IOS-XE-process-cpu-oper:five-seconds&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">()}</span>
 
 
-
-<div class="viewcode-block" id="memory_usage">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.memory_usage">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/Cisco-IOS-XE-memory-oper</span><span class="si">{colon}</span><span class="s2">memory-statistics&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">memory_usage</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return data regarding device Memory statistics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated processor memory statistics (Cisco RESTCONF).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: RESTCONF payload under</span>
+<span class="sd">            ``Cisco-IOS-XE-memory-oper:memory-statistics`` containing a</span>
+<span class="sd">            ``memory-statistic`` list. The ``Processor`` entry reflects live</span>
+<span class="sd">            values from :meth:`~simulator.devices.BaseDevice.get_total_memory`</span>
+<span class="sd">            and :meth:`~simulator.devices.BaseDevice.get_used_memory`; other</span>
+<span class="sd">            entries are static placeholders.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Requires HTTP Basic authentication.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">total_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">()</span>
     <span class="n">used_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_used_memory</span><span class="p">()</span>
@@ -235,17 +327,24 @@
                 <span class="p">},</span>
             <span class="p">]</span>
         <span class="p">}</span>
-    <span class="p">}</span></div>
+    <span class="p">}</span>
 
 
-
-<div class="viewcode-block" id="get_model">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_model">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="s2">&quot;/Cisco-IOS-XE-device-hardware-oper</span><span class="si">{colon}</span><span class="s2">device-hardware-data/device-hardware/device-inventory&quot;</span>
 <span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_model</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return data in JSON format containing data regarding device inventory.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated device hardware inventory (Cisco RESTCONF).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: RESTCONF payload under</span>
+<span class="sd">            ``Cisco-IOS-XE-device-hardware-oper:device-inventory``. The list</span>
+<span class="sd">            contains chassis, DRAM, and CPU entries. ``hw-description`` fields</span>
+<span class="sd">            for chassis entries use :attr:`~simulator.devices.BaseDevice.model`.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Requires HTTP Basic authentication.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">&quot;Cisco-IOS-XE-device-hardware-oper:device-inventory&quot;</span><span class="p">:</span> <span class="p">[</span>
@@ -294,25 +393,40 @@
                 <span class="s2">&quot;hw-class&quot;</span><span class="p">:</span> <span class="s2">&quot;hw-class-physical&quot;</span><span class="p">,</span>
             <span class="p">},</span>
         <span class="p">]</span>
-    <span class="p">}</span></div>
+    <span class="p">}</span>
 
 
-
-<div class="viewcode-block" id="get_hostname">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_hostname">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/Cisco-IOS-XE-native</span><span class="si">{colon}</span><span class="s2">native/hostname&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_hostname</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return device current hostname.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the simulated device hostname (Cisco RESTCONF).</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Cisco-IOS-XE-native:hostname&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">}</span></div>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: RESTCONF payload mapping</span>
+<span class="sd">            ``Cisco-IOS-XE-native:hostname`` to</span>
+<span class="sd">            :attr:`~simulator.devices.BaseDevice.hostname`.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Requires HTTP Basic authentication.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;Cisco-IOS-XE-native:hostname&quot;</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">}</span>
 
 
-
-<div class="viewcode-block" id="get_interfaces_state">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_interfaces_state">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/ietf-interfaces</span><span class="si">{colon}</span><span class="s2">interfaces-state&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_interfaces_state</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return data regarding device interfaces statistics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated interface state and traffic counters (Cisco RESTCONF).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: RESTCONF payload under ``ietf-interfaces:interfaces-state``</span>
+<span class="sd">            with an ``interface`` list. Each interface includes admin/oper</span>
+<span class="sd">            status, speed, MAC address, and ``statistics`` with</span>
+<span class="sd">            ``in-octets`` / ``out-octets`` counters from</span>
+<span class="sd">            :meth:`~simulator.devices.BaseDevice.get_interfaces`.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Requires HTTP Basic authentication. Timestamp fields</span>
+<span class="sd">        (``last-change``, ``discontinuity-time``) are static placeholders.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">raw_interfaces</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_interfaces</span><span class="p">()</span>
 
@@ -348,19 +462,28 @@
             <span class="p">}</span>
         <span class="p">)</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;ietf-interfaces:interfaces-state&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;interface&quot;</span><span class="p">:</span> <span class="n">interface_output</span><span class="p">}}</span></div>
-
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;ietf-interfaces:interfaces-state&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;interface&quot;</span><span class="p">:</span> <span class="n">interface_output</span><span class="p">}}</span>
 
 
 <span class="c1"># Define URL paths for Juniper devices</span>
 <span class="n">juniper_router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/rpc&quot;</span><span class="p">)</span>
 
 
-<div class="viewcode-block" id="get_interface_information">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_interface_information">[docs]</a>
 <span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/get-interface-information&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_interface_information</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper interface information including traffic statistics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper interface information (RPC).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Juniper RPC-style payload with key ``interface-information``</span>
+<span class="sd">            containing a ``physical-interface`` list. Each entry mirrors</span>
+<span class="sd">            Juniper&#39;s ``get-interface-information`` output, including logical</span>
+<span class="sd">            sub-interfaces with byte counters sourced from</span>
+<span class="sd">            :meth:`~simulator.devices.BaseDevice.get_interfaces`.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Requires HTTP Basic authentication. Most fields outside counters and</span>
+<span class="sd">        status are static placeholders.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">raw_interfaces</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_interfaces</span><span class="p">()</span>
 
@@ -464,15 +587,23 @@
 
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">&quot;interface-information&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;physical-interface&quot;</span><span class="p">:</span> <span class="n">physical_interfaces_output</span><span class="p">}]</span>
-    <span class="p">}</span></div>
+    <span class="p">}</span>
 
 
-
-<div class="viewcode-block" id="get_route_engine_information">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_route_engine_information">[docs]</a>
 <span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/get-route-engine-information&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_route_engine_information</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper route engine CPU and memory statistics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper route-engine CPU and memory statistics (RPC).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Juniper RPC-style payload under ``route-engine-information``.</span>
+<span class="sd">            ``cpu-idle`` is derived as ``100 - get_cpu()``; memory fields use</span>
+<span class="sd">            :meth:`~simulator.devices.BaseDevice.get_total_memory` and</span>
+<span class="sd">            :meth:`~simulator.devices.BaseDevice.get_used_memory`.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Requires HTTP Basic authentication. Load averages and secondary CPU</span>
+<span class="sd">        fields are static placeholders.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">cpu_idle</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">100</span> <span class="o">-</span> <span class="n">device</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">())</span>
     <span class="n">total_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">()</span>
@@ -539,15 +670,23 @@
                 <span class="p">]</span>
             <span class="p">}</span>
         <span class="p">]</span>
-    <span class="p">}</span></div>
+    <span class="p">}</span>
 
 
-
-<div class="viewcode-block" id="get_system_information">
-<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_system_information">[docs]</a>
 <span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/get-system-information&quot;</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_system_information</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper system information including hostname and model.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return simulated Juniper system information (RPC).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Juniper RPC-style payload under ``system-information`` with</span>
+<span class="sd">            ``host-name`` from :attr:`~simulator.devices.BaseDevice.hostname`</span>
+<span class="sd">            and ``hardware-model`` from</span>
+<span class="sd">            :attr:`~simulator.devices.BaseDevice.model`. OS version and serial</span>
+<span class="sd">            number are static placeholders.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Requires HTTP Basic authentication.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">&quot;system-information&quot;</span><span class="p">:</span> <span class="p">[</span>
@@ -559,8 +698,7 @@
                 <span class="s2">&quot;serial-number&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;data&quot;</span><span class="p">:</span> <span class="s2">&quot;VM69F21129F0&quot;</span><span class="p">}],</span>
             <span class="p">}</span>
         <span class="p">]</span>
-    <span class="p">}</span></div>
-
+    <span class="p">}</span>
 
 
 <span class="c1"># Choose API Router based on device Vendor</span>
@@ -574,7 +712,14 @@
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../simulator/main.html#simulator.main.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Start the simulator FastAPI server with uvicorn.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Start the simulator FastAPI server with Uvicorn.</span>
+
+<span class="sd">    Binds to ``0.0.0.0`` on :data:`PORT`. Vendor-specific routes are already</span>
+<span class="sd">    registered on :data:`app` at import time based on :data:`VENDOR`.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        OSError: If the configured port is already in use or cannot be bound.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">PORT</span><span class="p">)</span></div>
 

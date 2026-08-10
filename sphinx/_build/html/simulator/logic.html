@@ -50,6 +50,7 @@
 <li class="toctree-l3"><a class="reference internal" href="main.html">main module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="devices.html">devices module</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">logic module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#simulator.logic.last_sim_times"><code class="docutils literal notranslate"><span class="pre">last_sim_times</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#simulator.logic.CustomProfile"><code class="docutils literal notranslate"><span class="pre">CustomProfile</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#simulator.logic.get_high_utilized_cpu"><code class="docutils literal notranslate"><span class="pre">get_high_utilized_cpu()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#simulator.logic.get_average_utilized_cpu"><code class="docutils literal notranslate"><span class="pre">get_average_utilized_cpu()</span></code></a></li>
@@ -101,91 +102,298 @@
              
   <section id="module-simulator.logic">
 <span id="logic-module"></span><h1>logic module<a class="headerlink" href="#module-simulator.logic" title="Link to this heading"></a></h1>
+<p>Randomized utilization and traffic-counter logic for the device simulator.</p>
+<p>Provides CPU and memory percentage generators for high, average, and low
+utilization profiles, plus a configurable <a class="reference internal" href="#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><code class="xref py py-class docutils literal notranslate"><span class="pre">CustomProfile</span></code></a> model.
+Interface byte counters grow proportionally to link speed and elapsed time
+since the previous poll.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.logic.last_sim_times">
+<span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">last_sim_times</span></span><a class="headerlink" href="#simulator.logic.last_sim_times" title="Link to this definition"></a></dt>
+<dd><p>Timestamp of the last counter update
+per key, used by <a class="reference internal" href="#simulator.logic.get_dynamic_interval" title="simulator.logic.get_dynamic_interval"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_dynamic_interval()</span></code></a> to compute elapsed
+seconds between successive calls.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, float]</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">CustomProfile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">mean</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">30.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deviation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_val</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spike_chance_pct</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spike_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spike_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spike_mean</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">75.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">spike_deviation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_chance_pct</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_min</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_max</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_mean</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_deviation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/logic.html#CustomProfile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.CustomProfile" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
-<p>Custom profile used to build utilization logic for custom utilized devices</p>
+<p>Pydantic model defining a custom CPU/memory utilization distribution.</p>
+<p>Values are expressed as percentages in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>. Spike and
+drop probabilities must sum to at most <code class="docutils literal notranslate"><span class="pre">100</span></code>. Used by
+<a class="reference internal" href="devices.html#simulator.devices.customUtilizedCiscoDevice" title="simulator.devices.customUtilizedCiscoDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">customUtilizedCiscoDevice</span></code></a> and
+<a class="reference internal" href="devices.html#simulator.devices.customUtilizedJuniperDevice" title="simulator.devices.customUtilizedJuniperDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">customUtilizedJuniperDevice</span></code></a>.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.mean">
-<span class="sig-name descname"><span class="pre">mean</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.mean" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">mean</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.mean" title="Link to this definition"></a></dt>
+<dd><p>Centre of the normal distribution for baseline
+utilization. Default: <code class="docutils literal notranslate"><span class="pre">30.0</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.deviation">
-<span class="sig-name descname"><span class="pre">deviation</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.deviation" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">deviation</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.deviation" title="Link to this definition"></a></dt>
+<dd><p>Standard deviation for baseline utilization.
+Default: <code class="docutils literal notranslate"><span class="pre">5.0</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.min_val">
-<span class="sig-name descname"><span class="pre">min_val</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.min_val" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">min_val</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.min_val" title="Link to this definition"></a></dt>
+<dd><p>Lower bound for baseline utilization samples.
+Default: <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.max_val">
-<span class="sig-name descname"><span class="pre">max_val</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.max_val" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">max_val</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.max_val" title="Link to this definition"></a></dt>
+<dd><p>Upper bound for baseline utilization samples.
+Default: <code class="docutils literal notranslate"><span class="pre">100</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.spike_chance_pct">
-<span class="sig-name descname"><span class="pre">spike_chance_pct</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_chance_pct" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">spike_chance_pct</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_chance_pct" title="Link to this definition"></a></dt>
+<dd><p>Probability (<code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>) of a spike event
+on each call. Default: <code class="docutils literal notranslate"><span class="pre">3.0</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.spike_min">
-<span class="sig-name descname"><span class="pre">spike_min</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_min" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">spike_min</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_min" title="Link to this definition"></a></dt>
+<dd><p>Minimum spike utilization percentage.
+Default: <code class="docutils literal notranslate"><span class="pre">50</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.spike_max">
-<span class="sig-name descname"><span class="pre">spike_max</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_max" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">spike_max</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_max" title="Link to this definition"></a></dt>
+<dd><p>Maximum spike utilization percentage.
+Default: <code class="docutils literal notranslate"><span class="pre">100</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.spike_mean">
-<span class="sig-name descname"><span class="pre">spike_mean</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_mean" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">spike_mean</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_mean" title="Link to this definition"></a></dt>
+<dd><p>Centre of the normal distribution during a spike.
+Default: <code class="docutils literal notranslate"><span class="pre">75.0</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.spike_deviation">
-<span class="sig-name descname"><span class="pre">spike_deviation</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_deviation" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">spike_deviation</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.spike_deviation" title="Link to this definition"></a></dt>
+<dd><p>Standard deviation during a spike.
+Default: <code class="docutils literal notranslate"><span class="pre">10.0</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.drop_chance_pct">
-<span class="sig-name descname"><span class="pre">drop_chance_pct</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_chance_pct" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">drop_chance_pct</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_chance_pct" title="Link to this definition"></a></dt>
+<dd><p>Probability (<code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>) of a drop event
+on each call. Default: <code class="docutils literal notranslate"><span class="pre">1.0</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.drop_min">
-<span class="sig-name descname"><span class="pre">drop_min</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_min" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">drop_min</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_min" title="Link to this definition"></a></dt>
+<dd><p>Minimum drop utilization percentage.
+Default: <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.drop_max">
-<span class="sig-name descname"><span class="pre">drop_max</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_max" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">drop_max</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_max" title="Link to this definition"></a></dt>
+<dd><p>Maximum drop utilization percentage.
+Default: <code class="docutils literal notranslate"><span class="pre">10</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.drop_mean">
-<span class="sig-name descname"><span class="pre">drop_mean</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_mean" title="Link to this definition"></a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">drop_mean</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_mean" title="Link to this definition"></a></dt>
+<dd><p>Centre of the normal distribution during a drop.
+Default: <code class="docutils literal notranslate"><span class="pre">5.0</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.drop_deviation">
-<span class="sig-name descname"><span class="pre">drop_deviation</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_deviation" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">drop_deviation</span></span><a class="headerlink" href="#simulator.logic.CustomProfile.drop_deviation" title="Link to this definition"></a></dt>
+<dd><p>Standard deviation during a drop.
+Default: <code class="docutils literal notranslate"><span class="pre">2.0</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">mean</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">deviation</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">min_val</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">max_val</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">spike_chance_pct</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">spike_min</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">spike_max</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">spike_mean</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">spike_deviation</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">drop_chance_pct</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">drop_min</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#id10" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">drop_max</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></span><a class="headerlink" href="#id11" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">drop_mean</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id12" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id13">
+<span class="sig-name descname"><span class="pre">drop_deviation</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></span><a class="headerlink" href="#id13" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.clamp_values_0_100">
 <span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">clamp_values_0_100</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#CustomProfile.clamp_values_0_100"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.CustomProfile.clamp_values_0_100" title="Link to this definition"></a></dt>
-<dd><p>function to clamp values between 0 and 100.</p>
+<dd><p>Clamp every numeric field to the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>v</strong> – Field value after Pydantic coercion.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The input value, clamped to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">100]</span></code> when it is numeric.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.logic.CustomProfile.validate_total_chance">
 <span class="sig-name descname"><span class="pre">validate_total_chance</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><span class="pre">CustomProfile</span></a></span></span><a class="reference internal" href="../_modules/simulator/logic.html#CustomProfile.validate_total_chance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.CustomProfile.validate_total_chance" title="Link to this definition"></a></dt>
-<dd><p>function to validate total chance for spike and drop.</p>
+<dd><p>Ensure combined spike and drop probability does not exceed 100%.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The validated profile instance.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – When <code class="docutils literal notranslate"><span class="pre">spike_chance_pct</span> <span class="pre">+</span> <span class="pre">drop_chance_pct</span></code> exceeds
+    <code class="docutils literal notranslate"><span class="pre">100</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py attribute">
@@ -199,73 +407,219 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_high_utilized_cpu">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_high_utilized_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_high_utilized_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_high_utilized_cpu" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of usage for permanently high utilized CPU with occasionally drops</p>
+<dd><p>Simulate CPU usage for a persistently high-utilization device.</p>
+<dl class="simple">
+<dt>Distribution:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">5%</span></code> chance: spike to <code class="docutils literal notranslate"><span class="pre">100</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">3%</span></code> chance: drop to a Gaussian around <code class="docutils literal notranslate"><span class="pre">40</span></code> (minimum <code class="docutils literal notranslate"><span class="pre">5</span></code>).</p></li>
+<li><p>Otherwise: Gaussian around <code class="docutils literal notranslate"><span class="pre">85</span></code> (clamped to <code class="docutils literal notranslate"><span class="pre">70</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer CPU utilization percentage in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_average_utilized_cpu">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_average_utilized_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_average_utilized_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_average_utilized_cpu" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of usage for average utilized CPU with occasional deviations</p>
+<dd><p>Simulate CPU usage for an average-utilization device.</p>
+<dl class="simple">
+<dt>Distribution:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">5%</span></code> chance: spike to <code class="docutils literal notranslate"><span class="pre">60</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">3%</span></code> chance: drop to a Gaussian around <code class="docutils literal notranslate"><span class="pre">20</span></code> (minimum <code class="docutils literal notranslate"><span class="pre">5</span></code>).</p></li>
+<li><p>Otherwise: Gaussian around <code class="docutils literal notranslate"><span class="pre">40</span></code> (clamped to <code class="docutils literal notranslate"><span class="pre">20</span></code>–<code class="docutils literal notranslate"><span class="pre">60</span></code>).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer CPU utilization percentage in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_low_utilized_cpu">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_low_utilized_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_low_utilized_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_low_utilized_cpu" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of usage for low utilized CPU with occasional spikes</p>
+<dd><p>Simulate CPU usage for a low-utilization device.</p>
+<dl class="simple">
+<dt>Distribution:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">5%</span></code> chance: moderate spike to <code class="docutils literal notranslate"><span class="pre">11</span></code>–<code class="docutils literal notranslate"><span class="pre">25</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">1%</span></code> chance: large spike (Gaussian around <code class="docutils literal notranslate"><span class="pre">70</span></code>, capped at <code class="docutils literal notranslate"><span class="pre">100</span></code>).</p></li>
+<li><p>Otherwise: Gaussian around <code class="docutils literal notranslate"><span class="pre">8</span></code> (clamped to <code class="docutils literal notranslate"><span class="pre">1</span></code>–<code class="docutils literal notranslate"><span class="pre">20</span></code>).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer CPU utilization percentage in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_high_utilized_ram">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_high_utilized_ram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">total_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_high_utilized_ram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_high_utilized_ram" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of usage for high utilized RAM</p>
+<dd><p>Simulate used memory for a high-utilization device.</p>
+<p>Samples from a Gaussian centred at <code class="docutils literal notranslate"><span class="pre">70%</span></code> of <code class="docutils literal notranslate"><span class="pre">total_memory</span></code> with
+<code class="docutils literal notranslate"><span class="pre">1%</span></code> relative standard deviation, then clamps to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">total_memory]</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>total_memory</strong> – Total installed memory in bytes.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Used memory in bytes, in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">total_memory</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_average_utilized_ram">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_average_utilized_ram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">total_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_average_utilized_ram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_average_utilized_ram" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of usage for average utilized RAM</p>
+<dd><p>Simulate used memory for an average-utilization device.</p>
+<p>Samples from a Gaussian centred at <code class="docutils literal notranslate"><span class="pre">50%</span></code> of <code class="docutils literal notranslate"><span class="pre">total_memory</span></code> with
+<code class="docutils literal notranslate"><span class="pre">1%</span></code> relative standard deviation, then clamps to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">total_memory]</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>total_memory</strong> – Total installed memory in bytes.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Used memory in bytes, in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">total_memory</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_low_utilized_ram">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_low_utilized_ram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">total_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_low_utilized_ram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_low_utilized_ram" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of usage for low utilized RAM</p>
+<dd><p>Simulate used memory for a low-utilization device.</p>
+<p>Samples from a Gaussian centred at <code class="docutils literal notranslate"><span class="pre">30%</span></code> of <code class="docutils literal notranslate"><span class="pre">total_memory</span></code> with
+<code class="docutils literal notranslate"><span class="pre">1%</span></code> relative standard deviation, then clamps to <code class="docutils literal notranslate"><span class="pre">[0,</span> <span class="pre">total_memory]</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>total_memory</strong> – Total installed memory in bytes.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Used memory in bytes, in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">total_memory</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_dynamic_interval">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_dynamic_interval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_dynamic_interval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_dynamic_interval" title="Link to this definition"></a></dt>
-<dd><p>Calculate how much time passed since last polling</p>
+<dd><p>Return elapsed seconds since the last call with the same key.</p>
+<p>Updates <a class="reference internal" href="#simulator.logic.last_sim_times" title="simulator.logic.last_sim_times"><code class="xref py py-data docutils literal notranslate"><span class="pre">last_sim_times</span></code></a> on every invocation. The first call for
+a given key returns <code class="docutils literal notranslate"><span class="pre">0.0</span></code> because no prior timestamp exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> – Unique identifier, typically
+<code class="docutils literal notranslate"><span class="pre">&quot;{hostname}_{interface_name}_{in|out}&quot;</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Seconds elapsed since the previous call with <code class="docutils literal notranslate"><span class="pre">key</span></code>, or <code class="docutils literal notranslate"><span class="pre">0.0</span></code> on
+the first call.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.increase_interface_counter">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">increase_interface_counter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">previous_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">declared_speed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#increase_interface_counter"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.increase_interface_counter" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of counter for average utilized interfaces</p>
-<p>previous_value - previous value of counter
-declared_speed - interface speed
-key - identifier of deivce and its interface with optional in/out sufix(for example: r-high-1_Vlan2_in)</p>
+<dd><p>Advance an interface byte counter at average utilization.</p>
+<p>Computes increment as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">speed_bytes</span> <span class="o">*</span> <span class="n">uniform</span><span class="p">(</span><span class="mf">0.20</span><span class="p">,</span> <span class="mf">0.40</span><span class="p">)</span> <span class="o">*</span> <span class="n">interval</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">speed_bytes</span> <span class="pre">=</span> <span class="pre">declared_speed</span> <span class="pre">/</span> <span class="pre">8</span></code> and <code class="docutils literal notranslate"><span class="pre">interval</span></code> comes from
+<a class="reference internal" href="#simulator.logic.get_dynamic_interval" title="simulator.logic.get_dynamic_interval"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_dynamic_interval()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>previous_value</strong> – Current cumulative counter value in bytes.</p></li>
+<li><p><strong>declared_speed</strong> – Interface link speed in bits per second.</p></li>
+<li><p><strong>key</strong> – Counter identifier passed to <a class="reference internal" href="#simulator.logic.get_dynamic_interval" title="simulator.logic.get_dynamic_interval"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_dynamic_interval()</span></code></a>
+(e.g. <code class="docutils literal notranslate"><span class="pre">&quot;r-high-1_Vlan2_in&quot;</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">previous_value</span></code> plus the computed increment (always <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>
+<code class="docutils literal notranslate"><span class="pre">previous_value</span></code> when <code class="docutils literal notranslate"><span class="pre">interval</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>).</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.increase_interface_counter_for_higher_utilized">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">increase_interface_counter_for_higher_utilized</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">previous_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">declared_speed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#increase_interface_counter_for_higher_utilized"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.increase_interface_counter_for_higher_utilized" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of counter for higher utilized interfaces</p>
-<p>previous_value - previous value of counter
-declared_speed - interface speed
-key - identifier of deivce and its interface with optional in/out sufix(for example: r-high-1_Vlan2_in)</p>
+<dd><p>Advance an interface byte counter at high utilization.</p>
+<p>Same algorithm as <a class="reference internal" href="#simulator.logic.increase_interface_counter" title="simulator.logic.increase_interface_counter"><code class="xref py py-func docutils literal notranslate"><span class="pre">increase_interface_counter()</span></code></a> but samples
+utilization uniformly from <code class="docutils literal notranslate"><span class="pre">0.75</span></code>–<code class="docutils literal notranslate"><span class="pre">0.95</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>previous_value</strong> – Current cumulative counter value in bytes.</p></li>
+<li><p><strong>declared_speed</strong> – Interface link speed in bits per second.</p></li>
+<li><p><strong>key</strong> – Counter identifier passed to <a class="reference internal" href="#simulator.logic.get_dynamic_interval" title="simulator.logic.get_dynamic_interval"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_dynamic_interval()</span></code></a>
+(e.g. <code class="docutils literal notranslate"><span class="pre">&quot;r-high-1_Vlan2_in&quot;</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">previous_value</span></code> plus the computed increment (always <code class="docutils literal notranslate"><span class="pre">&gt;=</span></code>
+<code class="docutils literal notranslate"><span class="pre">previous_value</span></code> when <code class="docutils literal notranslate"><span class="pre">interval</span> <span class="pre">&gt;</span> <span class="pre">0</span></code>).</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_custom_utilized_cpu">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_custom_utilized_cpu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><span class="pre">CustomProfile</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_custom_utilized_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_custom_utilized_cpu" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of usage for CPU with custom utilization pattern</p>
+<dd><p>Simulate CPU usage using a <a class="reference internal" href="#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><code class="xref py py-class docutils literal notranslate"><span class="pre">CustomProfile</span></code></a> distribution.</p>
+<p>On each call a random value selects one of three scenarios:</p>
+<ul class="simple">
+<li><p><strong>Spike</strong> (probability <code class="docutils literal notranslate"><span class="pre">spike_chance_pct</span></code>): Gaussian around
+<code class="docutils literal notranslate"><span class="pre">spike_mean</span></code>, clamped to <code class="docutils literal notranslate"><span class="pre">[spike_min,</span> <span class="pre">spike_max]</span></code>.</p></li>
+<li><p><strong>Drop</strong> (probability <code class="docutils literal notranslate"><span class="pre">drop_chance_pct</span></code>): Gaussian around
+<code class="docutils literal notranslate"><span class="pre">drop_mean</span></code>, clamped to <code class="docutils literal notranslate"><span class="pre">[drop_min,</span> <span class="pre">drop_max]</span></code>.</p></li>
+<li><p><strong>Normal</strong> (remaining probability): Gaussian around <code class="docutils literal notranslate"><span class="pre">mean</span></code>,
+clamped to <code class="docutils literal notranslate"><span class="pre">[min_val,</span> <span class="pre">max_val]</span></code>.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>profile</strong> – Utilization parameters defining means, bounds, and event
+probabilities.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Integer CPU utilization percentage.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.logic.get_custom_utilized_ram">
 <span class="sig-prename descclassname"><span class="pre">simulator.logic.</span></span><span class="sig-name descname"><span class="pre">get_custom_utilized_ram</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">total_memory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><span class="pre">CustomProfile</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/logic.html#get_custom_utilized_ram"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.logic.get_custom_utilized_ram" title="Link to this definition"></a></dt>
-<dd><p>Simulate values of usage for RAM with custom utilization pattern</p>
+<dd><p>Simulate used memory using a <a class="reference internal" href="#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><code class="xref py py-class docutils literal notranslate"><span class="pre">CustomProfile</span></code></a> distribution.</p>
+<p>Uses the same three-scenario model as <a class="reference internal" href="#simulator.logic.get_custom_utilized_cpu" title="simulator.logic.get_custom_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_custom_utilized_cpu()</span></code></a>,
+then converts the resulting percentage to bytes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nb">int</span><span class="p">((</span><span class="n">result</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="n">total_memory</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>total_memory</strong> – Total installed memory in bytes.</p></li>
+<li><p><strong>profile</strong> – Utilization parameters defining means, bounds, and event
+probabilities.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Used memory in bytes derived from the sampled utilization percentage.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
