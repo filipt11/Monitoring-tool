@@ -4,6 +4,9 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir fastapi uvicorn
 
-COPY . .
+# Keep package layout so `from simulator import ...` works
+COPY . ./simulator/
 
-CMD ["python", "main.py"]
+ENV PYTHONPATH=/app
+
+CMD ["python", "-m", "simulator.main"]

@@ -33,7 +33,7 @@ def run_compose(directory: Path, compose_file: str = "docker-compose.yml", build
 
     command = ["docker-compose", "-f", compose_file, "up", "-d"]
     if build:
-        command.insert(3, "--build")
+        command.append("--build")
     run_command(command, cwd=directory)
     logger.info(f"Successfully executed docker-compose in {directory}")
 
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     venv_dir = poller_dir / "venv"
     api_log = poller_dir / "api.log"
 
-    run_compose(simulator_dir, build=False)
+    run_compose(simulator_dir, build=True)
     run_compose(poller_dir, build=False)
     
     create_venv(venv_dir)
