@@ -100,34 +100,206 @@
              
   <section id="module-simulator.devices">
 <span id="devices-module"></span><h1>devices module<a class="headerlink" href="#module-simulator.devices" title="Link to this heading"></a></h1>
+<p>Simulated network device models for Cisco and Juniper vendors.</p>
+<p>Each concrete class represents a device with a specific utilization profile
+(high, low, average, or custom). Devices expose <a class="reference internal" href="#simulator.devices.BaseDevice.get_cpu" title="simulator.devices.BaseDevice.get_cpu"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_cpu()</span></code></a>,
+<a class="reference internal" href="#simulator.devices.BaseDevice.get_used_memory" title="simulator.devices.BaseDevice.get_used_memory"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_used_memory()</span></code></a>, <a class="reference internal" href="#simulator.devices.BaseDevice.get_total_memory" title="simulator.devices.BaseDevice.get_total_memory"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_total_memory()</span></code></a>, and
+<a class="reference internal" href="#simulator.devices.BaseDevice.get_interfaces" title="simulator.devices.BaseDevice.get_interfaces"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_interfaces()</span></code></a> which the FastAPI layer in
+<a class="reference internal" href="main.html#module-simulator.main" title="simulator.main"><code class="xref py py-mod docutils literal notranslate"><span class="pre">simulator.main</span></code></a> calls to build vendor-specific API responses.</p>
+<p>Interface counters are stateful: each call to <a class="reference internal" href="#simulator.devices.BaseDevice.get_interfaces" title="simulator.devices.BaseDevice.get_interfaces"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_interfaces()</span></code></a>
+advances <code class="docutils literal notranslate"><span class="pre">in-octets</span></code> and <code class="docutils literal notranslate"><span class="pre">out-octets</span></code> based on interface speed and admin
+status.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="simulator.devices.BaseDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">BaseDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#BaseDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Class representing base device model.</p>
+<p>Abstract base model for a simulated network device.</p>
+<p>Stores connection metadata and maintains rolling interface byte counters.
+Subclasses override metric methods and populate <a class="reference internal" href="#simulator.devices.BaseDevice.interfaces_list" title="simulator.devices.BaseDevice.interfaces_list"><code class="xref py py-attr docutils literal notranslate"><span class="pre">interfaces_list</span></code></a>
+with vendor-specific interface definitions.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.ip_address">
+<span class="sig-name descname"><span class="pre">ip_address</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.ip_address" title="Link to this definition"></a></dt>
+<dd><p>Simulated management IP address.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.vendor">
+<span class="sig-name descname"><span class="pre">vendor</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.vendor" title="Link to this definition"></a></dt>
+<dd><p>Device vendor identifier (<code class="docutils literal notranslate"><span class="pre">cisco</span></code> or <code class="docutils literal notranslate"><span class="pre">juniper</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.hostname">
+<span class="sig-name descname"><span class="pre">hostname</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.hostname" title="Link to this definition"></a></dt>
+<dd><p>Device hostname returned by API endpoints.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.model">
+<span class="sig-name descname"><span class="pre">model</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.model" title="Link to this definition"></a></dt>
+<dd><p>Hardware model string returned in inventory responses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.username">
+<span class="sig-name descname"><span class="pre">username</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.username" title="Link to this definition"></a></dt>
+<dd><p>Expected HTTP Basic authentication username.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.password">
+<span class="sig-name descname"><span class="pre">password</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.password" title="Link to this definition"></a></dt>
+<dd><p>Expected HTTP Basic authentication password.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.port">
+<span class="sig-name descname"><span class="pre">port</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.port" title="Link to this definition"></a></dt>
+<dd><p>TCP port the simulator listens on.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.https">
+<span class="sig-name descname"><span class="pre">https</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.https" title="Link to this definition"></a></dt>
+<dd><p>Whether the device is configured for HTTPS access.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.interface_counters">
+<span class="sig-name descname"><span class="pre">interface_counters</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.interface_counters" title="Link to this definition"></a></dt>
+<dd><p>Rolling byte counters keyed as
+<code class="docutils literal notranslate"><span class="pre">&quot;{interface_name}_in&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;{interface_name}_out&quot;</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.BaseDevice.interfaces_list">
+<span class="sig-name descname"><span class="pre">interfaces_list</span></span><a class="headerlink" href="#simulator.devices.BaseDevice.interfaces_list" title="Link to this definition"></a></dt>
+<dd><p>Static interface definitions.
+Each dict contains <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">type</span></code>, <code class="docutils literal notranslate"><span class="pre">admin-status</span></code>,
+<code class="docutils literal notranslate"><span class="pre">if-index</span></code>, <code class="docutils literal notranslate"><span class="pre">phys-address</span></code>, and <code class="docutils literal notranslate"><span class="pre">speed</span></code> (bits per second as
+a string).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[dict[str, Any]]</p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.BaseDevice.get_cpu">
 <span class="sig-name descname"><span class="pre">get_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#BaseDevice.get_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseDevice.get_cpu" title="Link to this definition"></a></dt>
-<dd><p>Return raw device CPU usage value.</p>
+<dd><p>Return the current simulated CPU utilization percentage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer CPU usage in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>. The base
+implementation delegates to
+<a class="reference internal" href="logic.html#simulator.logic.get_average_utilized_cpu" title="simulator.logic.get_average_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_average_utilized_cpu()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.BaseDevice.get_used_memory">
 <span class="sig-name descname"><span class="pre">get_used_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#BaseDevice.get_used_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseDevice.get_used_memory" title="Link to this definition"></a></dt>
-<dd><p>Return raw device Memory usage value.</p>
+<dd><p>Return the current simulated used memory in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Number of bytes currently in use. The base implementation
+delegates to <a class="reference internal" href="logic.html#simulator.logic.get_average_utilized_ram" title="simulator.logic.get_average_utilized_ram"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_average_utilized_ram()</span></code></a>
+using <a class="reference internal" href="#simulator.devices.BaseDevice.get_total_memory" title="simulator.devices.BaseDevice.get_total_memory"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_total_memory()</span></code></a> as the capacity.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.BaseDevice.get_total_memory">
 <span class="sig-name descname"><span class="pre">get_total_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#BaseDevice.get_total_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseDevice.get_total_memory" title="Link to this definition"></a></dt>
-<dd><p>Return device total memory
-Base value can be overridden in subclasses.</p>
+<dd><p>Return the total installed memory in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Total memory capacity in bytes. Default is <code class="docutils literal notranslate"><span class="pre">762551372</span></code> (~728 MB).
+Subclasses may override to simulate different hardware.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.BaseDevice.get_interfaces">
-<span class="sig-name descname"><span class="pre">get_interfaces</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#BaseDevice.get_interfaces"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseDevice.get_interfaces" title="Link to this definition"></a></dt>
-<dd><p>Return updated interface counters for the simulated device.</p>
+<span class="sig-name descname"><span class="pre">get_interfaces</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#BaseDevice.get_interfaces"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseDevice.get_interfaces" title="Link to this definition"></a></dt>
+<dd><p>Return interface definitions with updated traffic counters.</p>
+<p>For each interface in <a class="reference internal" href="#simulator.devices.BaseDevice.interfaces_list" title="simulator.devices.BaseDevice.interfaces_list"><code class="xref py py-attr docutils literal notranslate"><span class="pre">interfaces_list</span></code></a>, increments
+<code class="docutils literal notranslate"><span class="pre">in-octets</span></code> and <code class="docutils literal notranslate"><span class="pre">out-octets</span></code> when <code class="docutils literal notranslate"><span class="pre">admin-status</span></code> is <code class="docutils literal notranslate"><span class="pre">up</span></code> and
+<code class="docutils literal notranslate"><span class="pre">speed</span></code> is greater than zero. Interfaces with <code class="docutils literal notranslate"><span class="pre">if-index</span></code> in
+<code class="docutils literal notranslate"><span class="pre">range(20,</span> <span class="pre">31)</span></code> use higher utilization growth rates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">name</span></code> (str): Interface name.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">type</span></code> (str): IANA or vendor interface type.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">admin-status</span></code> (str): <code class="docutils literal notranslate"><span class="pre">up</span></code> or <code class="docutils literal notranslate"><span class="pre">down</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">oper-status</span></code> (str): Mirrors <code class="docutils literal notranslate"><span class="pre">admin-status</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">if-index</span></code> (int): SNMP interface index.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">phys-address</span></code> (str): MAC address.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">speed</span></code> (str): Link speed in bits per second.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">in-octets</span></code> (str): Cumulative inbound byte counter.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">out-octets</span></code> (str): Cumulative outbound byte counter.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of interface dicts, each containing</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Counters are persisted in <a class="reference internal" href="#simulator.devices.BaseDevice.interface_counters" title="simulator.devices.BaseDevice.interface_counters"><code class="xref py py-attr docutils literal notranslate"><span class="pre">interface_counters</span></code></a> between calls.</p>
+</div>
 </dd></dl>
 
 </dd></dl>
@@ -136,27 +308,46 @@ Base value can be overridden in subclasses.</p>
 <dt class="sig sig-object py" id="simulator.devices.BaseCiscoDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">BaseCiscoDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#BaseCiscoDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseCiscoDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseDevice" title="simulator.devices.BaseDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDevice</span></code></a></p>
-<p>Class representing base Cisco device model
-Simulating data compliant with RESTCONF protocol format using by Cisco IOS XE devices
-By default methods return data as for average utilized device.</p>
+<p>Base Cisco device simulating RESTCONF-compatible IOS XE responses.</p>
+<p>Populates <code class="xref py py-attr docutils literal notranslate"><span class="pre">interfaces_list</span></code> with a default set of Cisco interfaces
+(VLAN, GigabitEthernet, Loopback). CPU and memory methods inherit average
+utilization behaviour from <a class="reference internal" href="#simulator.devices.BaseDevice" title="simulator.devices.BaseDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDevice</span></code></a>.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p><a class="reference internal" href="main.html#module-simulator.main" title="simulator.main"><code class="xref py py-mod docutils literal notranslate"><span class="pre">simulator.main</span></code></a> for the RESTCONF endpoints that consume this
+device’s metrics.</p>
+</div>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="simulator.devices.HighUtilizedCiscoDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">HighUtilizedCiscoDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#HighUtilizedCiscoDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.HighUtilizedCiscoDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseCiscoDevice" title="simulator.devices.BaseCiscoDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCiscoDevice</span></code></a></p>
-<p>Class representing higher utilized Cisco device
-Methods regarding CPU and Memory usage generate higher values.</p>
+<p>Cisco device that reports persistently high CPU and memory utilization.</p>
+<p>CPU values are typically in the <code class="docutils literal notranslate"><span class="pre">70</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code> range with occasional spikes
+to <code class="docutils literal notranslate"><span class="pre">100</span></code>. Memory usage follows a high-utilization distribution.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.HighUtilizedCiscoDevice.get_cpu">
 <span class="sig-name descname"><span class="pre">get_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#HighUtilizedCiscoDevice.get_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.HighUtilizedCiscoDevice.get_cpu" title="Link to this definition"></a></dt>
-<dd><p>Override base class method to return higher CPU usage values.</p>
+<dd><p>Return high CPU utilization percentage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code> from
+<a class="reference internal" href="logic.html#simulator.logic.get_high_utilized_cpu" title="simulator.logic.get_high_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_high_utilized_cpu()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.HighUtilizedCiscoDevice.get_used_memory">
 <span class="sig-name descname"><span class="pre">get_used_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#HighUtilizedCiscoDevice.get_used_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.HighUtilizedCiscoDevice.get_used_memory" title="Link to this definition"></a></dt>
-<dd><p>Override base class method to return higher Memory usage values.</p>
+<dd><p>Return high memory usage in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Used memory bytes from
+<a class="reference internal" href="logic.html#simulator.logic.get_high_utilized_ram" title="simulator.logic.get_high_utilized_ram"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_high_utilized_ram()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -165,24 +356,42 @@ Methods regarding CPU and Memory usage generate higher values.</p>
 <dt class="sig sig-object py" id="simulator.devices.LowUtilizedCiscoDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">LowUtilizedCiscoDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#LowUtilizedCiscoDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.LowUtilizedCiscoDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseCiscoDevice" title="simulator.devices.BaseCiscoDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCiscoDevice</span></code></a></p>
-<p>Class representing lower utilized Cisco device
-Methods regarding CPU and Memory usage generate lower values.</p>
+<p>Cisco device that reports persistently low CPU and memory utilization.</p>
+<p>Total memory is halved compared to the base device to simulate smaller
+hardware.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.LowUtilizedCiscoDevice.get_cpu">
 <span class="sig-name descname"><span class="pre">get_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#LowUtilizedCiscoDevice.get_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.LowUtilizedCiscoDevice.get_cpu" title="Link to this definition"></a></dt>
-<dd><p>Override base class method to return lower CPU usage values.</p>
+<dd><p>Return low CPU utilization percentage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code> from
+<a class="reference internal" href="logic.html#simulator.logic.get_low_utilized_cpu" title="simulator.logic.get_low_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_low_utilized_cpu()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.LowUtilizedCiscoDevice.get_used_memory">
 <span class="sig-name descname"><span class="pre">get_used_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#LowUtilizedCiscoDevice.get_used_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.LowUtilizedCiscoDevice.get_used_memory" title="Link to this definition"></a></dt>
-<dd><p>Override base class method to return lower Memory usage values.</p>
+<dd><p>Return low memory usage in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Used memory bytes from
+<a class="reference internal" href="logic.html#simulator.logic.get_low_utilized_ram" title="simulator.logic.get_low_utilized_ram"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_low_utilized_ram()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.LowUtilizedCiscoDevice.get_total_memory">
 <span class="sig-name descname"><span class="pre">get_total_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#LowUtilizedCiscoDevice.get_total_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.LowUtilizedCiscoDevice.get_total_memory" title="Link to this definition"></a></dt>
-<dd><p>Override base class method to simulate lower total memory for device.</p>
+<dd><p>Return reduced total memory for a smaller Cisco device.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">381275686</span></code> bytes (~364 MB), half of the base default.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -191,31 +400,48 @@ Methods regarding CPU and Memory usage generate lower values.</p>
 <dt class="sig sig-object py" id="simulator.devices.AverageUtilizedCiscoDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">AverageUtilizedCiscoDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#AverageUtilizedCiscoDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.AverageUtilizedCiscoDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseCiscoDevice" title="simulator.devices.BaseCiscoDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCiscoDevice</span></code></a></p>
-<p>Class representaing average utilized Cisco device, extended for a few more interfaces.</p>
+<p>Cisco device with average CPU/memory and an extended interface list.</p>
+<p>Extends the base Cisco interfaces with additional GigabitEthernet and VLAN
+entries, including high-speed ports (8 Gbps and 10 Gbps).</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="simulator.devices.BaseJuniperDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">BaseJuniperDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#BaseJuniperDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseJuniperDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseDevice" title="simulator.devices.BaseDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDevice</span></code></a></p>
-<p>Class representing base Juniper device model for simulation.</p>
+<p>Base Juniper device simulating Junos RPC-style responses.</p>
+<p>Populates <code class="xref py py-attr docutils literal notranslate"><span class="pre">interfaces_list</span></code> with default Juniper interfaces
+(<code class="docutils literal notranslate"><span class="pre">ge-*</span></code>, <code class="docutils literal notranslate"><span class="pre">em*</span></code>, <code class="docutils literal notranslate"><span class="pre">lo0</span></code>). CPU and memory methods inherit average
+utilization behaviour from <a class="reference internal" href="#simulator.devices.BaseDevice" title="simulator.devices.BaseDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDevice</span></code></a>.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="simulator.devices.HighUtilizedJuniperDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">HighUtilizedJuniperDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#HighUtilizedJuniperDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.HighUtilizedJuniperDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseJuniperDevice" title="simulator.devices.BaseJuniperDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseJuniperDevice</span></code></a></p>
-<p>Class representing a high-utilization Juniper device simulation.</p>
+<p>Juniper device that reports persistently high CPU and memory utilization.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.HighUtilizedJuniperDevice.get_cpu">
 <span class="sig-name descname"><span class="pre">get_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#HighUtilizedJuniperDevice.get_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.HighUtilizedJuniperDevice.get_cpu" title="Link to this definition"></a></dt>
-<dd><p>Return raw device CPU usage value.</p>
+<dd><p>Return high CPU utilization percentage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code> from
+<a class="reference internal" href="logic.html#simulator.logic.get_high_utilized_cpu" title="simulator.logic.get_high_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_high_utilized_cpu()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.HighUtilizedJuniperDevice.get_used_memory">
 <span class="sig-name descname"><span class="pre">get_used_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#HighUtilizedJuniperDevice.get_used_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.HighUtilizedJuniperDevice.get_used_memory" title="Link to this definition"></a></dt>
-<dd><p>Return raw device Memory usage value.</p>
+<dd><p>Return high memory usage in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Used memory bytes from
+<a class="reference internal" href="logic.html#simulator.logic.get_high_utilized_ram" title="simulator.logic.get_high_utilized_ram"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_high_utilized_ram()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -224,23 +450,42 @@ Methods regarding CPU and Memory usage generate lower values.</p>
 <dt class="sig sig-object py" id="simulator.devices.LowUtilizedJuniperDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">LowUtilizedJuniperDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#LowUtilizedJuniperDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.LowUtilizedJuniperDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseJuniperDevice" title="simulator.devices.BaseJuniperDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseJuniperDevice</span></code></a></p>
-<p>Class representing a low-utilization Juniper device simulation.</p>
+<p>Juniper device that reports persistently low CPU and memory utilization.</p>
+<p>Total memory is halved compared to the base device.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.LowUtilizedJuniperDevice.get_cpu">
 <span class="sig-name descname"><span class="pre">get_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#LowUtilizedJuniperDevice.get_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.LowUtilizedJuniperDevice.get_cpu" title="Link to this definition"></a></dt>
-<dd><p>Return raw device CPU usage value.</p>
+<dd><p>Return low CPU utilization percentage.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code> from
+<a class="reference internal" href="logic.html#simulator.logic.get_low_utilized_cpu" title="simulator.logic.get_low_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_low_utilized_cpu()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.LowUtilizedJuniperDevice.get_total_memory">
 <span class="sig-name descname"><span class="pre">get_total_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#LowUtilizedJuniperDevice.get_total_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.LowUtilizedJuniperDevice.get_total_memory" title="Link to this definition"></a></dt>
-<dd><p>Cut total memory by half for lower utilized device</p>
+<dd><p>Return reduced total memory for a smaller Juniper device.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Half of <a class="reference internal" href="#simulator.devices.BaseDevice.get_total_memory" title="simulator.devices.BaseDevice.get_total_memory"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_total_memory()</span></code></a>, i.e. <code class="docutils literal notranslate"><span class="pre">381275686</span></code>
+bytes.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.LowUtilizedJuniperDevice.get_used_memory">
 <span class="sig-name descname"><span class="pre">get_used_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#LowUtilizedJuniperDevice.get_used_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.LowUtilizedJuniperDevice.get_used_memory" title="Link to this definition"></a></dt>
-<dd><p>Return raw device Memory usage value.</p>
+<dd><p>Return low memory usage in bytes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Used memory bytes from
+<a class="reference internal" href="logic.html#simulator.logic.get_low_utilized_ram" title="simulator.logic.get_low_utilized_ram"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_low_utilized_ram()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -249,24 +494,50 @@ Methods regarding CPU and Memory usage generate lower values.</p>
 <dt class="sig sig-object py" id="simulator.devices.AverageUtilizedJuniperDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">AverageUtilizedJuniperDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#AverageUtilizedJuniperDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.AverageUtilizedJuniperDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseJuniperDevice" title="simulator.devices.BaseJuniperDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseJuniperDevice</span></code></a></p>
-<p>Class representing an average-utilization Juniper device simulation.</p>
+<p>Juniper device with average CPU/memory and an extended interface list.</p>
+<p>Adds <code class="docutils literal notranslate"><span class="pre">ge-2/0/0</span></code>, <code class="docutils literal notranslate"><span class="pre">irb1</span></code>, and <code class="docutils literal notranslate"><span class="pre">em2</span></code> interfaces to the base set.</p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="simulator.devices.customUtilizedCiscoDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">customUtilizedCiscoDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="logic.html#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><span class="pre">CustomProfile</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#customUtilizedCiscoDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.customUtilizedCiscoDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseCiscoDevice" title="simulator.devices.BaseCiscoDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseCiscoDevice</span></code></a></p>
-<p>Class representing a custom-utilized Cisco device simulation.</p>
+<p>Cisco device with user-defined utilization via a <code class="xref py py-class docutils literal notranslate"><span class="pre">CustomProfile</span></code>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.customUtilizedCiscoDevice.profile">
+<span class="sig-name descname"><span class="pre">profile</span></span><a class="headerlink" href="#simulator.devices.customUtilizedCiscoDevice.profile" title="Link to this definition"></a></dt>
+<dd><p>Utilization parameters controlling CPU and
+memory randomization. Defaults to a new <code class="xref py py-class docutils literal notranslate"><span class="pre">CustomProfile</span></code>
+instance when not provided.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="logic.html#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile">CustomProfile</a></p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.customUtilizedCiscoDevice.get_cpu">
 <span class="sig-name descname"><span class="pre">get_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#customUtilizedCiscoDevice.get_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.customUtilizedCiscoDevice.get_cpu" title="Link to this definition"></a></dt>
-<dd><p>Return raw device CPU usage value.</p>
+<dd><p>Return CPU utilization based on <a class="reference internal" href="#simulator.devices.customUtilizedCiscoDevice.profile" title="simulator.devices.customUtilizedCiscoDevice.profile"><code class="xref py py-attr docutils literal notranslate"><span class="pre">profile</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code> from
+<a class="reference internal" href="logic.html#simulator.logic.get_custom_utilized_cpu" title="simulator.logic.get_custom_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_custom_utilized_cpu()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.customUtilizedCiscoDevice.get_used_memory">
 <span class="sig-name descname"><span class="pre">get_used_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#customUtilizedCiscoDevice.get_used_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.customUtilizedCiscoDevice.get_used_memory" title="Link to this definition"></a></dt>
-<dd><p>Return raw device Memory usage value.</p>
+<dd><p>Return memory usage based on <a class="reference internal" href="#simulator.devices.customUtilizedCiscoDevice.profile" title="simulator.devices.customUtilizedCiscoDevice.profile"><code class="xref py py-attr docutils literal notranslate"><span class="pre">profile</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Used memory bytes from
+<a class="reference internal" href="logic.html#simulator.logic.get_custom_utilized_ram" title="simulator.logic.get_custom_utilized_ram"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_custom_utilized_ram()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -275,17 +546,42 @@ Methods regarding CPU and Memory usage generate lower values.</p>
 <dt class="sig sig-object py" id="simulator.devices.customUtilizedJuniperDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">customUtilizedJuniperDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="logic.html#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><span class="pre">CustomProfile</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#customUtilizedJuniperDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.customUtilizedJuniperDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#simulator.devices.BaseJuniperDevice" title="simulator.devices.BaseJuniperDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseJuniperDevice</span></code></a></p>
-<p>Class representing a custom-utilized Juniper device simulation.</p>
+<p>Juniper device with user-defined utilization via a <code class="xref py py-class docutils literal notranslate"><span class="pre">CustomProfile</span></code>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="simulator.devices.customUtilizedJuniperDevice.profile">
+<span class="sig-name descname"><span class="pre">profile</span></span><a class="headerlink" href="#simulator.devices.customUtilizedJuniperDevice.profile" title="Link to this definition"></a></dt>
+<dd><p>Utilization parameters controlling CPU and
+memory randomization. Defaults to a new <code class="xref py py-class docutils literal notranslate"><span class="pre">CustomProfile</span></code>
+instance when not provided.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="logic.html#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile">CustomProfile</a></p>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.customUtilizedJuniperDevice.get_cpu">
 <span class="sig-name descname"><span class="pre">get_cpu</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#customUtilizedJuniperDevice.get_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.customUtilizedJuniperDevice.get_cpu" title="Link to this definition"></a></dt>
-<dd><p>Return raw device CPU usage value.</p>
+<dd><p>Return CPU utilization based on <a class="reference internal" href="#simulator.devices.customUtilizedJuniperDevice.profile" title="simulator.devices.customUtilizedJuniperDevice.profile"><code class="xref py py-attr docutils literal notranslate"><span class="pre">profile</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integer in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code> from
+<a class="reference internal" href="logic.html#simulator.logic.get_custom_utilized_cpu" title="simulator.logic.get_custom_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_custom_utilized_cpu()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="simulator.devices.customUtilizedJuniperDevice.get_used_memory">
 <span class="sig-name descname"><span class="pre">get_used_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/simulator/devices.html#customUtilizedJuniperDevice.get_used_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.customUtilizedJuniperDevice.get_used_memory" title="Link to this definition"></a></dt>
-<dd><p>Return raw device Memory usage value.</p>
+<dd><p>Return memory usage based on <a class="reference internal" href="#simulator.devices.customUtilizedJuniperDevice.profile" title="simulator.devices.customUtilizedJuniperDevice.profile"><code class="xref py py-attr docutils literal notranslate"><span class="pre">profile</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Used memory bytes from
+<a class="reference internal" href="logic.html#simulator.logic.get_custom_utilized_ram" title="simulator.logic.get_custom_utilized_ram"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_custom_utilized_ram()</span></code></a>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>

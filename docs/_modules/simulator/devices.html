@@ -74,20 +74,65 @@
            <div itemprop="articleBody">
              
   <h1>Source code for simulator.devices</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">logic</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">simulator.logic</span><span class="w"> </span><span class="kn">import</span> <span class="n">CustomProfile</span>
+<span></span><span class="sd">&quot;&quot;&quot;Simulated network device models for Cisco and Juniper vendors.</span>
+
+<span class="sd">Each concrete class represents a device with a specific utilization profile</span>
+<span class="sd">(high, low, average, or custom). Devices expose :meth:`BaseDevice.get_cpu`,</span>
+<span class="sd">:meth:`BaseDevice.get_used_memory`, :meth:`BaseDevice.get_total_memory`, and</span>
+<span class="sd">:meth:`BaseDevice.get_interfaces` which the FastAPI layer in</span>
+<span class="sd">:mod:`simulator.main` calls to build vendor-specific API responses.</span>
+
+<span class="sd">Interface counters are stateful: each call to :meth:`BaseDevice.get_interfaces`</span>
+<span class="sd">advances ``in-octets`` and ``out-octets`` based on interface speed and admin</span>
+<span class="sd">status.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">logic</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">simulator.logic</span><span class="w"> </span><span class="kn">import</span> <span class="n">CustomProfile</span>
 
 
 <div class="viewcode-block" id="BaseDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseDevice</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing base device model.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base model for a simulated network device.</span>
+
+<span class="sd">    Stores connection metadata and maintains rolling interface byte counters.</span>
+<span class="sd">    Subclasses override metric methods and populate :attr:`interfaces_list`</span>
+<span class="sd">    with vendor-specific interface definitions.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        ip_address (str): Simulated management IP address.</span>
+<span class="sd">        vendor (str): Device vendor identifier (``cisco`` or ``juniper``).</span>
+<span class="sd">        hostname (str): Device hostname returned by API endpoints.</span>
+<span class="sd">        model (str): Hardware model string returned in inventory responses.</span>
+<span class="sd">        username (str): Expected HTTP Basic authentication username.</span>
+<span class="sd">        password (str): Expected HTTP Basic authentication password.</span>
+<span class="sd">        port (int): TCP port the simulator listens on.</span>
+<span class="sd">        https (bool): Whether the device is configured for HTTPS access.</span>
+<span class="sd">        interface_counters (dict[str, int]): Rolling byte counters keyed as</span>
+<span class="sd">            ``&quot;{interface_name}_in&quot;`` and ``&quot;{interface_name}_out&quot;``.</span>
+<span class="sd">        interfaces_list (list[dict[str, Any]]): Static interface definitions.</span>
+<span class="sd">            Each dict contains ``name``, ``type``, ``admin-status``,</span>
+<span class="sd">            ``if-index``, ``phys-address``, and ``speed`` (bits per second as</span>
+<span class="sd">            a string).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a simulated device with connection metadata.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Device vendor (``cisco`` or ``juniper``).</span>
+<span class="sd">            hostname: Hostname exposed via vendor API endpoints.</span>
+<span class="sd">            model: Hardware model string for inventory responses.</span>
+<span class="sd">            username: HTTP Basic auth username expected by the simulator.</span>
+<span class="sd">            password: HTTP Basic auth password expected by the simulator.</span>
+<span class="sd">            port: TCP port for the simulator HTTP server.</span>
+<span class="sd">            https: Whether the device is flagged as using HTTPS.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">ip_address</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">vendor</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">hostname</span>
@@ -102,32 +147,67 @@
 <div class="viewcode-block" id="BaseDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return raw device CPU usage value.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current simulated CPU utilization percentage.</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            Integer CPU usage in the range ``0``–``100``. The base</span>
+<span class="sd">            implementation delegates to</span>
+<span class="sd">            :func:`simulator.logic.get_average_utilized_cpu`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_average_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="BaseDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return raw device Memory usage value.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current simulated used memory in bytes.</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            Number of bytes currently in use. The base implementation</span>
+<span class="sd">            delegates to :func:`simulator.logic.get_average_utilized_ram`</span>
+<span class="sd">            using :meth:`get_total_memory` as the capacity.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_average_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="BaseDevice.get_total_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_total_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_total_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return device total memory</span>
-<span class="sd">        Base value can be overridden in subclasses.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the total installed memory in bytes.</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            Total memory capacity in bytes. Default is ``762551372`` (~728 MB).</span>
+<span class="sd">            Subclasses may override to simulate different hardware.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="mi">762551372</span></div>
 
 
 <div class="viewcode-block" id="BaseDevice.get_interfaces">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_interfaces">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_interfaces</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return updated interface counters for the simulated device.&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_interfaces</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return interface definitions with updated traffic counters.</span>
+
+<span class="sd">        For each interface in :attr:`interfaces_list`, increments</span>
+<span class="sd">        ``in-octets`` and ``out-octets`` when ``admin-status`` is ``up`` and</span>
+<span class="sd">        ``speed`` is greater than zero. Interfaces with ``if-index`` in</span>
+<span class="sd">        ``range(20, 31)`` use higher utilization growth rates.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            List of interface dicts, each containing:</span>
+
+<span class="sd">            * ``name`` (str): Interface name.</span>
+<span class="sd">            * ``type`` (str): IANA or vendor interface type.</span>
+<span class="sd">            * ``admin-status`` (str): ``up`` or ``down``.</span>
+<span class="sd">            * ``oper-status`` (str): Mirrors ``admin-status``.</span>
+<span class="sd">            * ``if-index`` (int): SNMP interface index.</span>
+<span class="sd">            * ``phys-address`` (str): MAC address.</span>
+<span class="sd">            * ``speed`` (str): Link speed in bits per second.</span>
+<span class="sd">            * ``in-octets`` (str): Cumulative inbound byte counter.</span>
+<span class="sd">            * ``out-octets`` (str): Cumulative outbound byte counter.</span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            Counters are persisted in :attr:`interface_counters` between calls.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">updated_interfaces</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">iface</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">interfaces_list</span><span class="p">:</span>
             <span class="n">name</span> <span class="o">=</span> <span class="n">iface</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
@@ -184,13 +264,32 @@
 <div class="viewcode-block" id="BaseCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseCiscoDevice</span><span class="p">(</span><span class="n">BaseDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing base Cisco device model</span>
-<span class="sd">    Simulating data compliant with RESTCONF protocol format using by Cisco IOS XE devices</span>
-<span class="sd">    By default methods return data as for average utilized device.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base Cisco device simulating RESTCONF-compatible IOS XE responses.</span>
+
+<span class="sd">    Populates :attr:`interfaces_list` with a default set of Cisco interfaces</span>
+<span class="sd">    (VLAN, GigabitEthernet, Loopback). CPU and memory methods inherit average</span>
+<span class="sd">    utilization behaviour from :class:`BaseDevice`.</span>
+
+<span class="sd">    See Also:</span>
+<span class="sd">        :mod:`simulator.main` for the RESTCONF endpoints that consume this</span>
+<span class="sd">        device&#39;s metrics.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a Cisco device with default interface definitions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``cisco``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -236,12 +335,27 @@
 <div class="viewcode-block" id="HighUtilizedCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HighUtilizedCiscoDevice</span><span class="p">(</span><span class="n">BaseCiscoDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing higher utilized Cisco device</span>
-<span class="sd">    Methods regarding CPU and Memory usage generate higher values.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cisco device that reports persistently high CPU and memory utilization.</span>
+
+<span class="sd">    CPU values are typically in the ``70``–``100`` range with occasional spikes</span>
+<span class="sd">    to ``100``. Memory usage follows a high-utilization distribution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a high-utilization Cisco device.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``cisco``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -249,16 +363,24 @@
 <div class="viewcode-block" id="HighUtilizedCiscoDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Override base class method to return higher CPU usage values.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return high CPU utilization percentage.</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            Integer in the range ``0``–``100`` from</span>
+<span class="sd">            :func:`simulator.logic.get_high_utilized_cpu`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="HighUtilizedCiscoDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Override base class method to return higher Memory usage values.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return high memory usage in bytes.</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            Used memory bytes from</span>
+<span class="sd">            :func:`simulator.logic.get_high_utilized_ram`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 </div>
 
@@ -267,12 +389,27 @@
 <div class="viewcode-block" id="LowUtilizedCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">LowUtilizedCiscoDevice</span><span class="p">(</span><span class="n">BaseCiscoDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing lower utilized Cisco device</span>
-<span class="sd">    Methods regarding CPU and Memory usage generate lower values.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cisco device that reports persistently low CPU and memory utilization.</span>
+
+<span class="sd">    Total memory is halved compared to the base device to simulate smaller</span>
+<span class="sd">    hardware.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a low-utilization Cisco device.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``cisco``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -280,24 +417,35 @@
 <div class="viewcode-block" id="LowUtilizedCiscoDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Override base class method to return lower CPU usage values.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return low CPU utilization percentage.</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            Integer in the range ``0``–``100`` from</span>
+<span class="sd">            :func:`simulator.logic.get_low_utilized_cpu`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedCiscoDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Override base class method to return lower Memory usage values.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return low memory usage in bytes.</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            Used memory bytes from</span>
+<span class="sd">            :func:`simulator.logic.get_low_utilized_ram`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedCiscoDevice.get_total_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_total_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_total_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Override base class method to simulate lower total memory for device.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return reduced total memory for a smaller Cisco device.</span>
 
+<span class="sd">        Returns:</span>
+<span class="sd">            ``381275686`` bytes (~364 MB), half of the base default.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="mi">381275686</span></div>
 </div>
 
@@ -306,11 +454,27 @@
 <div class="viewcode-block" id="AverageUtilizedCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.AverageUtilizedCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AverageUtilizedCiscoDevice</span><span class="p">(</span><span class="n">BaseCiscoDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representaing average utilized Cisco device, extended for a few more interfaces.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cisco device with average CPU/memory and an extended interface list.</span>
+
+<span class="sd">    Extends the base Cisco interfaces with additional GigabitEthernet and VLAN</span>
+<span class="sd">    entries, including high-speed ports (8 Gbps and 10 Gbps).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an average-utilization Cisco device.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``cisco``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -359,11 +523,28 @@
 <div class="viewcode-block" id="BaseJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseJuniperDevice</span><span class="p">(</span><span class="n">BaseDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing base Juniper device model for simulation.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base Juniper device simulating Junos RPC-style responses.</span>
+
+<span class="sd">    Populates :attr:`interfaces_list` with default Juniper interfaces</span>
+<span class="sd">    (``ge-*``, ``em*``, ``lo0``). CPU and memory methods inherit average</span>
+<span class="sd">    utilization behaviour from :class:`BaseDevice`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a Juniper device with default interface definitions.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``juniper``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -409,11 +590,23 @@
 <div class="viewcode-block" id="HighUtilizedJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HighUtilizedJuniperDevice</span><span class="p">(</span><span class="n">BaseJuniperDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing a high-utilization Juniper device simulation.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Juniper device that reports persistently high CPU and memory utilization.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a high-utilization Juniper device.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``juniper``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -421,12 +614,24 @@
 <div class="viewcode-block" id="HighUtilizedJuniperDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return high CPU utilization percentage.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Integer in the range ``0``–``100`` from</span>
+<span class="sd">            :func:`simulator.logic.get_high_utilized_cpu`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="HighUtilizedJuniperDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return high memory usage in bytes.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Used memory bytes from</span>
+<span class="sd">            :func:`simulator.logic.get_high_utilized_ram`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 </div>
 
@@ -435,11 +640,26 @@
 <div class="viewcode-block" id="LowUtilizedJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">LowUtilizedJuniperDevice</span><span class="p">(</span><span class="n">BaseJuniperDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing a low-utilization Juniper device simulation.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Juniper device that reports persistently low CPU and memory utilization.</span>
+
+<span class="sd">    Total memory is halved compared to the base device.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a low-utilization Juniper device.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``juniper``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -447,19 +667,36 @@
 <div class="viewcode-block" id="LowUtilizedJuniperDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return low CPU utilization percentage.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Integer in the range ``0``–``100`` from</span>
+<span class="sd">            :func:`simulator.logic.get_low_utilized_cpu`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedJuniperDevice.get_total_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_total_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_total_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cut total memory by half for lower utilized device&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return reduced total memory for a smaller Juniper device.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Half of :meth:`BaseDevice.get_total_memory`, i.e. ``381275686``</span>
+<span class="sd">            bytes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedJuniperDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return low memory usage in bytes.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Used memory bytes from</span>
+<span class="sd">            :func:`simulator.logic.get_low_utilized_ram`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 </div>
 
@@ -468,11 +705,26 @@
 <div class="viewcode-block" id="AverageUtilizedJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.AverageUtilizedJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AverageUtilizedJuniperDevice</span><span class="p">(</span><span class="n">BaseJuniperDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing an average-utilization Juniper device simulation.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Juniper device with average CPU/memory and an extended interface list.</span>
+
+<span class="sd">    Adds ``ge-2/0/0``, ``irb1``, and ``em2`` interfaces to the base set.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an average-utilization Juniper device.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``juniper``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -512,7 +764,13 @@
 <div class="viewcode-block" id="customUtilizedCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">customUtilizedCiscoDevice</span><span class="p">(</span><span class="n">BaseCiscoDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing a custom-utilized Cisco device simulation.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cisco device with user-defined utilization via a :class:`CustomProfile`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        profile (CustomProfile): Utilization parameters controlling CPU and</span>
+<span class="sd">            memory randomization. Defaults to a new :class:`CustomProfile`</span>
+<span class="sd">            instance when not provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> 
@@ -526,6 +784,24 @@
         <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
         <span class="n">profile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CustomProfile</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a custom-utilization Cisco device.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``cisco``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">            profile: Custom utilization profile. When ``None``, a default</span>
+<span class="sd">                :class:`~simulator.logic.CustomProfile` is created.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            pydantic.ValidationError: If ``profile`` contains invalid field</span>
+<span class="sd">                values (e.g. spike + drop chance exceeding 100%).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -535,12 +811,24 @@
 <div class="viewcode-block" id="customUtilizedCiscoDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedCiscoDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return CPU utilization based on :attr:`profile`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Integer in the range ``0``–``100`` from</span>
+<span class="sd">            :func:`simulator.logic.get_custom_utilized_cpu`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_cpu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="customUtilizedCiscoDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedCiscoDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return memory usage based on :attr:`profile`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Used memory bytes from</span>
+<span class="sd">            :func:`simulator.logic.get_custom_utilized_ram`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
 </div>
 
@@ -549,7 +837,13 @@
 <div class="viewcode-block" id="customUtilizedJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">customUtilizedJuniperDevice</span><span class="p">(</span><span class="n">BaseJuniperDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Class representing a custom-utilized Juniper device simulation.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Juniper device with user-defined utilization via a :class:`CustomProfile`.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        profile (CustomProfile): Utilization parameters controlling CPU and</span>
+<span class="sd">            memory randomization. Defaults to a new :class:`CustomProfile`</span>
+<span class="sd">            instance when not provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> 
@@ -563,6 +857,24 @@
         <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
         <span class="n">profile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CustomProfile</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a custom-utilization Juniper device.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            ip_address: Simulated management IP address.</span>
+<span class="sd">            vendor: Expected to be ``juniper``.</span>
+<span class="sd">            hostname: Device hostname.</span>
+<span class="sd">            model: Hardware model string.</span>
+<span class="sd">            username: HTTP Basic auth username.</span>
+<span class="sd">            password: HTTP Basic auth password.</span>
+<span class="sd">            port: Simulator listen port.</span>
+<span class="sd">            https: HTTPS flag.</span>
+<span class="sd">            profile: Custom utilization profile. When ``None``, a default</span>
+<span class="sd">                :class:`~simulator.logic.CustomProfile` is created.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            pydantic.ValidationError: If ``profile`` contains invalid field</span>
+<span class="sd">                values (e.g. spike + drop chance exceeding 100%).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -572,12 +884,24 @@
 <div class="viewcode-block" id="customUtilizedJuniperDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedJuniperDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return CPU utilization based on :attr:`profile`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Integer in the range ``0``–``100`` from</span>
+<span class="sd">            :func:`simulator.logic.get_custom_utilized_cpu`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_cpu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="customUtilizedJuniperDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedJuniperDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return memory usage based on :attr:`profile`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Used memory bytes from</span>
+<span class="sd">            :func:`simulator.logic.get_custom_utilized_ram`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
 </div>
 
