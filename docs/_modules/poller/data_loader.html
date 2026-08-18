@@ -82,68 +82,68 @@
 <div class="viewcode-block" id="seed_devices">
 <a class="viewcode-back" href="../../poller/data_loader.html#poller.data_loader.seed_devices">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">seed_devices</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create and save default devices to DB.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Create and save default devices to DB."""</span>
 
     <span class="n">initial_devices</span> <span class="o">=</span> <span class="p">[</span>
         <span class="p">{</span>
-            <span class="s2">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="s2">&quot;r-high-1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;vendor&quot;</span><span class="p">:</span> <span class="s2">&quot;cisco&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;Catalyst 9000&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">8001</span><span class="p">,</span>
-            <span class="s2">&quot;https&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">"ip"</span><span class="p">:</span> <span class="s2">"127.0.0.1"</span><span class="p">,</span>
+            <span class="s2">"hostname"</span><span class="p">:</span> <span class="s2">"r-high-1"</span><span class="p">,</span>
+            <span class="s2">"vendor"</span><span class="p">:</span> <span class="s2">"cisco"</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"Catalyst 9000"</span><span class="p">,</span>
+            <span class="s2">"username"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span>
+            <span class="s2">"password"</span><span class="p">:</span> <span class="s2">"123"</span><span class="p">,</span>
+            <span class="s2">"port"</span><span class="p">:</span> <span class="mi">8001</span><span class="p">,</span>
+            <span class="s2">"https"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="p">{</span>
-            <span class="s2">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="s2">&quot;r-low-1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;vendor&quot;</span><span class="p">:</span> <span class="s2">&quot;cisco&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;Catalyst 9000x&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">8002</span><span class="p">,</span>
-            <span class="s2">&quot;https&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">"ip"</span><span class="p">:</span> <span class="s2">"127.0.0.1"</span><span class="p">,</span>
+            <span class="s2">"hostname"</span><span class="p">:</span> <span class="s2">"r-low-1"</span><span class="p">,</span>
+            <span class="s2">"vendor"</span><span class="p">:</span> <span class="s2">"cisco"</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"Catalyst 9000x"</span><span class="p">,</span>
+            <span class="s2">"username"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span>
+            <span class="s2">"password"</span><span class="p">:</span> <span class="s2">"123"</span><span class="p">,</span>
+            <span class="s2">"port"</span><span class="p">:</span> <span class="mi">8002</span><span class="p">,</span>
+            <span class="s2">"https"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="p">{</span>
-            <span class="s2">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="s2">&quot;r-avg-1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;vendor&quot;</span><span class="p">:</span> <span class="s2">&quot;cisco&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;Catalyst 8000&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">8003</span><span class="p">,</span>
-            <span class="s2">&quot;https&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">"ip"</span><span class="p">:</span> <span class="s2">"127.0.0.1"</span><span class="p">,</span>
+            <span class="s2">"hostname"</span><span class="p">:</span> <span class="s2">"r-avg-1"</span><span class="p">,</span>
+            <span class="s2">"vendor"</span><span class="p">:</span> <span class="s2">"cisco"</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"Catalyst 8000"</span><span class="p">,</span>
+            <span class="s2">"username"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span>
+            <span class="s2">"password"</span><span class="p">:</span> <span class="s2">"123"</span><span class="p">,</span>
+            <span class="s2">"port"</span><span class="p">:</span> <span class="mi">8003</span><span class="p">,</span>
+            <span class="s2">"https"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="p">{</span>
-            <span class="s2">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="s2">&quot;r-junos-avg-1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;vendor&quot;</span><span class="p">:</span> <span class="s2">&quot;juniper&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;ACX5400&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">8004</span><span class="p">,</span>
-            <span class="s2">&quot;https&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">"ip"</span><span class="p">:</span> <span class="s2">"127.0.0.1"</span><span class="p">,</span>
+            <span class="s2">"hostname"</span><span class="p">:</span> <span class="s2">"r-junos-avg-1"</span><span class="p">,</span>
+            <span class="s2">"vendor"</span><span class="p">:</span> <span class="s2">"juniper"</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"ACX5400"</span><span class="p">,</span>
+            <span class="s2">"username"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span>
+            <span class="s2">"password"</span><span class="p">:</span> <span class="s2">"123"</span><span class="p">,</span>
+            <span class="s2">"port"</span><span class="p">:</span> <span class="mi">8004</span><span class="p">,</span>
+            <span class="s2">"https"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="p">{</span>
-            <span class="s2">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="s2">&quot;r-junos-2&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;vendor&quot;</span><span class="p">:</span> <span class="s2">&quot;juniper&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;EX4200&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">8005</span><span class="p">,</span>
-            <span class="s2">&quot;https&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">"ip"</span><span class="p">:</span> <span class="s2">"127.0.0.1"</span><span class="p">,</span>
+            <span class="s2">"hostname"</span><span class="p">:</span> <span class="s2">"r-junos-2"</span><span class="p">,</span>
+            <span class="s2">"vendor"</span><span class="p">:</span> <span class="s2">"juniper"</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"EX4200"</span><span class="p">,</span>
+            <span class="s2">"username"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span>
+            <span class="s2">"password"</span><span class="p">:</span> <span class="s2">"123"</span><span class="p">,</span>
+            <span class="s2">"port"</span><span class="p">:</span> <span class="mi">8005</span><span class="p">,</span>
+            <span class="s2">"https"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="p">},</span>
         <span class="p">{</span>
-            <span class="s2">&quot;ip&quot;</span><span class="p">:</span> <span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;hostname&quot;</span><span class="p">:</span> <span class="s2">&quot;s-low-2&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;vendor&quot;</span><span class="p">:</span> <span class="s2">&quot;juniper&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="s2">&quot;EX400&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;admin&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;123&quot;</span><span class="p">,</span>
-            <span class="s2">&quot;port&quot;</span><span class="p">:</span> <span class="mi">8006</span><span class="p">,</span>
-            <span class="s2">&quot;https&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+            <span class="s2">"ip"</span><span class="p">:</span> <span class="s2">"127.0.0.1"</span><span class="p">,</span>
+            <span class="s2">"hostname"</span><span class="p">:</span> <span class="s2">"s-low-2"</span><span class="p">,</span>
+            <span class="s2">"vendor"</span><span class="p">:</span> <span class="s2">"juniper"</span><span class="p">,</span>
+            <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"EX400"</span><span class="p">,</span>
+            <span class="s2">"username"</span><span class="p">:</span> <span class="s2">"admin"</span><span class="p">,</span>
+            <span class="s2">"password"</span><span class="p">:</span> <span class="s2">"123"</span><span class="p">,</span>
+            <span class="s2">"port"</span><span class="p">:</span> <span class="mi">8006</span><span class="p">,</span>
+            <span class="s2">"https"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
         <span class="p">},</span>
     <span class="p">]</span>
 
@@ -151,16 +151,16 @@
         <span class="k">for</span> <span class="n">dev_data</span> <span class="ow">in</span> <span class="n">initial_devices</span><span class="p">:</span>
             <span class="n">exists</span><span class="p">:</span> <span class="n">models</span><span class="o">.</span><span class="n">Device</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="n">session</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">Device</span><span class="p">)</span>
-                <span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">hostname</span><span class="o">=</span><span class="n">dev_data</span><span class="p">[</span><span class="s2">&quot;hostname&quot;</span><span class="p">])</span>
+                <span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">hostname</span><span class="o">=</span><span class="n">dev_data</span><span class="p">[</span><span class="s2">"hostname"</span><span class="p">])</span>
                 <span class="o">.</span><span class="n">first</span><span class="p">()</span>
             <span class="p">)</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="n">exists</span><span class="p">:</span>
                 <span class="n">new_dev</span> <span class="o">=</span> <span class="n">models</span><span class="o">.</span><span class="n">Device</span><span class="p">(</span><span class="o">**</span><span class="n">dev_data</span><span class="p">)</span>
                 <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_dev</span><span class="p">)</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Device has been created: </span><span class="si">{</span><span class="n">dev_data</span><span class="p">[</span><span class="s1">&#39;hostname&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Device has been created: </span><span class="si">{</span><span class="n">dev_data</span><span class="p">[</span><span class="s1">'hostname'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Device already exists: </span><span class="si">{</span><span class="n">dev_data</span><span class="p">[</span><span class="s1">&#39;hostname&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Device already exists: </span><span class="si">{</span><span class="n">dev_data</span><span class="p">[</span><span class="s1">'hostname'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
         <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></div>
 

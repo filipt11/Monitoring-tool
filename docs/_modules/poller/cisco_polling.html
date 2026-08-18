@@ -74,7 +74,21 @@
            <div itemprop="articleBody">
              
   <h1>Source code for poller.cisco_polling</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span></span><span class="sd">"""Cisco IOS XE RESTCONF polling and response parsing.</span>
+
+<span class="sd">Contacts three RESTCONF endpoints in parallel (CPU, memory, interfaces),</span>
+<span class="sd">parses YANG JSON payloads, and returns a normalized</span>
+<span class="sd">:class:`~poller.models.PollingResult` consumed by :mod:`poller.main` and</span>
+<span class="sd">:mod:`poller.api` (device modeling).</span>
+
+<span class="sd">RESTCONF paths polled:</span>
+
+<span class="sd">- ``/restconf/data/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds``</span>
+<span class="sd">- ``/restconf/data/Cisco-IOS-XE-memory-oper:memory-statistics``</span>
+<span class="sd">- ``/restconf/data/ietf-interfaces:interfaces-state``</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">PollingResult</span><span class="p">,</span> <span class="n">InterfaceData</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
@@ -86,7 +100,23 @@
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">poll_cisco_device_async</span><span class="p">(</span>
     <span class="n">device</span><span class="p">:</span> <span class="n">Device</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PollingResult</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Poll a Cisco device and return parsed CPU, memory and interface statistics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Poll a Cisco device and return normalized metrics.</span>
+
+<span class="sd">    Fetches CPU, memory, and interface RESTCONF data concurrently. Each</span>
+<span class="sd">    request is isolated — a failure in one endpoint does not block parsing</span>
+<span class="sd">    of the others. Device status is ``"up"`` when at least one metric</span>
+<span class="sd">    category returns data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        device: :class:`~poller.models.Device` row with connection</span>
+<span class="sd">            credentials and ``https`` flag.</span>
+<span class="sd">        client: Shared :class:`httpx.AsyncClient` from the polling loop.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        :class:`~poller.models.PollingResult` with ``cpu``, memory fields,</span>
+<span class="sd">        and a list of admin-up :class:`~poller.models.InterfaceData`</span>
+<span class="sd">        entries.</span>
+<span class="sd">    """</span>
 
     <span class="c1"># Initialize default values for parsed metrics</span>
     <span class="n">cpu_val</span> <span class="o">=</span> <span class="kc">None</span>
@@ -96,16 +126,16 @@
     <span class="n">interfaces</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="c1"># Build URLs used to poll device RESTCONF endpoints</span>
-    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;https&quot;</span> <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">https</span> <span class="k">else</span> <span class="s2">&quot;http&quot;</span>
-    <span class="n">base_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">"https"</span> <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">https</span> <span class="k">else</span> <span class="s2">"http"</span>
+    <span class="n">base_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">"</span>
 
-    <span class="n">cpu_path</span> <span class="o">=</span> <span class="s2">&quot;/restconf/data/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds&quot;</span>
-    <span class="n">memory_path</span> <span class="o">=</span> <span class="s2">&quot;/restconf/data/Cisco-IOS-XE-memory-oper:memory-statistics&quot;</span>
-    <span class="n">interface_path</span> <span class="o">=</span> <span class="s2">&quot;/restconf/data/ietf-interfaces:interfaces-state&quot;</span>
+    <span class="n">cpu_path</span> <span class="o">=</span> <span class="s2">"/restconf/data/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds"</span>
+    <span class="n">memory_path</span> <span class="o">=</span> <span class="s2">"/restconf/data/Cisco-IOS-XE-memory-oper:memory-statistics"</span>
+    <span class="n">interface_path</span> <span class="o">=</span> <span class="s2">"/restconf/data/ietf-interfaces:interfaces-state"</span>
 
-    <span class="n">full_cpu_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">cpu_path</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="n">full_memory_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">memory_path</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="n">full_interface_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">interface_path</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">full_cpu_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">cpu_path</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">full_memory_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">memory_path</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">full_interface_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">interface_path</span><span class="si">}</span><span class="s2">"</span>
 
     <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">fetch_cisco_data_async</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">full_cpu_url</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">username</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">password</span><span class="p">),</span>
@@ -128,7 +158,7 @@
         <span class="k">try</span><span class="p">:</span>
             <span class="n">cpu_val</span> <span class="o">=</span> <span class="n">parse_cpu</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error parsing CPU for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error parsing CPU for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">raw_memory</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
@@ -138,7 +168,7 @@
 
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Error parsing Memory for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Error parsing Memory for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
             <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">raw_interfaces</span><span class="p">:</span>
@@ -146,23 +176,23 @@
             <span class="n">interfaces</span> <span class="o">=</span> <span class="n">parse_interfaces</span><span class="p">(</span><span class="n">raw_interfaces</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Error parsing Interfaces for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Error parsing Interfaces for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
             <span class="p">)</span>
 
     <span class="n">result</span><span class="p">:</span> <span class="n">PollingResult</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span> <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">cpu_val</span><span class="p">,</span> <span class="n">memory_val</span><span class="p">,</span> <span class="n">interfaces</span><span class="p">])</span> <span class="k">else</span> <span class="s2">&quot;down&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="n">cpu_val</span><span class="p">,</span>
-        <span class="s2">&quot;total_memory&quot;</span><span class="p">:</span> <span class="n">total_memory</span><span class="p">,</span>
-        <span class="s2">&quot;used_memory&quot;</span><span class="p">:</span> <span class="n">memory_val</span><span class="p">,</span>
-        <span class="s2">&quot;memory_pct&quot;</span><span class="p">:</span> <span class="n">memory_pct</span><span class="p">,</span>
-        <span class="s2">&quot;interfaces&quot;</span><span class="p">:</span> <span class="n">interfaces</span><span class="p">,</span>
+        <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"up"</span> <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">cpu_val</span><span class="p">,</span> <span class="n">memory_val</span><span class="p">,</span> <span class="n">interfaces</span><span class="p">])</span> <span class="k">else</span> <span class="s2">"down"</span><span class="p">,</span>
+        <span class="s2">"cpu"</span><span class="p">:</span> <span class="n">cpu_val</span><span class="p">,</span>
+        <span class="s2">"total_memory"</span><span class="p">:</span> <span class="n">total_memory</span><span class="p">,</span>
+        <span class="s2">"used_memory"</span><span class="p">:</span> <span class="n">memory_val</span><span class="p">,</span>
+        <span class="s2">"memory_pct"</span><span class="p">:</span> <span class="n">memory_pct</span><span class="p">,</span>
+        <span class="s2">"interfaces"</span><span class="p">:</span> <span class="n">interfaces</span><span class="p">,</span>
     <span class="p">}</span>
 
-    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully polled data for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">"status"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"up"</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Successfully polled data for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Device </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2"> is unreachable or returned no data&quot;</span>
+            <span class="sa">f</span><span class="s2">"Device </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2"> is unreachable or returned no data"</span>
         <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">result</span></div>
@@ -174,11 +204,24 @@
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch_cisco_data_async</span><span class="p">(</span>
     <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch JSON data from a Cisco RESTCONF endpoint using basic auth.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Perform an authenticated GET against a Cisco RESTCONF endpoint.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        client: Async HTTP client used for the request.</span>
+<span class="sd">        url: Full RESTCONF URL (including scheme, host, port, and path).</span>
+<span class="sd">        username: HTTP Basic authentication username.</span>
+<span class="sd">        password: HTTP Basic authentication password.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Parsed JSON response body as a dictionary.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        httpx.HTTPStatusError: When the device returns a non-2xx status.</span>
+<span class="sd">    """</span>
 
     <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/yang-data+json&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;Content-Type&quot;</span><span class="p">:</span> <span class="s2">&quot;application/yang-data+json&quot;</span><span class="p">,</span>
+        <span class="s2">"Accept"</span><span class="p">:</span> <span class="s2">"application/yang-data+json"</span><span class="p">,</span>
+        <span class="s2">"Content-Type"</span><span class="p">:</span> <span class="s2">"application/yang-data+json"</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
@@ -196,59 +239,93 @@
 <div class="viewcode-block" id="parse_cpu">
 <a class="viewcode-back" href="../../poller/cisco_polling.html#poller.cisco_polling.parse_cpu">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_cpu</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract CPU usage percentage from Cisco RESTCONF response.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Extract five-second CPU utilization from a RESTCONF CPU response.</span>
 
-    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">[</span><span class="s2">&quot;Cisco-IOS-XE-process-cpu-oper:five-seconds&quot;</span><span class="p">])</span></div>
+<span class="sd">    Args:</span>
+<span class="sd">        raw_cpu: JSON payload from the Cisco CPU RESTCONF endpoint.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        CPU usage as an integer percentage (``0``–``100``).</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        KeyError: When the expected YANG key is missing.</span>
+<span class="sd">        ValueError: When the value cannot be converted to ``int``.</span>
+<span class="sd">    """</span>
+
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">[</span><span class="s2">"Cisco-IOS-XE-process-cpu-oper:five-seconds"</span><span class="p">])</span></div>
 
 
 
 <div class="viewcode-block" id="parse_memory">
 <a class="viewcode-back" href="../../poller/cisco_polling.html#poller.cisco_polling.parse_memory">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_memory</span><span class="p">(</span><span class="n">raw_memory</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract total and used memory values from Cisco memory statistics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Extract processor memory totals from a RESTCONF memory response.</span>
 
-    <span class="n">stats</span> <span class="o">=</span> <span class="n">raw_memory</span><span class="p">[</span><span class="s2">&quot;Cisco-IOS-XE-memory-oper:memory-statistics&quot;</span><span class="p">]</span>
-    <span class="n">memory_list</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;memory-statistic&quot;</span><span class="p">]</span>
+<span class="sd">    Args:</span>
+<span class="sd">        raw_memory: JSON payload from the Cisco memory RESTCONF endpoint.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(total_memory, used_memory)`` in bytes for the ``Processor`` pool.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: When no ``Processor`` entry exists in the statistics</span>
+<span class="sd">            list.</span>
+<span class="sd">    """</span>
+
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">raw_memory</span><span class="p">[</span><span class="s2">"Cisco-IOS-XE-memory-oper:memory-statistics"</span><span class="p">]</span>
+    <span class="n">memory_list</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">"memory-statistic"</span><span class="p">]</span>
 
     <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">memory_list</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;Processor&quot;</span><span class="p">:</span>
-            <span class="n">used_memory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;used-memory&quot;</span><span class="p">])</span>
-            <span class="n">total_memory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;total-memory&quot;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Processor"</span><span class="p">:</span>
+            <span class="n">used_memory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">"used-memory"</span><span class="p">])</span>
+            <span class="n">total_memory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">"total-memory"</span><span class="p">])</span>
             <span class="k">return</span> <span class="n">total_memory</span><span class="p">,</span> <span class="n">used_memory</span>
 
-    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Could not find &#39;Processor&#39; entry in raw_memory&quot;</span><span class="p">)</span></div>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"Could not find 'Processor' entry in raw_memory"</span><span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="parse_interfaces">
 <a class="viewcode-back" href="../../poller/cisco_polling.html#poller.cisco_polling.parse_interfaces">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_interfaces</span><span class="p">(</span><span class="n">raw_interfaces</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse interface state data and return active interface statistics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Parse admin-up interfaces with traffic counters for metric polling.</span>
 
-    <span class="n">stats</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">&quot;ietf-interfaces:interfaces-state&quot;</span><span class="p">]</span>
-    <span class="n">interface_list</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;interface&quot;</span><span class="p">]</span>
+<span class="sd">    Args:</span>
+<span class="sd">        raw_interfaces: JSON payload from the</span>
+<span class="sd">            ``ietf-interfaces:interfaces-state`` RESTCONF endpoint.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of :class:`~poller.models.InterfaceData` for interfaces with</span>
+<span class="sd">        ``admin-status`` equal to ``"up"``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: When no qualifying interfaces are found.</span>
+<span class="sd">    """</span>
+
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">"ietf-interfaces:interfaces-state"</span><span class="p">]</span>
+    <span class="n">interface_list</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">"interface"</span><span class="p">]</span>
 
     <span class="n">parsed_results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">interface_list</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;admin-status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span><span class="p">:</span>
-            <span class="n">statistics</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;statistics&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"admin-status"</span><span class="p">)</span> <span class="o">==</span> <span class="s2">"up"</span><span class="p">:</span>
+            <span class="n">statistics</span> <span class="o">=</span> <span class="n">entry</span><span class="p">[</span><span class="s2">"statistics"</span><span class="p">]</span>
 
             <span class="c1"># Only include interfaces that are administratively up</span>
             <span class="n">if_data</span><span class="p">:</span> <span class="n">InterfaceData</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;if_index&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">]),</span>
-                <span class="s2">&quot;in_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="p">[</span><span class="s2">&quot;in-octets&quot;</span><span class="p">]),</span>
-                <span class="s2">&quot;out_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="p">[</span><span class="s2">&quot;out-octets&quot;</span><span class="p">]),</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">]),</span>
-                <span class="s2">&quot;admin_status&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;admin-status&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;oper_status&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;oper-status&quot;</span><span class="p">],</span>
-                <span class="s2">&quot;mac&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phys-address&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span>
+                <span class="s2">"if_index"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">"if-index"</span><span class="p">]),</span>
+                <span class="s2">"in_octets"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="p">[</span><span class="s2">"in-octets"</span><span class="p">]),</span>
+                <span class="s2">"out_octets"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="p">[</span><span class="s2">"out-octets"</span><span class="p">]),</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">"speed"</span><span class="p">]),</span>
+                <span class="s2">"admin_status"</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">"admin-status"</span><span class="p">],</span>
+                <span class="s2">"oper_status"</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">"oper-status"</span><span class="p">],</span>
+                <span class="s2">"mac"</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"phys-address"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">),</span>
             <span class="p">}</span>
             <span class="n">parsed_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">if_data</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">parsed_results</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No active interfaces with statistics found&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"No active interfaces with statistics found"</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">parsed_results</span></div>
 
@@ -257,24 +334,38 @@
 <div class="viewcode-block" id="parse_interfaces_catalog">
 <a class="viewcode-back" href="../../poller/cisco_polling.html#poller.cisco_polling.parse_interfaces_catalog">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_interfaces_catalog</span><span class="p">(</span><span class="n">raw_interfaces</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse all interface state entries for inventory discovery.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Parse all interface entries for inventory discovery.</span>
 
-    <span class="n">stats</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">&quot;ietf-interfaces:interfaces-state&quot;</span><span class="p">]</span>
-    <span class="n">interface_list</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">&quot;interface&quot;</span><span class="p">]</span>
+<span class="sd">    Unlike :func:`parse_interfaces`, includes administratively down</span>
+<span class="sd">    interfaces and does not require non-empty statistics. Used by</span>
+<span class="sd">    :mod:`poller.interface_discovery` when syncing the PostgreSQL</span>
+<span class="sd">    interface catalog.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        raw_interfaces: JSON payload from the</span>
+<span class="sd">            ``ietf-interfaces:interfaces-state`` RESTCONF endpoint.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of :class:`~poller.models.InterfaceData` for every interface</span>
+<span class="sd">        in the response (may be empty).</span>
+<span class="sd">    """</span>
+
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">"ietf-interfaces:interfaces-state"</span><span class="p">]</span>
+    <span class="n">interface_list</span> <span class="o">=</span> <span class="n">stats</span><span class="p">[</span><span class="s2">"interface"</span><span class="p">]</span>
 
     <span class="n">parsed_results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">interface_list</span><span class="p">:</span>
-        <span class="n">statistics</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;statistics&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="n">statistics</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"statistics"</span><span class="p">,</span> <span class="p">{})</span>
         <span class="n">if_data</span><span class="p">:</span> <span class="n">InterfaceData</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span>
-            <span class="s2">&quot;if_index&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">]),</span>
-            <span class="s2">&quot;in_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;in-octets&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
-            <span class="s2">&quot;out_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;out-octets&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
-            <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;speed&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
-            <span class="s2">&quot;admin_status&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;admin-status&quot;</span><span class="p">,</span> <span class="s2">&quot;down&quot;</span><span class="p">),</span>
-            <span class="s2">&quot;oper_status&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;oper-status&quot;</span><span class="p">,</span> <span class="s2">&quot;down&quot;</span><span class="p">),</span>
-            <span class="s2">&quot;mac&quot;</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;phys-address&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+            <span class="s2">"name"</span><span class="p">:</span> <span class="n">entry</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span>
+            <span class="s2">"if_index"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="p">[</span><span class="s2">"if-index"</span><span class="p">]),</span>
+            <span class="s2">"in_octets"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"in-octets"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+            <span class="s2">"out_octets"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">statistics</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"out-octets"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+            <span class="s2">"speed"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"speed"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)),</span>
+            <span class="s2">"admin_status"</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"admin-status"</span><span class="p">,</span> <span class="s2">"down"</span><span class="p">),</span>
+            <span class="s2">"oper_status"</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"oper-status"</span><span class="p">,</span> <span class="s2">"down"</span><span class="p">),</span>
+            <span class="s2">"mac"</span><span class="p">:</span> <span class="n">entry</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"phys-address"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">),</span>
         <span class="p">}</span>
         <span class="n">parsed_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">if_data</span><span class="p">)</span>
 

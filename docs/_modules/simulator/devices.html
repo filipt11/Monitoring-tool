@@ -74,7 +74,7 @@
            <div itemprop="articleBody">
              
   <h1>Source code for simulator.devices</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;Simulated network device models for Cisco and Juniper vendors.</span>
+<span></span><span class="sd">"""Simulated network device models for Cisco and Juniper vendors.</span>
 
 <span class="sd">Each concrete class represents a device with a specific utilization profile</span>
 <span class="sd">(high, low, average, or custom). Devices expose :meth:`BaseDevice.get_cpu`,</span>
@@ -85,7 +85,7 @@
 <span class="sd">Interface counters are stateful: each call to :meth:`BaseDevice.get_interfaces`</span>
 <span class="sd">advances ``in-octets`` and ``out-octets`` based on interface speed and admin</span>
 <span class="sd">status.</span>
-<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">"""</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">logic</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
@@ -95,7 +95,7 @@
 <div class="viewcode-block" id="BaseDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseDevice</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Abstract base model for a simulated network device.</span>
+<span class="w">    </span><span class="sd">"""Abstract base model for a simulated network device.</span>
 
 <span class="sd">    Stores connection metadata and maintains rolling interface byte counters.</span>
 <span class="sd">    Subclasses override metric methods and populate :attr:`interfaces_list`</span>
@@ -111,17 +111,17 @@
 <span class="sd">        port (int): TCP port the simulator listens on.</span>
 <span class="sd">        https (bool): Whether the device is configured for HTTPS access.</span>
 <span class="sd">        interface_counters (dict[str, int]): Rolling byte counters keyed as</span>
-<span class="sd">            ``&quot;{interface_name}_in&quot;`` and ``&quot;{interface_name}_out&quot;``.</span>
+<span class="sd">            ``"{interface_name}_in"`` and ``"{interface_name}_out"``.</span>
 <span class="sd">        interfaces_list (list[dict[str, Any]]): Static interface definitions.</span>
 <span class="sd">            Each dict contains ``name``, ``type``, ``admin-status``,</span>
 <span class="sd">            ``if-index``, ``phys-address``, and ``speed`` (bits per second as</span>
 <span class="sd">            a string).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a simulated device with connection metadata.</span>
+<span class="w">        </span><span class="sd">"""Initialize a simulated device with connection metadata.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -132,7 +132,7 @@
 <span class="sd">            password: HTTP Basic auth password expected by the simulator.</span>
 <span class="sd">            port: TCP port for the simulator HTTP server.</span>
 <span class="sd">            https: Whether the device is flagged as using HTTPS.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">ip_address</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">vendor</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">hostname</span>
@@ -147,45 +147,45 @@
 <div class="viewcode-block" id="BaseDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current simulated CPU utilization percentage.</span>
+<span class="w">        </span><span class="sd">"""Return the current simulated CPU utilization percentage.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Integer CPU usage in the range ``0``–``100``. The base</span>
 <span class="sd">            implementation delegates to</span>
 <span class="sd">            :func:`simulator.logic.get_average_utilized_cpu`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_average_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="BaseDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current simulated used memory in bytes.</span>
+<span class="w">        </span><span class="sd">"""Return the current simulated used memory in bytes.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Number of bytes currently in use. The base implementation</span>
 <span class="sd">            delegates to :func:`simulator.logic.get_average_utilized_ram`</span>
 <span class="sd">            using :meth:`get_total_memory` as the capacity.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_average_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="BaseDevice.get_total_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_total_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_total_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the total installed memory in bytes.</span>
+<span class="w">        </span><span class="sd">"""Return the total installed memory in bytes.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Total memory capacity in bytes. Default is ``762551372`` (~728 MB).</span>
 <span class="sd">            Subclasses may override to simulate different hardware.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="mi">762551372</span></div>
 
 
 <div class="viewcode-block" id="BaseDevice.get_interfaces">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_interfaces">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_interfaces</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return interface definitions with updated traffic counters.</span>
+<span class="w">        </span><span class="sd">"""Return interface definitions with updated traffic counters.</span>
 
 <span class="sd">        For each interface in :attr:`interfaces_list`, increments</span>
 <span class="sd">        ``in-octets`` and ``out-octets`` when ``admin-status`` is ``up`` and</span>
@@ -207,51 +207,51 @@
 
 <span class="sd">        Note:</span>
 <span class="sd">            Counters are persisted in :attr:`interface_counters` between calls.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="n">updated_interfaces</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">iface</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">interfaces_list</span><span class="p">:</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">iface</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]</span>
-            <span class="n">speed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">iface</span><span class="p">[</span><span class="s2">&quot;speed&quot;</span><span class="p">])</span>
-            <span class="n">status</span> <span class="o">=</span> <span class="n">iface</span><span class="p">[</span><span class="s2">&quot;admin-status&quot;</span><span class="p">]</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">iface</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span>
+            <span class="n">speed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">iface</span><span class="p">[</span><span class="s2">"speed"</span><span class="p">])</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="n">iface</span><span class="p">[</span><span class="s2">"admin-status"</span><span class="p">]</span>
 
-            <span class="n">prev_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_in&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
-            <span class="n">prev_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_out&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">prev_in</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_in"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="n">prev_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_out"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
 
             <span class="c1"># Omit inactive ports from counter updates</span>
-            <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span> <span class="ow">and</span> <span class="n">speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">"up"</span> <span class="ow">and</span> <span class="n">speed</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="c1"># Consider ports in range 20 to 30 as higher utilized IN ones</span>
-                <span class="k">if</span> <span class="n">iface</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">31</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">iface</span><span class="p">[</span><span class="s2">"if-index"</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">31</span><span class="p">):</span>
                     <span class="n">new_in</span> <span class="o">=</span> <span class="n">logic</span><span class="o">.</span><span class="n">increase_interface_counter</span><span class="p">(</span>
-                        <span class="n">prev_in</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_in&quot;</span>
+                        <span class="n">prev_in</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_in"</span>
                     <span class="p">)</span>
                     <span class="n">new_out</span> <span class="o">=</span> <span class="n">logic</span><span class="o">.</span><span class="n">increase_interface_counter</span><span class="p">(</span>
-                        <span class="n">prev_out</span><span class="p">,</span> <span class="n">speed</span> <span class="o">*</span> <span class="mf">0.7</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_out&quot;</span>
+                        <span class="n">prev_out</span><span class="p">,</span> <span class="n">speed</span> <span class="o">*</span> <span class="mf">0.7</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_out"</span>
                     <span class="p">)</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="n">new_in</span> <span class="o">=</span> <span class="n">logic</span><span class="o">.</span><span class="n">increase_interface_counter_for_higher_utilized</span><span class="p">(</span>
-                        <span class="n">prev_in</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_in&quot;</span>
+                        <span class="n">prev_in</span><span class="p">,</span> <span class="n">speed</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_in"</span>
                     <span class="p">)</span>
                     <span class="n">new_out</span> <span class="o">=</span> <span class="n">logic</span><span class="o">.</span><span class="n">increase_interface_counter_for_higher_utilized</span><span class="p">(</span>
-                        <span class="n">prev_out</span><span class="p">,</span> <span class="n">speed</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_out&quot;</span>
+                        <span class="n">prev_out</span><span class="p">,</span> <span class="n">speed</span> <span class="o">*</span> <span class="mf">0.05</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_out"</span>
                     <span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">new_in</span> <span class="o">=</span> <span class="n">prev_in</span>
                 <span class="n">new_out</span> <span class="o">=</span> <span class="n">prev_out</span>
 
-            <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_in&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_in</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_out&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_out</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_in"</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_in</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_out"</span><span class="p">]</span> <span class="o">=</span> <span class="n">new_out</span>
 
             <span class="n">updated_interfaces</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="n">iface</span><span class="p">[</span><span class="s2">&quot;type&quot;</span><span class="p">],</span>
-                    <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
-                    <span class="s2">&quot;oper-status&quot;</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
-                    <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="n">iface</span><span class="p">[</span><span class="s2">&quot;if-index&quot;</span><span class="p">],</span>
-                    <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="n">iface</span><span class="p">[</span><span class="s2">&quot;phys-address&quot;</span><span class="p">],</span>
-                    <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">speed</span><span class="p">),</span>
-                    <span class="s2">&quot;in-octets&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_in</span><span class="p">),</span>
-                    <span class="s2">&quot;out-octets&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_out</span><span class="p">),</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="n">iface</span><span class="p">[</span><span class="s2">"type"</span><span class="p">],</span>
+                    <span class="s2">"admin-status"</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+                    <span class="s2">"oper-status"</span><span class="p">:</span> <span class="n">status</span><span class="p">,</span>
+                    <span class="s2">"if-index"</span><span class="p">:</span> <span class="n">iface</span><span class="p">[</span><span class="s2">"if-index"</span><span class="p">],</span>
+                    <span class="s2">"phys-address"</span><span class="p">:</span> <span class="n">iface</span><span class="p">[</span><span class="s2">"phys-address"</span><span class="p">],</span>
+                    <span class="s2">"speed"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">speed</span><span class="p">),</span>
+                    <span class="s2">"in-octets"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_in</span><span class="p">),</span>
+                    <span class="s2">"out-octets"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">new_out</span><span class="p">),</span>
                 <span class="p">}</span>
             <span class="p">)</span>
 
@@ -264,7 +264,7 @@
 <div class="viewcode-block" id="BaseCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseCiscoDevice</span><span class="p">(</span><span class="n">BaseDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base Cisco device simulating RESTCONF-compatible IOS XE responses.</span>
+<span class="w">    </span><span class="sd">"""Base Cisco device simulating RESTCONF-compatible IOS XE responses.</span>
 
 <span class="sd">    Populates :attr:`interfaces_list` with a default set of Cisco interfaces</span>
 <span class="sd">    (VLAN, GigabitEthernet, Loopback). CPU and memory methods inherit average</span>
@@ -272,13 +272,13 @@
 
 <span class="sd">    See Also:</span>
 <span class="sd">        :mod:`simulator.main` for the RESTCONF endpoints that consume this</span>
-<span class="sd">        device&#39;s metrics.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        device's metrics.</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a Cisco device with default interface definitions.</span>
+<span class="w">        </span><span class="sd">"""Initialize a Cisco device with default interface definitions.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -289,7 +289,7 @@
 <span class="sd">            password: HTTP Basic auth password.</span>
 <span class="sd">            port: Simulator listen port.</span>
 <span class="sd">            https: HTTPS flag.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -297,36 +297,36 @@
         <span class="c1"># Define common interfaces for all Cisco devices</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">interfaces_list</span> <span class="o">=</span> <span class="p">[</span>
             <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Vlan2&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;iana-if-type:propVirtual&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
-                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:50:56:bf:29:d2&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;2000000000&quot;</span><span class="p">,</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Vlan2"</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"iana-if-type:propVirtual"</span><span class="p">,</span>
+                <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+                <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:50:56:bf:29:d2"</span><span class="p">,</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"2000000000"</span><span class="p">,</span>
             <span class="p">},</span>
             <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;GigabitEthernet1/0/2&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;iana-if-type:ethernetCsmacd&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">21</span><span class="p">,</span>
-                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:60:5a:bf:19:c4&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;1000000000&quot;</span><span class="p">,</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"GigabitEthernet1/0/2"</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"iana-if-type:ethernetCsmacd"</span><span class="p">,</span>
+                <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">21</span><span class="p">,</span>
+                <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:60:5a:bf:19:c4"</span><span class="p">,</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"1000000000"</span><span class="p">,</span>
             <span class="p">},</span>
             <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;GigabitEthernet2/0/4.14&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;iana-if-type:ethernetCsmacd&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;down&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
-                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:78:5a:ac:39:d2&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;1000000000&quot;</span><span class="p">,</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"GigabitEthernet2/0/4.14"</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"iana-if-type:ethernetCsmacd"</span><span class="p">,</span>
+                <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"down"</span><span class="p">,</span>
+                <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">7</span><span class="p">,</span>
+                <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:78:5a:ac:39:d2"</span><span class="p">,</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"1000000000"</span><span class="p">,</span>
             <span class="p">},</span>
             <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Loopback1&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;iana-if-type:softwareLoopback&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
-                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:50:56:bf:29:d2&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Loopback1"</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"iana-if-type:softwareLoopback"</span><span class="p">,</span>
+                <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
+                <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:50:56:bf:29:d2"</span><span class="p">,</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"0"</span><span class="p">,</span>
             <span class="p">},</span>
         <span class="p">]</span></div>
 
@@ -335,16 +335,16 @@
 <div class="viewcode-block" id="HighUtilizedCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HighUtilizedCiscoDevice</span><span class="p">(</span><span class="n">BaseCiscoDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cisco device that reports persistently high CPU and memory utilization.</span>
+<span class="w">    </span><span class="sd">"""Cisco device that reports persistently high CPU and memory utilization.</span>
 
 <span class="sd">    CPU values are typically in the ``70``–``100`` range with occasional spikes</span>
 <span class="sd">    to ``100``. Memory usage follows a high-utilization distribution.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a high-utilization Cisco device.</span>
+<span class="w">        </span><span class="sd">"""Initialize a high-utilization Cisco device.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -355,7 +355,7 @@
 <span class="sd">            password: HTTP Basic auth password.</span>
 <span class="sd">            port: Simulator listen port.</span>
 <span class="sd">            https: HTTPS flag.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -363,24 +363,24 @@
 <div class="viewcode-block" id="HighUtilizedCiscoDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return high CPU utilization percentage.</span>
+<span class="w">        </span><span class="sd">"""Return high CPU utilization percentage.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_high_utilized_cpu`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="HighUtilizedCiscoDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return high memory usage in bytes.</span>
+<span class="w">        </span><span class="sd">"""Return high memory usage in bytes.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Used memory bytes from</span>
 <span class="sd">            :func:`simulator.logic.get_high_utilized_ram`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 </div>
 
@@ -389,16 +389,16 @@
 <div class="viewcode-block" id="LowUtilizedCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">LowUtilizedCiscoDevice</span><span class="p">(</span><span class="n">BaseCiscoDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cisco device that reports persistently low CPU and memory utilization.</span>
+<span class="w">    </span><span class="sd">"""Cisco device that reports persistently low CPU and memory utilization.</span>
 
 <span class="sd">    Total memory is halved compared to the base device to simulate smaller</span>
 <span class="sd">    hardware.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a low-utilization Cisco device.</span>
+<span class="w">        </span><span class="sd">"""Initialize a low-utilization Cisco device.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -409,7 +409,7 @@
 <span class="sd">            password: HTTP Basic auth password.</span>
 <span class="sd">            port: Simulator listen port.</span>
 <span class="sd">            https: HTTPS flag.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -417,35 +417,35 @@
 <div class="viewcode-block" id="LowUtilizedCiscoDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return low CPU utilization percentage.</span>
+<span class="w">        </span><span class="sd">"""Return low CPU utilization percentage.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_low_utilized_cpu`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedCiscoDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return low memory usage in bytes.</span>
+<span class="w">        </span><span class="sd">"""Return low memory usage in bytes.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Used memory bytes from</span>
 <span class="sd">            :func:`simulator.logic.get_low_utilized_ram`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedCiscoDevice.get_total_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice.get_total_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_total_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return reduced total memory for a smaller Cisco device.</span>
+<span class="w">        </span><span class="sd">"""Return reduced total memory for a smaller Cisco device.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            ``381275686`` bytes (~364 MB), half of the base default.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="mi">381275686</span></div>
 </div>
 
@@ -454,16 +454,16 @@
 <div class="viewcode-block" id="AverageUtilizedCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.AverageUtilizedCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AverageUtilizedCiscoDevice</span><span class="p">(</span><span class="n">BaseCiscoDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cisco device with average CPU/memory and an extended interface list.</span>
+<span class="w">    </span><span class="sd">"""Cisco device with average CPU/memory and an extended interface list.</span>
 
 <span class="sd">    Extends the base Cisco interfaces with additional GigabitEthernet and VLAN</span>
 <span class="sd">    entries, including high-speed ports (8 Gbps and 10 Gbps).</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an average-utilization Cisco device.</span>
+<span class="w">        </span><span class="sd">"""Initialize an average-utilization Cisco device.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -474,7 +474,7 @@
 <span class="sd">            password: HTTP Basic auth password.</span>
 <span class="sd">            port: Simulator listen port.</span>
 <span class="sd">            https: HTTPS flag.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -483,36 +483,36 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">interfaces_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
             <span class="p">[</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;GigabitEthernet1/0/3&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;iana-if-type:ethernetCsmacd&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;down&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-                    <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:60:5a:bf:19:c5&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;2000000000&quot;</span><span class="p">,</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"GigabitEthernet1/0/3"</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"iana-if-type:ethernetCsmacd"</span><span class="p">,</span>
+                    <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"down"</span><span class="p">,</span>
+                    <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+                    <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:60:5a:bf:19:c5"</span><span class="p">,</span>
+                    <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"2000000000"</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;Vlan10&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;iana-if-type:propVirtual&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
-                    <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:50:56:bf:29:18&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;1000000000&quot;</span><span class="p">,</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"Vlan10"</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"iana-if-type:propVirtual"</span><span class="p">,</span>
+                    <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                    <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">20</span><span class="p">,</span>
+                    <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:50:56:bf:29:18"</span><span class="p">,</span>
+                    <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"1000000000"</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;GigabitEthernet1/0/5&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;iana-if-type:ethernetCsmacd&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">24</span><span class="p">,</span>
-                    <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:50:56:bf:29:d7&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;8000000000&quot;</span><span class="p">,</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"GigabitEthernet1/0/5"</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"iana-if-type:ethernetCsmacd"</span><span class="p">,</span>
+                    <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                    <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">24</span><span class="p">,</span>
+                    <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:50:56:bf:29:d7"</span><span class="p">,</span>
+                    <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"8000000000"</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;GigabitEthernet1/0/6&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;iana-if-type:ethernetCsmacd&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span>
-                    <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:50:56:bf:29:d8&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;10000000000&quot;</span><span class="p">,</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"GigabitEthernet1/0/6"</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"iana-if-type:ethernetCsmacd"</span><span class="p">,</span>
+                    <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                    <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">13</span><span class="p">,</span>
+                    <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:50:56:bf:29:d8"</span><span class="p">,</span>
+                    <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"10000000000"</span><span class="p">,</span>
                 <span class="p">},</span>
             <span class="p">]</span>
         <span class="p">)</span></div>
@@ -523,17 +523,17 @@
 <div class="viewcode-block" id="BaseJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseJuniperDevice</span><span class="p">(</span><span class="n">BaseDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base Juniper device simulating Junos RPC-style responses.</span>
+<span class="w">    </span><span class="sd">"""Base Juniper device simulating Junos RPC-style responses.</span>
 
 <span class="sd">    Populates :attr:`interfaces_list` with default Juniper interfaces</span>
 <span class="sd">    (``ge-*``, ``em*``, ``lo0``). CPU and memory methods inherit average</span>
 <span class="sd">    utilization behaviour from :class:`BaseDevice`.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a Juniper device with default interface definitions.</span>
+<span class="w">        </span><span class="sd">"""Initialize a Juniper device with default interface definitions.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -544,7 +544,7 @@
 <span class="sd">            password: HTTP Basic auth password.</span>
 <span class="sd">            port: Simulator listen port.</span>
 <span class="sd">            https: HTTPS flag.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -552,36 +552,36 @@
         <span class="c1"># Define common interfaces for all Juniper devices</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">interfaces_list</span> <span class="o">=</span> <span class="p">[</span>
             <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;ge-0/0/0&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ethernet&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;down&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;2000000000&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:f3:85:32:ab:80&quot;</span><span class="p">,</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"ge-0/0/0"</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"Ethernet"</span><span class="p">,</span>
+                <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"down"</span><span class="p">,</span>
+                <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"2000000000"</span><span class="p">,</span>
+                <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:f3:85:32:ab:80"</span><span class="p">,</span>
             <span class="p">},</span>
             <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;ge-0/0/1&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ethernet&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">23</span><span class="p">,</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;4000000000&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:6b:85:22:e4:01&quot;</span><span class="p">,</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"ge-0/0/1"</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"Ethernet"</span><span class="p">,</span>
+                <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">23</span><span class="p">,</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"4000000000"</span><span class="p">,</span>
+                <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:6b:85:22:e4:01"</span><span class="p">,</span>
             <span class="p">},</span>
             <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;em1&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ethernet&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;1000000000&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:31:56:ac:4f:01&quot;</span><span class="p">,</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"em1"</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"Ethernet"</span><span class="p">,</span>
+                <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">12</span><span class="p">,</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"1000000000"</span><span class="p">,</span>
+                <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:31:56:ac:4f:01"</span><span class="p">,</span>
             <span class="p">},</span>
             <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;lo0&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Loopback&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">,</span>
-                <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:05:85:22:ab:01&quot;</span><span class="p">,</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"lo0"</span><span class="p">,</span>
+                <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"Loopback"</span><span class="p">,</span>
+                <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"0"</span><span class="p">,</span>
+                <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:05:85:22:ab:01"</span><span class="p">,</span>
             <span class="p">},</span>
         <span class="p">]</span></div>
 
@@ -590,12 +590,12 @@
 <div class="viewcode-block" id="HighUtilizedJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">HighUtilizedJuniperDevice</span><span class="p">(</span><span class="n">BaseJuniperDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Juniper device that reports persistently high CPU and memory utilization.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Juniper device that reports persistently high CPU and memory utilization."""</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a high-utilization Juniper device.</span>
+<span class="w">        </span><span class="sd">"""Initialize a high-utilization Juniper device.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -606,7 +606,7 @@
 <span class="sd">            password: HTTP Basic auth password.</span>
 <span class="sd">            port: Simulator listen port.</span>
 <span class="sd">            https: HTTPS flag.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -614,24 +614,24 @@
 <div class="viewcode-block" id="HighUtilizedJuniperDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return high CPU utilization percentage.</span>
+<span class="w">        </span><span class="sd">"""Return high CPU utilization percentage.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_high_utilized_cpu`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="HighUtilizedJuniperDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return high memory usage in bytes.</span>
+<span class="w">        </span><span class="sd">"""Return high memory usage in bytes.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Used memory bytes from</span>
 <span class="sd">            :func:`simulator.logic.get_high_utilized_ram`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 </div>
 
@@ -640,15 +640,15 @@
 <div class="viewcode-block" id="LowUtilizedJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">LowUtilizedJuniperDevice</span><span class="p">(</span><span class="n">BaseJuniperDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Juniper device that reports persistently low CPU and memory utilization.</span>
+<span class="w">    </span><span class="sd">"""Juniper device that reports persistently low CPU and memory utilization.</span>
 
 <span class="sd">    Total memory is halved compared to the base device.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a low-utilization Juniper device.</span>
+<span class="w">        </span><span class="sd">"""Initialize a low-utilization Juniper device.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -659,7 +659,7 @@
 <span class="sd">            password: HTTP Basic auth password.</span>
 <span class="sd">            port: Simulator listen port.</span>
 <span class="sd">            https: HTTPS flag.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -667,36 +667,36 @@
 <div class="viewcode-block" id="LowUtilizedJuniperDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return low CPU utilization percentage.</span>
+<span class="w">        </span><span class="sd">"""Return low CPU utilization percentage.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_low_utilized_cpu`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_cpu</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedJuniperDevice.get_total_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_total_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_total_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return reduced total memory for a smaller Juniper device.</span>
+<span class="w">        </span><span class="sd">"""Return reduced total memory for a smaller Juniper device.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Half of :meth:`BaseDevice.get_total_memory`, i.e. ``381275686``</span>
 <span class="sd">            bytes.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedJuniperDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return low memory usage in bytes.</span>
+<span class="w">        </span><span class="sd">"""Return low memory usage in bytes.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Used memory bytes from</span>
 <span class="sd">            :func:`simulator.logic.get_low_utilized_ram`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">())</span></div>
 </div>
 
@@ -705,15 +705,15 @@
 <div class="viewcode-block" id="AverageUtilizedJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.AverageUtilizedJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">AverageUtilizedJuniperDevice</span><span class="p">(</span><span class="n">BaseJuniperDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Juniper device with average CPU/memory and an extended interface list.</span>
+<span class="w">    </span><span class="sd">"""Juniper device with average CPU/memory and an extended interface list.</span>
 
 <span class="sd">    Adds ``ge-2/0/0``, ``irb1``, and ``em2`` interfaces to the base set.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">ip_address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">vendor</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize an average-utilization Juniper device.</span>
+<span class="w">        </span><span class="sd">"""Initialize an average-utilization Juniper device.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -724,7 +724,7 @@
 <span class="sd">            password: HTTP Basic auth password.</span>
 <span class="sd">            port: Simulator listen port.</span>
 <span class="sd">            https: HTTPS flag.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -733,28 +733,28 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">interfaces_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
             <span class="p">[</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;ge-2/0/0&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ethernet&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
-                    <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;8000000000&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:a3:e5:72:12:70&quot;</span><span class="p">,</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"ge-2/0/0"</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"Ethernet"</span><span class="p">,</span>
+                    <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                    <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">25</span><span class="p">,</span>
+                    <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"8000000000"</span><span class="p">,</span>
+                    <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:a3:e5:72:12:70"</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;irb1&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;VxLAN-Tunnel-Endpoint&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
-                    <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;2000000000&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:65:a5:ee:4f:21&quot;</span><span class="p">,</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"irb1"</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"VxLAN-Tunnel-Endpoint"</span><span class="p">,</span>
+                    <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                    <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">11</span><span class="p">,</span>
+                    <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"2000000000"</span><span class="p">,</span>
+                    <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:65:a5:ee:4f:21"</span><span class="p">,</span>
                 <span class="p">},</span>
                 <span class="p">{</span>
-                    <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;em2&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Ethernet&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;admin-status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;if-index&quot;</span><span class="p">:</span> <span class="mi">17</span><span class="p">,</span>
-                    <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="s2">&quot;1000000000&quot;</span><span class="p">,</span>
-                    <span class="s2">&quot;phys-address&quot;</span><span class="p">:</span> <span class="s2">&quot;00:a4:51:cf:7f:22&quot;</span><span class="p">,</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="s2">"em2"</span><span class="p">,</span>
+                    <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"Ethernet"</span><span class="p">,</span>
+                    <span class="s2">"admin-status"</span><span class="p">:</span> <span class="s2">"up"</span><span class="p">,</span>
+                    <span class="s2">"if-index"</span><span class="p">:</span> <span class="mi">17</span><span class="p">,</span>
+                    <span class="s2">"speed"</span><span class="p">:</span> <span class="s2">"1000000000"</span><span class="p">,</span>
+                    <span class="s2">"phys-address"</span><span class="p">:</span> <span class="s2">"00:a4:51:cf:7f:22"</span><span class="p">,</span>
                 <span class="p">},</span>
             <span class="p">]</span>
         <span class="p">)</span></div>
@@ -764,13 +764,13 @@
 <div class="viewcode-block" id="customUtilizedCiscoDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedCiscoDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">customUtilizedCiscoDevice</span><span class="p">(</span><span class="n">BaseCiscoDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Cisco device with user-defined utilization via a :class:`CustomProfile`.</span>
+<span class="w">    </span><span class="sd">"""Cisco device with user-defined utilization via a :class:`CustomProfile`.</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        profile (CustomProfile): Utilization parameters controlling CPU and</span>
 <span class="sd">            memory randomization. Defaults to a new :class:`CustomProfile`</span>
 <span class="sd">            instance when not provided.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> 
@@ -784,7 +784,7 @@
         <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
         <span class="n">profile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CustomProfile</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a custom-utilization Cisco device.</span>
+<span class="w">        </span><span class="sd">"""Initialize a custom-utilization Cisco device.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -801,7 +801,7 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            pydantic.ValidationError: If ``profile`` contains invalid field</span>
 <span class="sd">                values (e.g. spike + drop chance exceeding 100%).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -811,24 +811,24 @@
 <div class="viewcode-block" id="customUtilizedCiscoDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedCiscoDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return CPU utilization based on :attr:`profile`.</span>
+<span class="w">        </span><span class="sd">"""Return CPU utilization based on :attr:`profile`.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_custom_utilized_cpu`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_cpu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="customUtilizedCiscoDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedCiscoDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return memory usage based on :attr:`profile`.</span>
+<span class="w">        </span><span class="sd">"""Return memory usage based on :attr:`profile`.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Used memory bytes from</span>
 <span class="sd">            :func:`simulator.logic.get_custom_utilized_ram`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
 </div>
 
@@ -837,13 +837,13 @@
 <div class="viewcode-block" id="customUtilizedJuniperDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedJuniperDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">customUtilizedJuniperDevice</span><span class="p">(</span><span class="n">BaseJuniperDevice</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Juniper device with user-defined utilization via a :class:`CustomProfile`.</span>
+<span class="w">    </span><span class="sd">"""Juniper device with user-defined utilization via a :class:`CustomProfile`.</span>
 
 <span class="sd">    Attributes:</span>
 <span class="sd">        profile (CustomProfile): Utilization parameters controlling CPU and</span>
 <span class="sd">            memory randomization. Defaults to a new :class:`CustomProfile`</span>
 <span class="sd">            instance when not provided.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">    """</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> 
@@ -857,7 +857,7 @@
         <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
         <span class="n">profile</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CustomProfile</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize a custom-utilization Juniper device.</span>
+<span class="w">        </span><span class="sd">"""Initialize a custom-utilization Juniper device.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            ip_address: Simulated management IP address.</span>
@@ -874,7 +874,7 @@
 <span class="sd">        Raises:</span>
 <span class="sd">            pydantic.ValidationError: If ``profile`` contains invalid field</span>
 <span class="sd">                values (e.g. spike + drop chance exceeding 100%).</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
             <span class="n">ip_address</span><span class="p">,</span> <span class="n">vendor</span><span class="p">,</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">port</span><span class="p">,</span> <span class="n">https</span>
         <span class="p">)</span>
@@ -884,24 +884,24 @@
 <div class="viewcode-block" id="customUtilizedJuniperDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedJuniperDevice.get_cpu">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_cpu</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return CPU utilization based on :attr:`profile`.</span>
+<span class="w">        </span><span class="sd">"""Return CPU utilization based on :attr:`profile`.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_custom_utilized_cpu`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_cpu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="customUtilizedJuniperDevice.get_used_memory">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.customUtilizedJuniperDevice.get_used_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_used_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return memory usage based on :attr:`profile`.</span>
+<span class="w">        </span><span class="sd">"""Return memory usage based on :attr:`profile`.</span>
 
 <span class="sd">        Returns:</span>
 <span class="sd">            Used memory bytes from</span>
 <span class="sd">            :func:`simulator.logic.get_custom_utilized_ram`.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
+<span class="sd">        """</span>
         <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_ram</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
 </div>
 

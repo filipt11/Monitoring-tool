@@ -74,17 +74,39 @@
            <div itemprop="articleBody">
              
   <h1>Source code for poller.api</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+<span></span><span class="sd">"""FastAPI application for network device discovery and inventory management.</span>
+
+<span class="sd">The poller API registers Cisco and Juniper devices in PostgreSQL after</span>
+<span class="sd">validating connectivity and retrieving hostname, model, and interface</span>
+<span class="sd">inventory from vendor-specific HTTP endpoints (RESTCONF for Cisco, RPC for</span>
+<span class="sd">Juniper). A background polling loop in :mod:`poller.main` reads the same</span>
+<span class="sd">database and writes metrics to InfluxDB.</span>
+
+<span class="sd">Configuration:</span>
+<span class="sd">    API listen port is defined by :data:`~poller.config.API_PORT` (default</span>
+<span class="sd">    ``8000``). PostgreSQL and InfluxDB connection settings live in</span>
+<span class="sd">    :mod:`poller.config`.</span>
+
+<span class="sd">Attributes:</span>
+<span class="sd">    app (fastapi.FastAPI): Root FastAPI application instance with pagination</span>
+<span class="sd">        enabled via ``fastapi-pagination``.</span>
+<span class="sd">    app_lifespan_data (dict): Mutable store populated during application</span>
+<span class="sd">        lifespan. Key ``"http_client"`` holds a shared</span>
+<span class="sd">        :class:`httpx.AsyncClient` used for device HTTP calls.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">Session</span><span class="p">,</span>
     <span class="n">init_db</span><span class="p">,</span>
     <span class="n">API_PORT</span><span class="p">,</span>
 <span class="p">)</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">DeviceCreate</span><span class="p">,</span> <span class="n">DeviceOut</span><span class="p">,</span> <span class="n">DeviceUpdate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">DeviceCreate</span><span class="p">,</span> <span class="n">DeviceOut</span><span class="p">,</span> <span class="n">DeviceUpdate</span><span class="p">,</span> <span class="n">Interface</span><span class="p">,</span> <span class="n">InterfaceOut</span><span class="p">,</span> <span class="n">utc_now</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">uvicorn</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.cisco_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_cisco_data_async</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.juniper_polling</span><span class="w"> </span><span class="kn">import</span> <span class="n">fetch_juniper_data_async</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.interface_discovery</span><span class="w"> </span><span class="kn">import</span> <span class="n">discover_device_interfaces_async</span><span class="p">,</span> <span class="n">sync_device_interfaces</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sys</span><span class="w"> </span><span class="kn">import</span> <span class="n">stderr</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy.exc</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegrityError</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi_pagination</span><span class="w"> </span><span class="kn">import</span> <span class="n">Page</span><span class="p">,</span> <span class="n">add_pagination</span>
@@ -100,9 +122,19 @@
 <a class="viewcode-back" href="../../poller/api.html#poller.api.lifespan">[docs]</a>
 <span class="nd">@asynccontextmanager</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create and manage HTTP client for API lifespan.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Create and tear down the shared HTTP client for the API lifespan.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        app: FastAPI application instance (unused; required by the lifespan</span>
+<span class="sd">            protocol).</span>
+
+<span class="sd">    Yields:</span>
+<span class="sd">        Control back to FastAPI while :data:`app_lifespan_data` contains an</span>
+<span class="sd">        open :class:`httpx.AsyncClient` with ``verify=False`` and a</span>
+<span class="sd">        ``10.0`` second read timeout.</span>
+<span class="sd">    """</span>
     <span class="n">client</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">verify</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>
-    <span class="n">app_lifespan_data</span><span class="p">[</span><span class="s2">&quot;http_client&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">client</span>
+    <span class="n">app_lifespan_data</span><span class="p">[</span><span class="s2">"http_client"</span><span class="p">]</span> <span class="o">=</span> <span class="n">client</span>
     <span class="k">yield</span>
     <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">aclose</span><span class="p">()</span></div>
 
@@ -122,15 +154,36 @@
     <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve hostname and model information from Cisco device.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Retrieve hostname and hardware model from a Cisco IOS XE device.</span>
 
-    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;https&quot;</span> <span class="k">if</span> <span class="n">https</span> <span class="k">else</span> <span class="s2">&quot;http&quot;</span>
+<span class="sd">    Queries RESTCONF endpoints for native hostname and device inventory in</span>
+<span class="sd">    parallel via :func:`~poller.cisco_polling.fetch_cisco_data_async`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ip: Device management IP address.</span>
+<span class="sd">        port: TCP port for RESTCONF (typically ``443`` or ``80``).</span>
+<span class="sd">        username: HTTP Basic authentication username.</span>
+<span class="sd">        password: HTTP Basic authentication password.</span>
+<span class="sd">        https: When ``True``, use ``https://``; otherwise ``http://``.</span>
+<span class="sd">        client: Shared async HTTP client from application lifespan.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A ``(hostname, model)`` tuple. Missing fields fall back to</span>
+<span class="sd">        ``"Unknown"``. ``model`` is taken from the first inventory entry's</span>
+<span class="sd">        ``hw-description``, stripped of surrounding whitespace.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ConnectionError: When either RESTCONF request fails or returns</span>
+<span class="sd">            unparseable data.</span>
+<span class="sd">    """</span>
+
+    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">"https"</span> <span class="k">if</span> <span class="n">https</span> <span class="k">else</span> <span class="s2">"http"</span>
     <span class="n">hostname_url</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">/restconf/data/Cisco-IOS-XE-native:native/hostname&quot;</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">/restconf/data/Cisco-IOS-XE-native:native/hostname"</span>
     <span class="p">)</span>
-    <span class="n">model_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">/restconf/data/Cisco-IOS-XE-device-hardware-oper:device-hardware-data/device-hardware/device-inventory&quot;</span>
-    <span class="n">hostname</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+    <span class="n">model_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">/restconf/data/Cisco-IOS-XE-device-hardware-oper:device-hardware-data/device-hardware/device-inventory"</span>
+    <span class="n">hostname</span> <span class="o">=</span> <span class="s2">"Unknown"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="s2">"Unknown"</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span>
@@ -140,17 +193,17 @@
         <span class="n">results</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
 
         <span class="n">hostname_raw</span><span class="p">,</span> <span class="n">model_raw</span> <span class="o">=</span> <span class="n">results</span>
-        <span class="n">hostname</span> <span class="o">=</span> <span class="n">hostname_raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;Cisco-IOS-XE-native:hostname&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">)</span>
+        <span class="n">hostname</span> <span class="o">=</span> <span class="n">hostname_raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Cisco-IOS-XE-native:hostname"</span><span class="p">,</span> <span class="s2">"Unknown"</span><span class="p">)</span>
         <span class="n">inventory_list</span> <span class="o">=</span> <span class="n">model_raw</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
-            <span class="s2">&quot;Cisco-IOS-XE-device-hardware-oper:device-inventory&quot;</span><span class="p">,</span> <span class="p">[]</span>
+            <span class="s2">"Cisco-IOS-XE-device-hardware-oper:device-inventory"</span><span class="p">,</span> <span class="p">[]</span>
         <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">inventory_list</span><span class="p">:</span>
-            <span class="n">model</span> <span class="o">=</span> <span class="n">inventory_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hw-description&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">inventory_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"hw-description"</span><span class="p">,</span> <span class="s2">"Unknown"</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
 
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error during modeling device: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error during modeling device: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error during modeling device: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error during modeling device: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span></div>
 
@@ -166,46 +219,114 @@
     <span class="n">https</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
     <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve hostname and model information from Juniper device.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Retrieve hostname and hardware model from a Juniper device.</span>
 
-    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;https&quot;</span> <span class="k">if</span> <span class="n">https</span> <span class="k">else</span> <span class="s2">&quot;http&quot;</span>
-    <span class="n">system_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">/rpc/get-system-information&quot;</span>
-    <span class="n">hostname</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span>
+<span class="sd">    Calls the ``/rpc/get-system-information`` endpoint via</span>
+<span class="sd">    :func:`~poller.juniper_polling.fetch_juniper_data_async`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ip: Device management IP address.</span>
+<span class="sd">        port: TCP port for Junos HTTP API (typically ``443`` or ``830``).</span>
+<span class="sd">        username: HTTP Basic authentication username.</span>
+<span class="sd">        password: HTTP Basic authentication password.</span>
+<span class="sd">        https: When ``True``, use ``https://``; otherwise ``http://``.</span>
+<span class="sd">        client: Shared async HTTP client from application lifespan.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        A ``(hostname, model)`` tuple parsed from ``system-information``.</span>
+<span class="sd">        Missing fields fall back to ``"Unknown"``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ConnectionError: When the RPC request fails or returns unparseable</span>
+<span class="sd">            data.</span>
+<span class="sd">    """</span>
+
+    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">"https"</span> <span class="k">if</span> <span class="n">https</span> <span class="k">else</span> <span class="s2">"http"</span>
+    <span class="n">system_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">/rpc/get-system-information"</span>
+    <span class="n">hostname</span> <span class="o">=</span> <span class="s2">"Unknown"</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="s2">"Unknown"</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="k">await</span> <span class="n">fetch_juniper_data_async</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">system_url</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
-        <span class="n">sys_info</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;system-information&quot;</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">hostname</span> <span class="o">=</span> <span class="n">sys_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;host-name&quot;</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">)</span>
-        <span class="n">model</span> <span class="o">=</span> <span class="n">sys_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;hardware-model&quot;</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">)</span>
+        <span class="n">sys_info</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"system-information"</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">hostname</span> <span class="o">=</span> <span class="n">sys_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"host-name"</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data"</span><span class="p">,</span> <span class="s2">"Unknown"</span><span class="p">)</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">sys_info</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"hardware-model"</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"data"</span><span class="p">,</span> <span class="s2">"Unknown"</span><span class="p">)</span>
 
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error during modeling device: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error during modeling device: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error during modeling device: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error during modeling device: </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span></div>
 
 
 
-<div class="viewcode-block" id="health">
-<a class="viewcode-back" href="../../poller/api.html#poller.api.health">[docs]</a>
-<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<div class="viewcode-block" id="discover_and_sync_interfaces">
+<a class="viewcode-back" href="../../poller/api.html#poller.api.discover_and_sync_interfaces">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">discover_and_sync_interfaces</span><span class="p">(</span>
+    <span class="n">device</span><span class="p">:</span> <span class="n">Device</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span> <span class="n">db</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Interface</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">"""Discover interfaces on a device and upsert them in PostgreSQL.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        device: SQLAlchemy :class:`~poller.models.Device` row to query.</span>
+<span class="sd">        client: Shared async HTTP client from application lifespan.</span>
+<span class="sd">        db: Active SQLAlchemy session bound to PostgreSQL.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of :class:`~poller.models.Interface` rows after</span>
+<span class="sd">        :func:`~poller.interface_discovery.sync_device_interfaces`</span>
+<span class="sd">        reconciles the inventory with the database.</span>
+<span class="sd">    """</span>
+
+    <span class="n">discovered</span> <span class="o">=</span> <span class="k">await</span> <span class="n">discover_device_interfaces_async</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">client</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">sync_device_interfaces</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">discovered</span><span class="p">)</span></div>
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/health"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return status &#39;OK&#39; if API started correctly.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Health-check endpoint for the poller API.</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;OK&quot;</span><span class="p">}</span></div>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A JSON object with a single key:</span>
+
+<span class="sd">        .. code-block:: json</span>
+
+<span class="sd">            {"status": "OK"}</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Does not verify database or InfluxDB connectivity.</span>
+<span class="sd">    """</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"OK"</span><span class="p">}</span>
 
 
-
-<div class="viewcode-block" id="add_device">
-<a class="viewcode-back" href="../../poller/api.html#poller.api.add_device">[docs]</a>
-<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/device&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/api/device"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">201</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">add_device</span><span class="p">(</span><span class="n">device_in</span><span class="p">:</span> <span class="n">DeviceCreate</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add new device to database after validating connectivity and retrieving device information.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Register a new network device after live connectivity validation.</span>
 
-    <span class="n">client</span> <span class="o">=</span> <span class="n">app_lifespan_data</span><span class="p">[</span><span class="s2">&quot;http_client&quot;</span><span class="p">]</span>
+<span class="sd">    Contacts the device to resolve hostname and model, persists a</span>
+<span class="sd">    :class:`~poller.models.Device` row, then attempts interface discovery.</span>
+<span class="sd">    Interface discovery failures are logged but do not roll back device</span>
+<span class="sd">    creation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        device_in: Request body with ``ip``, ``port``, ``vendor``,</span>
+<span class="sd">            ``username``, ``password``, and ``https`` fields.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        The created :class:`~poller.models.Device` ORM object (serialized</span>
+<span class="sd">        without an explicit ``response_model``).</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        fastapi.HTTPException: ``400`` for unsupported vendor; ``502`` when</span>
+<span class="sd">            the device is unreachable; ``409`` on duplicate ``ip``/``port``;</span>
+<span class="sd">            ``500`` on other database errors.</span>
+<span class="sd">    """</span>
+
+    <span class="n">client</span> <span class="o">=</span> <span class="n">app_lifespan_data</span><span class="p">[</span><span class="s2">"http_client"</span><span class="p">]</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">device_in</span><span class="o">.</span><span class="n">vendor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;cisco&quot;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">device_in</span><span class="o">.</span><span class="n">vendor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"cisco"</span><span class="p">:</span>
             <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">model_cisco_device_info</span><span class="p">(</span>
                 <span class="n">device_in</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span>
                 <span class="n">device_in</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
@@ -214,7 +335,7 @@
                 <span class="n">device_in</span><span class="o">.</span><span class="n">https</span><span class="p">,</span>
                 <span class="n">client</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="k">elif</span> <span class="n">device_in</span><span class="o">.</span><span class="n">vendor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;juniper&quot;</span><span class="p">:</span>
+        <span class="k">elif</span> <span class="n">device_in</span><span class="o">.</span><span class="n">vendor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"juniper"</span><span class="p">:</span>
             <span class="n">hostname</span><span class="p">,</span> <span class="n">model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">model_juniper_device_info</span><span class="p">(</span>
                 <span class="n">device_in</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span>
                 <span class="n">device_in</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
@@ -227,7 +348,7 @@
             <span class="c1"># Return 400 if vendor is not supported</span>
             <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
                 <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_400_BAD_REQUEST</span><span class="p">,</span>
-                <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Unsupported vendor: &#39;</span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">vendor</span><span class="si">}</span><span class="s2">&#39;&quot;</span>
+                <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Unsupported vendor: '</span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">vendor</span><span class="si">}</span><span class="s2">'"</span>
             <span class="p">)</span>
     <span class="k">except</span> <span class="ne">ConnectionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="c1"># Return 502 if device not responds</span>
@@ -245,87 +366,125 @@
                     <span class="n">hostname</span><span class="o">=</span><span class="n">hostname</span><span class="p">,</span>
                     <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
                     <span class="n">https</span><span class="o">=</span><span class="n">device_in</span><span class="o">.</span><span class="n">https</span><span class="p">,</span>
+                    <span class="n">created_at</span><span class="o">=</span><span class="n">utc_now</span><span class="p">(),</span>
                 <span class="p">)</span>
                 <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_device</span><span class="p">)</span>
 
             <span class="n">db</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">new_device</span><span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully created device: </span><span class="si">{</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Successfully created device: </span><span class="si">{</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">synced</span> <span class="o">=</span> <span class="k">await</span> <span class="n">discover_and_sync_interfaces</span><span class="p">(</span><span class="n">new_device</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"Discovered </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">synced</span><span class="p">)</span><span class="si">}</span><span class="s2"> interfaces for device: </span><span class="si">{</span><span class="n">hostname</span><span class="si">}</span><span class="s2">"</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"Device </span><span class="si">{</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> created but interface discovery failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
+                <span class="p">)</span>
+
+            <span class="n">db</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">new_device</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">new_device</span>
 
     <span class="k">except</span> <span class="n">IntegrityError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="c1"># Device already exists in Database</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Device already exists: </span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Device already exists: </span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
             <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_409_CONFLICT</span><span class="p">,</span>
-            <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Device: </span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2"> already exists in database.&quot;</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Device: </span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device_in</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2"> already exists in database."</span><span class="p">,</span>
         <span class="p">)</span>
 
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="c1"># Catch other DB error</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Database error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Database error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
             <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_500_INTERNAL_SERVER_ERROR</span><span class="p">,</span>
-            <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Internal database error occurred.&quot;</span><span class="p">,</span>
-        <span class="p">)</span></div>
+            <span class="n">detail</span><span class="o">=</span><span class="s2">"Internal database error occurred."</span><span class="p">,</span>
+        <span class="p">)</span>
 
 
-
-<div class="viewcode-block" id="delete_device">
-<a class="viewcode-back" href="../../poller/api.html#poller.api.delete_device">[docs]</a>
-<span class="nd">@app</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">&quot;/api/device/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="s2">"/api/device/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_device</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Delete device from database by ID.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Remove a device and its interfaces from PostgreSQL by primary key.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        id: Device primary key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Confirmation payload:</span>
+
+<span class="sd">        .. code-block:: json</span>
+
+<span class="sd">            {"status": "deleted", "message": "Successfully deleted device"}</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        fastapi.HTTPException: ``404`` when no device matches ``id``;</span>
+<span class="sd">            ``500`` on database errors.</span>
+<span class="sd">    """</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
             <span class="n">device</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Device</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Device</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">device</span><span class="p">:</span>
-                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Attempted to delete non-existing device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Attempted to delete non-existing device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
                 <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
                     <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_404_NOT_FOUND</span><span class="p">,</span>
-                    <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Not found device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Not found device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">."</span><span class="p">,</span>
                 <span class="p">)</span>
 
             <span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
             <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 
-            <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully deleted device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;deleted&quot;</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;Successfully deleted device&quot;</span><span class="p">}</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Successfully deleted device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"deleted"</span><span class="p">,</span> <span class="s2">"message"</span><span class="p">:</span> <span class="s2">"Successfully deleted device"</span><span class="p">}</span>
 
     <span class="k">except</span> <span class="n">HTTPException</span><span class="p">:</span>
         <span class="k">raise</span>
 
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Database error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Database error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
             <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_500_INTERNAL_SERVER_ERROR</span><span class="p">,</span>
-            <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Internal database error occurred.&quot;</span><span class="p">,</span>
-        <span class="p">)</span></div>
+            <span class="n">detail</span><span class="o">=</span><span class="s2">"Internal database error occurred."</span><span class="p">,</span>
+        <span class="p">)</span>
 
 
-
-<div class="viewcode-block" id="rediscover_device">
-<a class="viewcode-back" href="../../poller/api.html#poller.api.rediscover_device">[docs]</a>
-<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/rediscover/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/api/rediscover/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">rediscover_device</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update device hostname and model information through rediscovery.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Refresh hostname, model, and interface inventory for an existing device.</span>
 
-    <span class="n">client</span> <span class="o">=</span> <span class="n">app_lifespan_data</span><span class="p">[</span><span class="s2">&quot;http_client&quot;</span><span class="p">]</span>
-    <span class="n">new_hostname</span><span class="p">,</span> <span class="n">new_model</span> <span class="o">=</span> <span class="s2">&quot;Unknown&quot;</span><span class="p">,</span> <span class="s2">&quot;Unknown&quot;</span>
+<span class="sd">    Re-runs vendor-specific modeling and interface discovery against the</span>
+<span class="sd">    stored credentials, then updates the device row in place.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        id: Device primary key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Updated :class:`~poller.models.Device` ORM object.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        fastapi.HTTPException: ``404`` when the device does not exist;</span>
+<span class="sd">            ``400`` for unsupported vendor; ``502`` when the device is</span>
+<span class="sd">            unreachable; ``500`` on database errors.</span>
+<span class="sd">    """</span>
+
+    <span class="n">client</span> <span class="o">=</span> <span class="n">app_lifespan_data</span><span class="p">[</span><span class="s2">"http_client"</span><span class="p">]</span>
+    <span class="n">new_hostname</span><span class="p">,</span> <span class="n">new_model</span> <span class="o">=</span> <span class="s2">"Unknown"</span><span class="p">,</span> <span class="s2">"Unknown"</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
             <span class="n">device</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Device</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Device</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="n">device</span><span class="p">:</span>
                 <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;Attempted to rediscover non-existing device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">&quot;</span>
+                    <span class="sa">f</span><span class="s2">"Attempted to rediscover non-existing device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">"</span>
                 <span class="p">)</span>
                 <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
                     <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_404_NOT_FOUND</span><span class="p">,</span>
-                    <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Not found device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Not found device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">."</span><span class="p">,</span>
                 <span class="p">)</span>
 
-            <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">vendor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;cisco&quot;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">vendor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"cisco"</span><span class="p">:</span>
                 <span class="n">new_hostname</span><span class="p">,</span> <span class="n">new_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">model_cisco_device_info</span><span class="p">(</span>
                     <span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span>
                     <span class="n">device</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
@@ -334,7 +493,7 @@
                     <span class="n">device</span><span class="o">.</span><span class="n">https</span><span class="p">,</span>
                     <span class="n">client</span><span class="p">,</span>
                 <span class="p">)</span>
-            <span class="k">elif</span> <span class="n">device</span><span class="o">.</span><span class="n">vendor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;juniper&quot;</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="n">device</span><span class="o">.</span><span class="n">vendor</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">"juniper"</span><span class="p">:</span>
                 <span class="n">new_hostname</span><span class="p">,</span> <span class="n">new_model</span> <span class="o">=</span> <span class="k">await</span> <span class="n">model_juniper_device_info</span><span class="p">(</span>
                     <span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="p">,</span>
                     <span class="n">device</span><span class="o">.</span><span class="n">port</span><span class="p">,</span>
@@ -346,71 +505,127 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
                     <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_400_BAD_REQUEST</span><span class="p">,</span>
-                    <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Unsupported vendor: </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">vendor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                    <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Unsupported vendor: </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">vendor</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
                 <span class="p">)</span>
 
             <span class="n">device</span><span class="o">.</span><span class="n">hostname</span> <span class="o">=</span> <span class="n">new_hostname</span>
             <span class="n">device</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">new_model</span>
 
+            <span class="n">synced</span> <span class="o">=</span> <span class="k">await</span> <span class="n">discover_and_sync_interfaces</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">client</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
             <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
             <span class="n">db</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Successfully rediscovered device: </span><span class="si">{</span><span class="n">new_hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Successfully rediscovered device: </span><span class="si">{</span><span class="n">new_hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2"> "</span>
+                <span class="sa">f</span><span class="s2">"with </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">synced</span><span class="p">)</span><span class="si">}</span><span class="s2"> interfaces"</span>
             <span class="p">)</span>
             <span class="k">return</span> <span class="n">device</span>
 
     <span class="k">except</span> <span class="n">HTTPException</span><span class="p">:</span>
         <span class="k">raise</span>
     <span class="k">except</span> <span class="ne">ConnectionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rediscover failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">502</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Device unreachable: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Rediscover failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">502</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Device unreachable: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rediscover failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Internal database error occurred.&quot;</span><span class="p">)</span></div>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Rediscover failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Internal database error occurred."</span><span class="p">)</span>
 
 
-
-<div class="viewcode-block" id="get_device">
-<a class="viewcode-back" href="../../poller/api.html#poller.api.get_device">[docs]</a>
-<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/device/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">DeviceOut</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/api/device/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">DeviceOut</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_device</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve device information by ID.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return a single device record by primary key.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        id: Device primary key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        :class:`~poller.models.DeviceOut`: Device details including</span>
+<span class="sd">        credentials and ``created_at``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        fastapi.HTTPException: ``404`` when no device matches ``id``.</span>
+<span class="sd">    """</span>
 
     <span class="k">with</span> <span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
         <span class="n">device</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Device</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Device</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">device</span><span class="p">:</span>
             <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
                 <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_404_NOT_FOUND</span><span class="p">,</span>
-                <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Not found device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> &quot;</span><span class="p">,</span>
+                <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Not found device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2"> "</span><span class="p">,</span>
             <span class="p">)</span>
-        <span class="k">return</span> <span class="n">device</span></div>
+        <span class="k">return</span> <span class="n">device</span>
 
 
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/api/device/</span><span class="si">{id}</span><span class="s2">/interfaces"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">InterfaceOut</span><span class="p">])</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_device_interfaces</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""List interfaces discovered on a device, ordered by ``if_index``.</span>
 
-<div class="viewcode-block" id="get_devices">
-<a class="viewcode-back" href="../../poller/api.html#poller.api.get_devices">[docs]</a>
-<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/devices&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">DeviceOut</span><span class="p">])</span>
+<span class="sd">    Args:</span>
+<span class="sd">        id: Device primary key.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of :class:`~poller.models.InterfaceOut` entries for the device.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        fastapi.HTTPException: ``404`` when no device matches ``id``.</span>
+<span class="sd">    """</span>
+
+    <span class="k">with</span> <span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Device</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Device</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">device</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span>
+                <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_404_NOT_FOUND</span><span class="p">,</span>
+                <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">"Not found device with ID: </span><span class="si">{</span><span class="nb">id</span><span class="si">}</span><span class="s2">."</span><span class="p">,</span>
+            <span class="p">)</span>
+
+        <span class="n">interfaces</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Interface</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Interface</span><span class="o">.</span><span class="n">device_id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span>
+            <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Interface</span><span class="o">.</span><span class="n">if_index</span><span class="o">.</span><span class="n">asc</span><span class="p">())</span>
+            <span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">interfaces</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/api/devices"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">Page</span><span class="p">[</span><span class="n">DeviceOut</span><span class="p">])</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_devices</span><span class="p">():</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve paginated list of all devices from database.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Return a paginated list of all registered devices.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        :class:`fastapi_pagination.Page` of</span>
+<span class="sd">        :class:`~poller.models.DeviceOut` items ordered by ascending ``id``.</span>
+<span class="sd">        Page size follows ``fastapi-pagination`` defaults (typically ``50``).</span>
+<span class="sd">    """</span>
 
     <span class="k">with</span> <span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
         <span class="n">query</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Device</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Device</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">asc</span><span class="p">())</span>
-        <span class="k">return</span> <span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="n">paginate</span><span class="p">(</span><span class="n">db</span><span class="p">,</span> <span class="n">query</span><span class="p">)</span>
 
 
-
-<div class="viewcode-block" id="update_device">
-<a class="viewcode-back" href="../../poller/api.html#poller.api.update_device">[docs]</a>
-<span class="nd">@app</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s2">&quot;/api/device/</span><span class="si">{id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">DeviceOut</span><span class="p">)</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s2">"/api/device/</span><span class="si">{id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">DeviceOut</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">update_device</span><span class="p">(</span><span class="nb">id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">device_update</span><span class="p">:</span> <span class="n">DeviceUpdate</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update device information by ID.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Partially update mutable device fields (credentials, port, HTTPS).</span>
+
+<span class="sd">    Only fields present in the request body are changed; omitted fields</span>
+<span class="sd">    remain unchanged.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        id: Device primary key.</span>
+<span class="sd">        device_update: Partial update with optional ``port``, ``username``,</span>
+<span class="sd">            ``password``, and ``https``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Updated :class:`~poller.models.DeviceOut` representation.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        fastapi.HTTPException: ``404`` when no device matches ``id``.</span>
+<span class="sd">    """</span>
 
     <span class="k">with</span> <span class="n">Session</span><span class="p">()</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
         <span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">begin</span><span class="p">():</span>
             <span class="n">device</span> <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="n">Device</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Device</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="nb">id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
 
             <span class="k">if</span> <span class="ow">not</span> <span class="n">device</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Device not found&quot;</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Device not found"</span><span class="p">)</span>
 
             <span class="n">update_data</span> <span class="o">=</span> <span class="n">device_update</span><span class="o">.</span><span class="n">model_dump</span><span class="p">(</span><span class="n">exclude_unset</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 
@@ -418,36 +633,45 @@
                 <span class="nb">setattr</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
 
         <span class="n">db</span><span class="o">.</span><span class="n">refresh</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully updated device: </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> |  </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">device</span></div>
-
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Successfully updated device: </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> |  </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">device</span>
 
 
 <div class="viewcode-block" id="main">
 <a class="viewcode-back" href="../../poller/api.html#poller.api.main">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span> <span class="c1"># pragma: no cover</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Connect to DB and start uvicorn server&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Initialize PostgreSQL schema and start the Uvicorn API server.</span>
+
+<span class="sd">    Calls :func:`~poller.config.init_db` before binding to ``0.0.0.0`` on</span>
+<span class="sd">    :data:`~poller.config.API_PORT`. Returns early without starting the server</span>
+<span class="sd">    when the database is unreachable.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ``False`` when :func:`~poller.config.init_db` raises</span>
+<span class="sd">        :class:`ConnectionError`; otherwise ``None`` (Uvicorn blocks until</span>
+<span class="sd">        shutdown).</span>
+<span class="sd">    """</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">init_db</span><span class="p">()</span>
     <span class="k">except</span> <span class="ne">ConnectionError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Finishing proggram&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">critical</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Finishing proggram"</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span>
 
-    <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s2">&quot;0.0.0.0&quot;</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">API_PORT</span><span class="p">)</span></div>
+    <span class="n">uvicorn</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">app</span><span class="p">,</span> <span class="n">host</span><span class="o">=</span><span class="s2">"0.0.0.0"</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">API_PORT</span><span class="p">)</span></div>
 
 
 
-<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span> <span class="c1"># pragma: no cover</span>
     <span class="c1"># Configure Logging</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
-    <span class="n">logger</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">)</span>
     <span class="n">logger</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-        <span class="s2">&quot;discovery.log&quot;</span><span class="p">,</span>
-        <span class="n">rotation</span><span class="o">=</span><span class="s2">&quot;10 MB&quot;</span><span class="p">,</span>
-        <span class="n">retention</span><span class="o">=</span><span class="s2">&quot;10 days&quot;</span><span class="p">,</span>
-        <span class="n">level</span><span class="o">=</span><span class="s2">&quot;INFO&quot;</span><span class="p">,</span>
-        <span class="n">compression</span><span class="o">=</span><span class="s2">&quot;tar&quot;</span><span class="p">,</span>
+        <span class="s2">"discovery.log"</span><span class="p">,</span>
+        <span class="n">rotation</span><span class="o">=</span><span class="s2">"10 MB"</span><span class="p">,</span>
+        <span class="n">retention</span><span class="o">=</span><span class="s2">"10 days"</span><span class="p">,</span>
+        <span class="n">level</span><span class="o">=</span><span class="s2">"INFO"</span><span class="p">,</span>
+        <span class="n">compression</span><span class="o">=</span><span class="s2">"tar"</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="n">main</span><span class="p">()</span>

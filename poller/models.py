@@ -1,3 +1,10 @@
+"""SQLAlchemy ORM models and Pydantic schemas for the poller service.
+
+Defines PostgreSQL tables for device inventory and discovered interfaces,
+plus request/response schemas used by :mod:`poller.api` and transient
+structures passed between polling modules and :mod:`poller.main`.
+"""
+
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -9,11 +16,34 @@ from typing import TypedDict
 
 
 def utc_now() -> datetime:
+    """Return the current UTC timestamp for ORM defaults.
+
+    Returns:
+        Timezone-aware :class:`datetime.datetime` in UTC.
+    """
     return datetime.now(timezone.utc)
 
 
 class Device(Base):
-    """SQLAlchemy model representing a network device stored in the database."""
+    """SQLAlchemy model representing a monitored network device.
+
+    Stored in the ``devices`` table. Uniqueness of ``ip`` + ``port`` is
+    enforced at the database level. Related interfaces are deleted
+    automatically when the device row is removed.
+
+    Attributes:
+        id: Surrogate primary key.
+        hostname: Resolved hostname from the device API.
+        ip: Management IP address.
+        vendor: Device vendor (``cisco`` or ``juniper``).
+        model: Hardware model string from device inventory.
+        username: HTTP Basic authentication username.
+        password: HTTP Basic authentication password.
+        port: TCP port for RESTCONF/RPC access.
+        https: Whether HTTPS is used for device HTTP calls.
+        created_at: UTC timestamp when the device was registered.
+        interfaces: Related :class:`Interface` rows (one-to-many).
+    """
 
     __tablename__ = "devices"
 
@@ -43,7 +73,24 @@ class Device(Base):
 
 
 class Interface(Base):
-    """SQLAlchemy model representing a network interface discovered on a device."""
+    """SQLAlchemy model representing a discovered network interface.
+
+    Stored in the ``interfaces`` table. Each row belongs to one
+    :class:`Device` and is uniquely identified by ``device_id`` +
+    ``if_index``.
+
+    Attributes:
+        id: Surrogate primary key.
+        device_id: Foreign key to :class:`Device`.
+        name: Interface name as reported by the device (e.g. ``Gi0/0``).
+        if_index: SNMP/interface index from vendor API.
+        mac: Physical (MAC) address, if available.
+        speed_bps: Link speed in bits per second.
+        admin_status: Administrative status (``up`` / ``down``).
+        oper_status: Operational status (``up`` / ``down``).
+        discovered_at: UTC timestamp of the last successful discovery.
+        device: Parent :class:`Device` relationship.
+    """
 
     __tablename__ = "interfaces"
 
@@ -72,7 +119,10 @@ class Interface(Base):
 
 
 class InterfaceOut(BaseModel):
-    """Pydantic model used for API responses containing interface details."""
+    """Pydantic schema for interface records returned by the REST API.
+
+    Serialized from :class:`Interface` ORM rows via ``from_attributes``.
+    """
 
     id: int
     device_id: int
@@ -88,7 +138,11 @@ class InterfaceOut(BaseModel):
 
 
 class DeviceWithPolledData(BaseModel):
-    """Pydantic model representing a device with polling metrics for InfluxDB."""
+    """Transient device snapshot with metrics for InfluxDB writes.
+
+    Built in :mod:`poller.main` after a successful poll and passed to
+    :func:`~poller.main.save_polled_device_data`.
+    """
 
     id: int
     hostname: str
@@ -100,7 +154,7 @@ class DeviceWithPolledData(BaseModel):
 
 
 class DeviceCreate(BaseModel):
-    """Pydantic model for device creation requests."""
+    """Request body schema for ``POST /api/device``."""
 
     ip: str
     port: int
@@ -111,7 +165,10 @@ class DeviceCreate(BaseModel):
 
 
 class DeviceOut(BaseModel):
-    """Pydantic model used for API responses containing device details."""
+    """Response schema for device records exposed by the REST API.
+
+    Serialized from :class:`Device` ORM rows via ``from_attributes``.
+    """
 
     id: int
     ip: str
@@ -128,7 +185,10 @@ class DeviceOut(BaseModel):
 
 
 class DeviceUpdate(BaseModel):
-    """Pydantic model for partial device updates."""
+    """Request body schema for ``PATCH /api/device/{id}``.
+
+    All fields are optional; only provided keys are updated.
+    """
 
     port: Optional[int] = Field(None, ge=1, le=65535)
     username: Optional[str] = None
@@ -137,7 +197,7 @@ class DeviceUpdate(BaseModel):
 
 
 class InterfaceData(TypedDict):
-    """TypedDict describing interface counters and state returned by polling."""
+    """Normalized interface metrics returned by vendor polling functions."""
 
     name: str
     if_index: int
@@ -150,7 +210,7 @@ class InterfaceData(TypedDict):
 
 
 class PollingResult(TypedDict):
-    """TypedDict describing the polling result returned from device polling."""
+    """Aggregated poll result returned by Cisco/Juniper polling modules."""
 
     status: str
     cpu: int | None

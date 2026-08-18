@@ -46,12 +46,22 @@ napoleon_include_special_members = False
 autodoc_mock_imports = [
 	'fastapi',
 	'fastapi.security',
+	'fastapi_pagination',
+	'fastapi_pagination.ext',
+	'fastapi_pagination.ext.sqlalchemy',
 	'uvicorn',
 	'httpx',
 	'loguru',
 	'influxdb_client',
+	'influxdb_client.client',
+	'influxdb_client.client.write_api',
 	'sqlalchemy',
+	'sqlalchemy.exc',
+	'sqlalchemy.orm',
+	'pydantic',
 	'pydantic_settings',
+	'psycopg2',
+	'psycopg2_binary',
 ]
 
 # Autodoc member order

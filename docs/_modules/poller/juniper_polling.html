@@ -74,7 +74,20 @@
            <div itemprop="articleBody">
              
   <h1>Source code for poller.juniper_polling</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
+<span></span><span class="sd">"""Juniper Junos RPC polling and response parsing.</span>
+
+<span class="sd">Contacts route-engine and interface RPC endpoints in parallel, parses</span>
+<span class="sd">Junos JSON payloads, and returns a normalized</span>
+<span class="sd">:class:`~poller.models.PollingResult` consumed by :mod:`poller.main` and</span>
+<span class="sd">:mod:`poller.api` (device modeling).</span>
+
+<span class="sd">RPC paths polled:</span>
+
+<span class="sd">- ``POST /rpc/get-route-engine-information`` — CPU and memory</span>
+<span class="sd">- ``POST /rpc/get-interface-information`` — interface counters</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">loguru</span><span class="w"> </span><span class="kn">import</span> <span class="n">logger</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">Device</span><span class="p">,</span> <span class="n">PollingResult</span><span class="p">,</span> <span class="n">InterfaceData</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">re</span><span class="w"> </span><span class="kn">import</span> <span class="n">search</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
@@ -87,7 +100,21 @@
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">poll_juniper_device_async</span><span class="p">(</span>
     <span class="n">device</span><span class="p">:</span> <span class="n">Device</span><span class="p">,</span> <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PollingResult</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Poll a Juniper device and return parsed CPU, memory and interface metrics.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Poll a Juniper device and return normalized metrics.</span>
+
+<span class="sd">    Fetches route-engine and interface RPC data concurrently. CPU is</span>
+<span class="sd">    derived as ``100 - cpu-idle``. Device status is ``"up"`` when at least</span>
+<span class="sd">    one metric category returns data.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        device: :class:`~poller.models.Device` row with connection</span>
+<span class="sd">            credentials and ``https`` flag.</span>
+<span class="sd">        client: Shared :class:`httpx.AsyncClient` from the polling loop.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        :class:`~poller.models.PollingResult` with ``cpu``, memory fields,</span>
+<span class="sd">        and admin-up :class:`~poller.models.InterfaceData` entries.</span>
+<span class="sd">    """</span>
 
     <span class="c1"># Initialize default values</span>
     <span class="n">cpu_val</span> <span class="o">=</span> <span class="kc">None</span>
@@ -97,14 +124,14 @@
     <span class="n">interfaces</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="c1"># Build URLs used to poll Juniper RPC endpoints</span>
-    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">&quot;https&quot;</span> <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">https</span> <span class="k">else</span> <span class="s2">&quot;http&quot;</span>
-    <span class="n">base_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">protocol</span> <span class="o">=</span> <span class="s2">"https"</span> <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">https</span> <span class="k">else</span> <span class="s2">"http"</span>
+    <span class="n">base_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">protocol</span><span class="si">}</span><span class="s2">://</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">"</span>
 
-    <span class="n">route_engine_path</span> <span class="o">=</span> <span class="s2">&quot;/rpc/get-route-engine-information&quot;</span>
-    <span class="n">interface_path</span> <span class="o">=</span> <span class="s2">&quot;/rpc/get-interface-information&quot;</span>
+    <span class="n">route_engine_path</span> <span class="o">=</span> <span class="s2">"/rpc/get-route-engine-information"</span>
+    <span class="n">interface_path</span> <span class="o">=</span> <span class="s2">"/rpc/get-interface-information"</span>
 
-    <span class="n">full_route_engine_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">route_engine_path</span><span class="si">}</span><span class="s2">&quot;</span>
-    <span class="n">full_interface_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">interface_path</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">full_route_engine_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">route_engine_path</span><span class="si">}</span><span class="s2">"</span>
+    <span class="n">full_interface_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">base_url</span><span class="si">}{</span><span class="n">interface_path</span><span class="si">}</span><span class="s2">"</span>
 
     <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span>
         <span class="n">fetch_juniper_data_async</span><span class="p">(</span>
@@ -126,7 +153,7 @@
             <span class="n">total_memory</span><span class="p">,</span> <span class="n">memory_val</span><span class="p">,</span> <span class="n">memory_pct</span> <span class="o">=</span> <span class="n">parse_memory</span><span class="p">(</span><span class="n">raw_route_engine</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Error parsing CPU/Mem for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Error parsing CPU/Mem for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
             <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">raw_interfaces</span><span class="p">:</span>
@@ -134,24 +161,24 @@
             <span class="n">interfaces</span> <span class="o">=</span> <span class="n">parse_interfaces</span><span class="p">(</span><span class="n">raw_interfaces</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Error parsing Interfaces for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span>
+                <span class="sa">f</span><span class="s2">"Error parsing Interfaces for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span>
             <span class="p">)</span>
 
     <span class="c1"># Build final JSON</span>
     <span class="n">result</span><span class="p">:</span> <span class="n">PollingResult</span> <span class="o">=</span> <span class="p">{</span>
-        <span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;up&quot;</span> <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">cpu_val</span><span class="p">,</span> <span class="n">memory_val</span><span class="p">,</span> <span class="n">interfaces</span><span class="p">])</span> <span class="k">else</span> <span class="s2">&quot;down&quot;</span><span class="p">,</span>
-        <span class="s2">&quot;cpu&quot;</span><span class="p">:</span> <span class="n">cpu_val</span><span class="p">,</span>
-        <span class="s2">&quot;total_memory&quot;</span><span class="p">:</span> <span class="n">total_memory</span><span class="p">,</span>
-        <span class="s2">&quot;used_memory&quot;</span><span class="p">:</span> <span class="n">memory_val</span><span class="p">,</span>
-        <span class="s2">&quot;memory_pct&quot;</span><span class="p">:</span> <span class="n">memory_pct</span><span class="p">,</span>
-        <span class="s2">&quot;interfaces&quot;</span><span class="p">:</span> <span class="n">interfaces</span><span class="p">,</span>
+        <span class="s2">"status"</span><span class="p">:</span> <span class="s2">"up"</span> <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">cpu_val</span><span class="p">,</span> <span class="n">memory_val</span><span class="p">,</span> <span class="n">interfaces</span><span class="p">])</span> <span class="k">else</span> <span class="s2">"down"</span><span class="p">,</span>
+        <span class="s2">"cpu"</span><span class="p">:</span> <span class="n">cpu_val</span><span class="p">,</span>
+        <span class="s2">"total_memory"</span><span class="p">:</span> <span class="n">total_memory</span><span class="p">,</span>
+        <span class="s2">"used_memory"</span><span class="p">:</span> <span class="n">memory_val</span><span class="p">,</span>
+        <span class="s2">"memory_pct"</span><span class="p">:</span> <span class="n">memory_pct</span><span class="p">,</span>
+        <span class="s2">"interfaces"</span><span class="p">:</span> <span class="n">interfaces</span><span class="p">,</span>
     <span class="p">}</span>
 
-    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">&quot;status&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Successfully polled data for Juniper: </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">"status"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"up"</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Successfully polled data for Juniper: </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Device </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2"> is unreachable or returned no data&quot;</span>
+            <span class="sa">f</span><span class="s2">"Device </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2"> is unreachable or returned no data"</span>
         <span class="p">)</span>
 
     <span class="k">return</span> <span class="n">result</span></div>
@@ -163,9 +190,22 @@
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">fetch_juniper_data_async</span><span class="p">(</span>
     <span class="n">client</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="n">Any</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetch JSON data from a Juniper RPC endpoint using basic auth.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Perform an authenticated POST against a Juniper RPC endpoint.</span>
 
-    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Accept&quot;</span><span class="p">:</span> <span class="s2">&quot;application/json&quot;</span><span class="p">}</span>
+<span class="sd">    Args:</span>
+<span class="sd">        client: Async HTTP client used for the request.</span>
+<span class="sd">        url: Full RPC URL (including scheme, host, port, and path).</span>
+<span class="sd">        username: HTTP Basic authentication username.</span>
+<span class="sd">        password: HTTP Basic authentication password.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Parsed JSON response body as a dictionary.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        httpx.HTTPStatusError: When the device returns a non-2xx status.</span>
+<span class="sd">    """</span>
+
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"Accept"</span><span class="p">:</span> <span class="s2">"application/json"</span><span class="p">}</span>
 
     <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
         <span class="n">url</span><span class="p">,</span>
@@ -183,12 +223,24 @@
 <div class="viewcode-block" id="parse_cpu">
 <a class="viewcode-back" href="../../poller/juniper_polling.html#poller.juniper_polling.parse_cpu">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_cpu</span><span class="p">(</span><span class="n">raw_route_engine</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract CPU usage percentage from Juniper route-engine information.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Extract CPU utilization from Junos route-engine information.</span>
 
-    <span class="n">re_info</span> <span class="o">=</span> <span class="n">raw_route_engine</span><span class="p">[</span><span class="s2">&quot;route-engine-information&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">route_engine</span> <span class="o">=</span> <span class="n">re_info</span><span class="p">[</span><span class="s2">&quot;route-engine&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+<span class="sd">    Args:</span>
+<span class="sd">        raw_route_engine: JSON payload from</span>
+<span class="sd">            ``/rpc/get-route-engine-information``.</span>
 
-    <span class="n">idle_str</span> <span class="o">=</span> <span class="n">route_engine</span><span class="p">[</span><span class="s2">&quot;cpu-idle&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        CPU usage as ``100 - cpu-idle`` (integer percentage).</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        KeyError: When expected nested keys are missing.</span>
+<span class="sd">        ValueError: When ``cpu-idle`` cannot be converted to ``int``.</span>
+<span class="sd">    """</span>
+
+    <span class="n">re_info</span> <span class="o">=</span> <span class="n">raw_route_engine</span><span class="p">[</span><span class="s2">"route-engine-information"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">route_engine</span> <span class="o">=</span> <span class="n">re_info</span><span class="p">[</span><span class="s2">"route-engine"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">idle_str</span> <span class="o">=</span> <span class="n">route_engine</span><span class="p">[</span><span class="s2">"cpu-idle"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"data"</span><span class="p">]</span>
     <span class="n">idle_val</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">idle_str</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="mi">100</span> <span class="o">-</span> <span class="n">idle_val</span></div>
@@ -198,18 +250,33 @@
 <div class="viewcode-block" id="parse_memory">
 <a class="viewcode-back" href="../../poller/juniper_polling.html#poller.juniper_polling.parse_memory">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_memory</span><span class="p">(</span><span class="n">raw_route_engine</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extract total memory, used memory, and utilization percentage from Juniper route-engine information.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Extract memory metrics from Junos route-engine information.</span>
 
-    <span class="n">re_data</span> <span class="o">=</span> <span class="n">raw_route_engine</span><span class="p">[</span><span class="s2">&quot;route-engine-information&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;route-engine&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">total_raw</span> <span class="o">=</span> <span class="n">re_data</span><span class="p">[</span><span class="s2">&quot;memory-installed-size&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
-    <span class="n">util_pct_raw</span> <span class="o">=</span> <span class="n">re_data</span><span class="p">[</span><span class="s2">&quot;memory-buffer-utilization&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+<span class="sd">    Args:</span>
+<span class="sd">        raw_route_engine: JSON payload from</span>
+<span class="sd">            ``/rpc/get-route-engine-information``.</span>
 
-    <span class="n">match</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\d+&quot;</span><span class="p">,</span> <span class="n">total_raw</span><span class="p">)</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        ``(total_memory, used_memory, memory_pct)`` where ``total_memory``</span>
+<span class="sd">        and ``used_memory`` are in bytes and ``memory_pct`` is the buffer</span>
+<span class="sd">        utilization percentage reported by Junos.</span>
+
+<span class="sd">    Note:</span>
+<span class="sd">        Total memory is parsed from ``memory-installed-size`` (MB in</span>
+<span class="sd">        parentheses) and converted to bytes. When parsing fails,</span>
+<span class="sd">        ``total_memory`` defaults to ``0`` and a warning is logged.</span>
+<span class="sd">    """</span>
+
+    <span class="n">re_data</span> <span class="o">=</span> <span class="n">raw_route_engine</span><span class="p">[</span><span class="s2">"route-engine-information"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"route-engine"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">total_raw</span> <span class="o">=</span> <span class="n">re_data</span><span class="p">[</span><span class="s2">"memory-installed-size"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"data"</span><span class="p">]</span>
+    <span class="n">util_pct_raw</span> <span class="o">=</span> <span class="n">re_data</span><span class="p">[</span><span class="s2">"memory-buffer-utilization"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"data"</span><span class="p">]</span>
+
+    <span class="n">match</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\d+"</span><span class="p">,</span> <span class="n">total_raw</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
         <span class="n">total_memory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">())</span> <span class="o">*</span> <span class="mi">1024</span><span class="o">**</span><span class="mi">2</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">total_memory</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not parse memory from: </span><span class="si">{</span><span class="n">total_raw</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Could not parse memory from: </span><span class="si">{</span><span class="n">total_raw</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
     <span class="n">used_memory_pct</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">util_pct_raw</span><span class="p">)</span>
     <span class="n">used_memory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">used_memory_pct</span> <span class="o">/</span> <span class="mi">100</span><span class="p">)</span> <span class="o">*</span> <span class="n">total_memory</span><span class="p">)</span>
@@ -221,48 +288,62 @@
 <div class="viewcode-block" id="parse_interfaces">
 <a class="viewcode-back" href="../../poller/juniper_polling.html#poller.juniper_polling.parse_interfaces">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_interfaces</span><span class="p">(</span><span class="n">raw_interfaces</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse interface state data and return statistics for active physical interfaces.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Parse admin-up physical interfaces with byte counters for polling.</span>
 
-    <span class="n">phys_interfaces</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">&quot;interface-information&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;physical-interface&quot;</span><span class="p">]</span>
+<span class="sd">    Args:</span>
+<span class="sd">        raw_interfaces: JSON payload from</span>
+<span class="sd">            ``/rpc/get-interface-information``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of :class:`~poller.models.InterfaceData` for physical</span>
+<span class="sd">        interfaces with ``admin-status`` equal to ``"up"``. Byte counters</span>
+<span class="sd">        are read from the first logical sub-interface's</span>
+<span class="sd">        ``traffic-statistics``.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: When no qualifying interfaces are found.</span>
+<span class="sd">    """</span>
+
+    <span class="n">phys_interfaces</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">"interface-information"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"physical-interface"</span><span class="p">]</span>
     <span class="n">parsed_results</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">for</span> <span class="n">phys</span> <span class="ow">in</span> <span class="n">phys_interfaces</span><span class="p">:</span>
 
-        <span class="k">def</span><span class="w"> </span><span class="nf">get_junos_val</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;0&quot;</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">get_junos_val</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">"0"</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"data"</span><span class="p">]</span>
                 <span class="k">return</span> <span class="n">val</span> <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">default</span>
 
-        <span class="n">admin_status</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;admin-status&quot;</span><span class="p">,</span> <span class="s2">&quot;down&quot;</span><span class="p">)</span>
+        <span class="n">admin_status</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"admin-status"</span><span class="p">,</span> <span class="s2">"down"</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">admin_status</span> <span class="o">==</span> <span class="s2">&quot;up&quot;</span><span class="p">:</span>
-            <span class="n">name</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">admin_status</span> <span class="o">==</span> <span class="s2">"up"</span><span class="p">:</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
 
             <span class="c1"># Only include interfaces that are administratively up</span>
 
-            <span class="n">speed_raw</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;speed&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
-            <span class="n">speed_match</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\d+&quot;</span><span class="p">,</span> <span class="n">speed_raw</span><span class="p">)</span>
+            <span class="n">speed_raw</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"speed"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)</span>
+            <span class="n">speed_match</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\d+"</span><span class="p">,</span> <span class="n">speed_raw</span><span class="p">)</span>
             <span class="n">speed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">speed_match</span><span class="o">.</span><span class="n">group</span><span class="p">())</span> <span class="o">*</span> <span class="mi">10</span><span class="o">**</span><span class="mi">6</span> <span class="k">if</span> <span class="n">speed_match</span> <span class="k">else</span> <span class="mi">0</span>
 
-            <span class="n">logical_if</span> <span class="o">=</span> <span class="n">phys</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;logical-interface&quot;</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="n">stats</span> <span class="o">=</span> <span class="n">logical_if</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;traffic-statistics&quot;</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">logical_if</span> <span class="o">=</span> <span class="n">phys</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"logical-interface"</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">stats</span> <span class="o">=</span> <span class="n">logical_if</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"traffic-statistics"</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
 
             <span class="n">if_data</span><span class="p">:</span> <span class="n">InterfaceData</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
-                <span class="s2">&quot;if_index&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;local-index&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)),</span>
-                <span class="s2">&quot;in_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="s2">&quot;input-bytes&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)),</span>
-                <span class="s2">&quot;out_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="s2">&quot;output-bytes&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)),</span>
-                <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="n">speed</span><span class="p">,</span>
-                <span class="s2">&quot;admin_status&quot;</span><span class="p">:</span> <span class="n">admin_status</span><span class="p">,</span>
-                <span class="s2">&quot;oper_status&quot;</span><span class="p">:</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;oper-status&quot;</span><span class="p">,</span> <span class="s2">&quot;down&quot;</span><span class="p">),</span>
-                <span class="s2">&quot;mac&quot;</span><span class="p">:</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;current-physical-address&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+                <span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+                <span class="s2">"if_index"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"local-index"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)),</span>
+                <span class="s2">"in_octets"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="s2">"input-bytes"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)),</span>
+                <span class="s2">"out_octets"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="s2">"output-bytes"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)),</span>
+                <span class="s2">"speed"</span><span class="p">:</span> <span class="n">speed</span><span class="p">,</span>
+                <span class="s2">"admin_status"</span><span class="p">:</span> <span class="n">admin_status</span><span class="p">,</span>
+                <span class="s2">"oper_status"</span><span class="p">:</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"oper-status"</span><span class="p">,</span> <span class="s2">"down"</span><span class="p">),</span>
+                <span class="s2">"mac"</span><span class="p">:</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"current-physical-address"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">),</span>
             <span class="p">}</span>
             <span class="n">parsed_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">if_data</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">parsed_results</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No active interfaces with statistics found&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"No active interfaces with statistics found"</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">parsed_results</span></div>
 
@@ -271,39 +352,52 @@
 <div class="viewcode-block" id="parse_interfaces_catalog">
 <a class="viewcode-back" href="../../poller/juniper_polling.html#poller.juniper_polling.parse_interfaces_catalog">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">parse_interfaces_catalog</span><span class="p">(</span><span class="n">raw_interfaces</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Parse all physical interface entries for inventory discovery.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Parse all physical interfaces for inventory discovery.</span>
 
-    <span class="n">phys_interfaces</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">&quot;interface-information&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;physical-interface&quot;</span><span class="p">]</span>
+<span class="sd">    Unlike :func:`parse_interfaces`, includes administratively down</span>
+<span class="sd">    interfaces. Used by :mod:`poller.interface_discovery` when syncing</span>
+<span class="sd">    the PostgreSQL interface catalog.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        raw_interfaces: JSON payload from</span>
+<span class="sd">            ``/rpc/get-interface-information``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        List of :class:`~poller.models.InterfaceData` for every physical</span>
+<span class="sd">        interface in the response (may be empty).</span>
+<span class="sd">    """</span>
+
+    <span class="n">phys_interfaces</span> <span class="o">=</span> <span class="n">raw_interfaces</span><span class="p">[</span><span class="s2">"interface-information"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"physical-interface"</span><span class="p">]</span>
     <span class="n">parsed_results</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">InterfaceData</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
 
     <span class="k">for</span> <span class="n">phys</span> <span class="ow">in</span> <span class="n">phys_interfaces</span><span class="p">:</span>
 
-        <span class="k">def</span><span class="w"> </span><span class="nf">get_junos_val</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;0&quot;</span><span class="p">):</span>
+        <span class="k">def</span><span class="w"> </span><span class="nf">get_junos_val</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">"0"</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">val</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+                <span class="n">val</span> <span class="o">=</span> <span class="n">obj</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"data"</span><span class="p">]</span>
                 <span class="k">return</span> <span class="n">val</span> <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default</span>
             <span class="k">except</span> <span class="p">(</span><span class="ne">KeyError</span><span class="p">,</span> <span class="ne">IndexError</span><span class="p">,</span> <span class="ne">TypeError</span><span class="p">):</span>
                 <span class="k">return</span> <span class="n">default</span>
 
-        <span class="n">name</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">)</span>
-        <span class="n">admin_status</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;admin-status&quot;</span><span class="p">,</span> <span class="s2">&quot;down&quot;</span><span class="p">)</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"name"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">)</span>
+        <span class="n">admin_status</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"admin-status"</span><span class="p">,</span> <span class="s2">"down"</span><span class="p">)</span>
 
-        <span class="n">speed_raw</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;speed&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)</span>
-        <span class="n">speed_match</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\d+&quot;</span><span class="p">,</span> <span class="n">speed_raw</span><span class="p">)</span>
+        <span class="n">speed_raw</span> <span class="o">=</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"speed"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)</span>
+        <span class="n">speed_match</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="sa">r</span><span class="s2">"\d+"</span><span class="p">,</span> <span class="n">speed_raw</span><span class="p">)</span>
         <span class="n">speed</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">speed_match</span><span class="o">.</span><span class="n">group</span><span class="p">())</span> <span class="o">*</span> <span class="mi">10</span><span class="o">**</span><span class="mi">6</span> <span class="k">if</span> <span class="n">speed_match</span> <span class="k">else</span> <span class="mi">0</span>
 
-        <span class="n">logical_if</span> <span class="o">=</span> <span class="n">phys</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;logical-interface&quot;</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">stats</span> <span class="o">=</span> <span class="n">logical_if</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;traffic-statistics&quot;</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">logical_if</span> <span class="o">=</span> <span class="n">phys</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"logical-interface"</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">stats</span> <span class="o">=</span> <span class="n">logical_if</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"traffic-statistics"</span><span class="p">,</span> <span class="p">[{}])[</span><span class="mi">0</span><span class="p">]</span>
 
         <span class="n">if_data</span><span class="p">:</span> <span class="n">InterfaceData</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
-            <span class="s2">&quot;if_index&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;local-index&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)),</span>
-            <span class="s2">&quot;in_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="s2">&quot;input-bytes&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)),</span>
-            <span class="s2">&quot;out_octets&quot;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="s2">&quot;output-bytes&quot;</span><span class="p">,</span> <span class="s2">&quot;0&quot;</span><span class="p">)),</span>
-            <span class="s2">&quot;speed&quot;</span><span class="p">:</span> <span class="n">speed</span><span class="p">,</span>
-            <span class="s2">&quot;admin_status&quot;</span><span class="p">:</span> <span class="n">admin_status</span><span class="p">,</span>
-            <span class="s2">&quot;oper_status&quot;</span><span class="p">:</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;oper-status&quot;</span><span class="p">,</span> <span class="s2">&quot;down&quot;</span><span class="p">),</span>
-            <span class="s2">&quot;mac&quot;</span><span class="p">:</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">&quot;current-physical-address&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown&quot;</span><span class="p">),</span>
+            <span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span>
+            <span class="s2">"if_index"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"local-index"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)),</span>
+            <span class="s2">"in_octets"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="s2">"input-bytes"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)),</span>
+            <span class="s2">"out_octets"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">get_junos_val</span><span class="p">(</span><span class="n">stats</span><span class="p">,</span> <span class="s2">"output-bytes"</span><span class="p">,</span> <span class="s2">"0"</span><span class="p">)),</span>
+            <span class="s2">"speed"</span><span class="p">:</span> <span class="n">speed</span><span class="p">,</span>
+            <span class="s2">"admin_status"</span><span class="p">:</span> <span class="n">admin_status</span><span class="p">,</span>
+            <span class="s2">"oper_status"</span><span class="p">:</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"oper-status"</span><span class="p">,</span> <span class="s2">"down"</span><span class="p">),</span>
+            <span class="s2">"mac"</span><span class="p">:</span> <span class="n">get_junos_val</span><span class="p">(</span><span class="n">phys</span><span class="p">,</span> <span class="s2">"current-physical-address"</span><span class="p">,</span> <span class="s2">"unknown"</span><span class="p">),</span>
         <span class="p">}</span>
         <span class="n">parsed_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">if_data</span><span class="p">)</span>
 

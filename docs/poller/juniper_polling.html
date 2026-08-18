@@ -100,40 +100,142 @@
              
   <section id="module-poller.juniper_polling">
 <span id="juniper-polling-module"></span><h1>juniper_polling module<a class="headerlink" href="#module-poller.juniper_polling" title="Link to this heading"></a></h1>
+<p>Juniper Junos RPC polling and response parsing.</p>
+<p>Contacts route-engine and interface RPC endpoints in parallel, parses
+Junos JSON payloads, and returns a normalized
+<a class="reference internal" href="models.html#poller.models.PollingResult" title="poller.models.PollingResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">PollingResult</span></code></a> consumed by <a class="reference internal" href="main.html#module-poller.main" title="poller.main"><code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.main</span></code></a> and
+<a class="reference internal" href="api.html#module-poller.api" title="poller.api"><code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.api</span></code></a> (device modeling).</p>
+<p>RPC paths polled:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/rpc/get-route-engine-information</span></code> — CPU and memory</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/rpc/get-interface-information</span></code> — interface counters</p></li>
+</ul>
 <dl class="py function">
 <dt class="sig sig-object py" id="poller.juniper_polling.poll_juniper_device_async">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">poll_juniper_device_async</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#poller.models.Device" title="poller.models.Device"><span class="pre">Device</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">httpx.AsyncClient</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="models.html#poller.models.PollingResult" title="poller.models.PollingResult"><span class="pre">PollingResult</span></a></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#poll_juniper_device_async"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.poll_juniper_device_async" title="Link to this definition"></a></dt>
-<dd><p>Poll a Juniper device and return parsed CPU, memory and interface metrics.</p>
+<dd><p>Poll a Juniper device and return normalized metrics.</p>
+<p>Fetches route-engine and interface RPC data concurrently. CPU is
+derived as <code class="docutils literal notranslate"><span class="pre">100</span> <span class="pre">-</span> <span class="pre">cpu-idle</span></code>. Device status is <code class="docutils literal notranslate"><span class="pre">&quot;up&quot;</span></code> when at least
+one metric category returns data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – <a class="reference internal" href="models.html#poller.models.Device" title="poller.models.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> row with connection
+credentials and <code class="docutils literal notranslate"><span class="pre">https</span></code> flag.</p></li>
+<li><p><strong>client</strong> – Shared <code class="xref py py-class docutils literal notranslate"><span class="pre">httpx.AsyncClient</span></code> from the polling loop.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="models.html#poller.models.PollingResult" title="poller.models.PollingResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">PollingResult</span></code></a> with <code class="docutils literal notranslate"><span class="pre">cpu</span></code>, memory fields,
+and admin-up <a class="reference internal" href="models.html#poller.models.InterfaceData" title="poller.models.InterfaceData"><code class="xref py py-class docutils literal notranslate"><span class="pre">InterfaceData</span></code></a> entries.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="poller.juniper_polling.fetch_juniper_data_async">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">fetch_juniper_data_async</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">httpx.AsyncClient</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#fetch_juniper_data_async"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.fetch_juniper_data_async" title="Link to this definition"></a></dt>
-<dd><p>Fetch JSON data from a Juniper RPC endpoint using basic auth.</p>
+<dd><p>Perform an authenticated POST against a Juniper RPC endpoint.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>client</strong> – Async HTTP client used for the request.</p></li>
+<li><p><strong>url</strong> – Full RPC URL (including scheme, host, port, and path).</p></li>
+<li><p><strong>username</strong> – HTTP Basic authentication username.</p></li>
+<li><p><strong>password</strong> – HTTP Basic authentication password.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Parsed JSON response body as a dictionary.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>httpx.HTTPStatusError</strong> – When the device returns a non-2xx status.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="poller.juniper_polling.parse_cpu">
 <span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">parse_cpu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_route_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#parse_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.parse_cpu" title="Link to this definition"></a></dt>
-<dd><p>Extract CPU usage percentage from Juniper route-engine information.</p>
+<dd><p>Extract CPU utilization from Junos route-engine information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>raw_route_engine</strong> – JSON payload from
+<code class="docutils literal notranslate"><span class="pre">/rpc/get-route-engine-information</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>CPU usage as <code class="docutils literal notranslate"><span class="pre">100</span> <span class="pre">-</span> <span class="pre">cpu-idle</span></code> (integer percentage).</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>KeyError</strong> – When expected nested keys are missing.</p></li>
+<li><p><strong>ValueError</strong> – When <code class="docutils literal notranslate"><span class="pre">cpu-idle</span></code> cannot be converted to <code class="docutils literal notranslate"><span class="pre">int</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="poller.juniper_polling.parse_memory">
 <span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">parse_memory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_route_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#parse_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.parse_memory" title="Link to this definition"></a></dt>
-<dd><p>Extract total memory, used memory, and utilization percentage from Juniper route-engine information.</p>
+<dd><p>Extract memory metrics from Junos route-engine information.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>raw_route_engine</strong> – JSON payload from
+<code class="docutils literal notranslate"><span class="pre">/rpc/get-route-engine-information</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(total_memory,</span> <span class="pre">used_memory,</span> <span class="pre">memory_pct)</span></code> where <code class="docutils literal notranslate"><span class="pre">total_memory</span></code>
+and <code class="docutils literal notranslate"><span class="pre">used_memory</span></code> are in bytes and <code class="docutils literal notranslate"><span class="pre">memory_pct</span></code> is the buffer
+utilization percentage reported by Junos.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Total memory is parsed from <code class="docutils literal notranslate"><span class="pre">memory-installed-size</span></code> (MB in
+parentheses) and converted to bytes. When parsing fails,
+<code class="docutils literal notranslate"><span class="pre">total_memory</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code> and a warning is logged.</p>
+</div>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="poller.juniper_polling.parse_interfaces">
 <span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">parse_interfaces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_interfaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="models.html#poller.models.InterfaceData" title="poller.models.InterfaceData"><span class="pre">InterfaceData</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#parse_interfaces"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.parse_interfaces" title="Link to this definition"></a></dt>
-<dd><p>Parse interface state data and return statistics for active physical interfaces.</p>
+<dd><p>Parse admin-up physical interfaces with byte counters for polling.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>raw_interfaces</strong> – JSON payload from
+<code class="docutils literal notranslate"><span class="pre">/rpc/get-interface-information</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of <a class="reference internal" href="models.html#poller.models.InterfaceData" title="poller.models.InterfaceData"><code class="xref py py-class docutils literal notranslate"><span class="pre">InterfaceData</span></code></a> for physical
+interfaces with <code class="docutils literal notranslate"><span class="pre">admin-status</span></code> equal to <code class="docutils literal notranslate"><span class="pre">&quot;up&quot;</span></code>. Byte counters
+are read from the first logical sub-interface’s
+<code class="docutils literal notranslate"><span class="pre">traffic-statistics</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – When no qualifying interfaces are found.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="poller.juniper_polling.parse_interfaces_catalog">
 <span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">parse_interfaces_catalog</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_interfaces</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="models.html#poller.models.InterfaceData" title="poller.models.InterfaceData"><span class="pre">InterfaceData</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#parse_interfaces_catalog"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.parse_interfaces_catalog" title="Link to this definition"></a></dt>
-<dd><p>Parse all physical interface entries for inventory discovery.</p>
+<dd><p>Parse all physical interfaces for inventory discovery.</p>
+<p>Unlike <a class="reference internal" href="#poller.juniper_polling.parse_interfaces" title="poller.juniper_polling.parse_interfaces"><code class="xref py py-func docutils literal notranslate"><span class="pre">parse_interfaces()</span></code></a>, includes administratively down
+interfaces. Used by <code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.interface_discovery</span></code> when syncing
+the PostgreSQL interface catalog.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>raw_interfaces</strong> – JSON payload from
+<code class="docutils literal notranslate"><span class="pre">/rpc/get-interface-information</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of <a class="reference internal" href="models.html#poller.models.InterfaceData" title="poller.models.InterfaceData"><code class="xref py py-class docutils literal notranslate"><span class="pre">InterfaceData</span></code></a> for every physical
+interface in the response (may be empty).</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

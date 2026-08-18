@@ -1,3 +1,17 @@
+"""Cisco IOS XE RESTCONF polling and response parsing.
+
+Contacts three RESTCONF endpoints in parallel (CPU, memory, interfaces),
+parses YANG JSON payloads, and returns a normalized
+:class:`~poller.models.PollingResult` consumed by :mod:`poller.main` and
+:mod:`poller.api` (device modeling).
+
+RESTCONF paths polled:
+
+- ``/restconf/data/Cisco-IOS-XE-process-cpu-oper:cpu-usage/cpu-utilization/five-seconds``
+- ``/restconf/data/Cisco-IOS-XE-memory-oper:memory-statistics``
+- ``/restconf/data/ietf-interfaces:interfaces-state``
+"""
+
 from loguru import logger
 from .models import Device, PollingResult, InterfaceData
 import httpx
@@ -8,7 +22,23 @@ from typing import Any
 async def poll_cisco_device_async(
     device: Device, client: httpx.AsyncClient
 ) -> PollingResult:
-    """Poll a Cisco device and return parsed CPU, memory and interface statistics."""
+    """Poll a Cisco device and return normalized metrics.
+
+    Fetches CPU, memory, and interface RESTCONF data concurrently. Each
+    request is isolated — a failure in one endpoint does not block parsing
+    of the others. Device status is ``"up"`` when at least one metric
+    category returns data.
+
+    Args:
+        device: :class:`~poller.models.Device` row with connection
+            credentials and ``https`` flag.
+        client: Shared :class:`httpx.AsyncClient` from the polling loop.
+
+    Returns:
+        :class:`~poller.models.PollingResult` with ``cpu``, memory fields,
+        and a list of admin-up :class:`~poller.models.InterfaceData`
+        entries.
+    """
 
     # Initialize default values for parsed metrics
     cpu_val = None
@@ -93,7 +123,20 @@ async def poll_cisco_device_async(
 async def fetch_cisco_data_async(
     client: httpx.AsyncClient, url: str, username: str, password: str
 ) -> dict[Any, Any]:
-    """Fetch JSON data from a Cisco RESTCONF endpoint using basic auth."""
+    """Perform an authenticated GET against a Cisco RESTCONF endpoint.
+
+    Args:
+        client: Async HTTP client used for the request.
+        url: Full RESTCONF URL (including scheme, host, port, and path).
+        username: HTTP Basic authentication username.
+        password: HTTP Basic authentication password.
+
+    Returns:
+        Parsed JSON response body as a dictionary.
+
+    Raises:
+        httpx.HTTPStatusError: When the device returns a non-2xx status.
+    """
 
     headers = {
         "Accept": "application/yang-data+json",
@@ -112,13 +155,35 @@ async def fetch_cisco_data_async(
 
 
 def parse_cpu(raw_cpu: dict[str, Any]) -> int:
-    """Extract CPU usage percentage from Cisco RESTCONF response."""
+    """Extract five-second CPU utilization from a RESTCONF CPU response.
+
+    Args:
+        raw_cpu: JSON payload from the Cisco CPU RESTCONF endpoint.
+
+    Returns:
+        CPU usage as an integer percentage (``0``–``100``).
+
+    Raises:
+        KeyError: When the expected YANG key is missing.
+        ValueError: When the value cannot be converted to ``int``.
+    """
 
     return int(raw_cpu["Cisco-IOS-XE-process-cpu-oper:five-seconds"])
 
 
 def parse_memory(raw_memory: dict[str, Any]) -> tuple[int, int]:
-    """Extract total and used memory values from Cisco memory statistics."""
+    """Extract processor memory totals from a RESTCONF memory response.
+
+    Args:
+        raw_memory: JSON payload from the Cisco memory RESTCONF endpoint.
+
+    Returns:
+        ``(total_memory, used_memory)`` in bytes for the ``Processor`` pool.
+
+    Raises:
+        ValueError: When no ``Processor`` entry exists in the statistics
+            list.
+    """
 
     stats = raw_memory["Cisco-IOS-XE-memory-oper:memory-statistics"]
     memory_list = stats["memory-statistic"]
@@ -133,7 +198,19 @@ def parse_memory(raw_memory: dict[str, Any]) -> tuple[int, int]:
 
 
 def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
-    """Parse interface state data and return active interface statistics."""
+    """Parse admin-up interfaces with traffic counters for metric polling.
+
+    Args:
+        raw_interfaces: JSON payload from the
+            ``ietf-interfaces:interfaces-state`` RESTCONF endpoint.
+
+    Returns:
+        List of :class:`~poller.models.InterfaceData` for interfaces with
+        ``admin-status`` equal to ``"up"``.
+
+    Raises:
+        ValueError: When no qualifying interfaces are found.
+    """
 
     stats = raw_interfaces["ietf-interfaces:interfaces-state"]
     interface_list = stats["interface"]
@@ -164,7 +241,21 @@ def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
 
 
 def parse_interfaces_catalog(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
-    """Parse all interface state entries for inventory discovery."""
+    """Parse all interface entries for inventory discovery.
+
+    Unlike :func:`parse_interfaces`, includes administratively down
+    interfaces and does not require non-empty statistics. Used by
+    :mod:`poller.interface_discovery` when syncing the PostgreSQL
+    interface catalog.
+
+    Args:
+        raw_interfaces: JSON payload from the
+            ``ietf-interfaces:interfaces-state`` RESTCONF endpoint.
+
+    Returns:
+        List of :class:`~poller.models.InterfaceData` for every interface
+        in the response (may be empty).
+    """
 
     stats = raw_interfaces["ietf-interfaces:interfaces-state"]
     interface_list = stats["interface"]

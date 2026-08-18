@@ -1,3 +1,27 @@
+"""Background polling loop for Cisco and Juniper network devices.
+
+Reads the device inventory from PostgreSQL (populated via
+:mod:`poller.api`), polls each device asynchronously, and writes CPU,
+memory, availability, and interface metrics to InfluxDB. Concurrency is
+limited by :data:`semaphore` to :data:`~poller.config.MAX_DEVICES` devices
+in parallel.
+
+Configuration:
+    Polling interval is :data:`~poller.config.POLLING_INERVAL` seconds
+    (default ``300``). InfluxDB bucket and organisation come from
+    :mod:`poller.config`.
+
+Attributes:
+    cached_device_list (list[poller.models.Device]): Last successfully loaded
+        device list from PostgreSQL. Reused when the database is temporarily
+        unreachable.
+    last_polls (dict[str, tuple[float, int]]): Previous interface counter
+        samples keyed by ``"{hostname}_{if_name}_{direction}"`` for
+        utilization calculation in :func:`calculate_utilization`.
+    semaphore (asyncio.Semaphore): Limits concurrent device polls to
+        :data:`~poller.config.MAX_DEVICES`.
+"""
+
 from poller.config import (
     Session,
     INFLUX_ORG,
@@ -28,14 +52,33 @@ semaphore = asyncio.Semaphore(MAX_DEVICES)
 
 
 def get_current_devices() -> list[Device]:
-    """Connect to postgreSQL and gather newest devices data required to polling."""
+    """Load all registered devices from PostgreSQL.
+
+    Returns:
+        List of :class:`~poller.models.Device` ORM rows currently stored
+        in the ``devices`` table.
+    """
 
     with Session() as session:
         return session.query(Device).all()
 
 
 async def poll_single_device(device: Device, client: httpx.AsyncClient) -> None:
-    """Poll and save data from single device."""
+    """Poll one device and persist metrics to InfluxDB.
+
+    Dispatches to :func:`~poller.juniper_polling.poll_juniper_device_async`
+    or :func:`~poller.cisco_polling.poll_cisco_device_async` based on
+    ``device.vendor``. When CPU and memory are unavailable, only a
+    ``status=0`` (down) point is written.
+
+    Args:
+        device: Device row with connection credentials and metadata.
+        client: Shared :class:`httpx.AsyncClient` for HTTP requests.
+
+    Note:
+        Acquires :data:`semaphore` for the duration of the poll. Errors are
+        logged and swallowed so other devices continue polling.
+    """
 
     async with semaphore:
         try:
@@ -88,7 +131,17 @@ async def poll_single_device(device: Device, client: httpx.AsyncClient) -> None:
 
 
 async def poll_devices_main() -> None:
-    """Run polling and data saving functions on each device."""
+    """Poll every known device once and write results to InfluxDB.
+
+    Refreshes :data:`cached_device_list` from PostgreSQL when possible;
+    on connection failure, reuses the previously cached list and logs a
+    warning. All devices are polled concurrently via
+    :func:`asyncio.gather`.
+
+    Note:
+        Creates a dedicated :class:`httpx.AsyncClient` per cycle with
+        ``verify=False``.
+    """
 
     # Try to gather current device list from DB, if error occurs uses chached list
     global cached_device_list
@@ -106,7 +159,18 @@ async def poll_devices_main() -> None:
 
 
 def save_polled_device_data(device: DeviceWithPolledData, status: int) -> None:
-    """Save polled device data."""
+    """Write a single device metrics point to InfluxDB.
+
+    Args:
+        device: Polled CPU and memory values together with identity tags.
+        status: ``1`` when the device responded with metrics; ``0`` when
+            only availability (down) should be recorded.
+
+    Note:
+        Writes to measurement ``device_statistics`` in
+        :data:`~poller.config.INFLUX_BUCKET`. Metric fields are omitted
+        when ``status`` is ``0``.
+    """
 
     point = (
         Point("device_statistics")
@@ -147,7 +211,22 @@ def save_polled_device_data(device: DeviceWithPolledData, status: int) -> None:
 def save_polled_interface_data(
     device_id: int, device_hostname: str, device_ip: str, interfaces_raw: list
 ) -> None:
-    """Save polled interfaces data."""
+    """Write interface counter and utilization points to InfluxDB.
+
+    Args:
+        device_id: Primary key of the polled device.
+        device_hostname: Hostname tag for InfluxDB series.
+        device_ip: Management IP tag for InfluxDB series.
+        interfaces_raw: List of interface dicts from vendor polling
+            (see :class:`~poller.models.InterfaceData`).
+
+    Note:
+        Writes to measurement ``interface_statistics``. Utilization fields
+        (``in_bps``, ``out_bps``, ``in_util_pct``, ``out_util_pct``) are
+        computed via :func:`calculate_utilization` when a previous sample
+        exists in :data:`last_polls`. Admin-down interfaces store status
+        fields only.
+    """
 
     points = []
 
@@ -207,7 +286,23 @@ def save_polled_interface_data(
 def calculate_utilization(
     hostname: str, if_name: str, direction: str, current_octets: int, speed_bps: int
 ) -> tuple[float | None, float | None]:
-    """Calculate interface utilization based on previous and current counters values."""
+    """Compute link bitrate and utilization from SNMP-style octet counters.
+
+    Compares ``current_octets`` against the previous sample stored in
+    :data:`last_polls` for the same ``hostname``, ``if_name``, and
+    ``direction`` (``"in"`` or ``"out"``).
+
+    Args:
+        hostname: Device hostname used as part of the cache key.
+        if_name: Interface name used as part of the cache key.
+        direction: Traffic direction, ``"in"`` or ``"out"``.
+        current_octets: Latest cumulative octet counter from the device.
+        speed_bps: Interface speed in bits per second for utilization %.
+
+    Returns:
+        ``(bps, util_pct)`` when a valid delta exists; ``(None, None)`` on
+        the first sample, non-positive time delta, or counter reset.
+    """
 
     key = f"{hostname}_{if_name}_{direction}"
     current_time = time.monotonic()
@@ -239,7 +334,15 @@ def calculate_utilization(
 
 
 def handle_exit(sig: Any, frame: Any) -> None: # pragma: no cover
-    """Handle system signals"""
+    """Translate SIGTERM/SIGINT into a clean process shutdown.
+
+    Args:
+        sig: Signal number received by the handler.
+        frame: Current stack frame (unused).
+
+    Raises:
+        SystemExit: Always raised after logging the signal name.
+    """
 
     signame = signal.Signals(sig).name
     logger.warning(f"Received signal: {signame}")
@@ -247,7 +350,17 @@ def handle_exit(sig: Any, frame: Any) -> None: # pragma: no cover
 
 
 async def main() -> None: # pragma: no cover
-    """Starting DB connection, initialize example devices and poll devices in infinity loop"""
+    """Initialize the database and run the polling loop indefinitely.
+
+    Calls :func:`~poller.config.init_db`, seeds example devices via
+    :func:`~poller.data_loader.seed_devices`, then repeatedly invokes
+    :func:`poll_devices_main` separated by
+    :data:`~poller.config.POLLING_INERVAL` seconds.
+
+    Note:
+        Returns early (without polling) when PostgreSQL initialization
+        fails.
+    """
 
     try:
         # Init Postgres DB

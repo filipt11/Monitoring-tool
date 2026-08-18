@@ -1,3 +1,16 @@
+"""Juniper Junos RPC polling and response parsing.
+
+Contacts route-engine and interface RPC endpoints in parallel, parses
+Junos JSON payloads, and returns a normalized
+:class:`~poller.models.PollingResult` consumed by :mod:`poller.main` and
+:mod:`poller.api` (device modeling).
+
+RPC paths polled:
+
+- ``POST /rpc/get-route-engine-information`` — CPU and memory
+- ``POST /rpc/get-interface-information`` — interface counters
+"""
+
 from loguru import logger
 from .models import Device, PollingResult, InterfaceData
 from re import search
@@ -9,7 +22,21 @@ from typing import Any
 async def poll_juniper_device_async(
     device: Device, client: httpx.AsyncClient
 ) -> PollingResult:
-    """Poll a Juniper device and return parsed CPU, memory and interface metrics."""
+    """Poll a Juniper device and return normalized metrics.
+
+    Fetches route-engine and interface RPC data concurrently. CPU is
+    derived as ``100 - cpu-idle``. Device status is ``"up"`` when at least
+    one metric category returns data.
+
+    Args:
+        device: :class:`~poller.models.Device` row with connection
+            credentials and ``https`` flag.
+        client: Shared :class:`httpx.AsyncClient` from the polling loop.
+
+    Returns:
+        :class:`~poller.models.PollingResult` with ``cpu``, memory fields,
+        and admin-up :class:`~poller.models.InterfaceData` entries.
+    """
 
     # Initialize default values
     cpu_val = None
@@ -82,7 +109,20 @@ async def poll_juniper_device_async(
 async def fetch_juniper_data_async(
     client: httpx.AsyncClient, url: str, username: str, password: str
 ) -> dict[Any, Any]:
-    """Fetch JSON data from a Juniper RPC endpoint using basic auth."""
+    """Perform an authenticated POST against a Juniper RPC endpoint.
+
+    Args:
+        client: Async HTTP client used for the request.
+        url: Full RPC URL (including scheme, host, port, and path).
+        username: HTTP Basic authentication username.
+        password: HTTP Basic authentication password.
+
+    Returns:
+        Parsed JSON response body as a dictionary.
+
+    Raises:
+        httpx.HTTPStatusError: When the device returns a non-2xx status.
+    """
 
     headers = {"Accept": "application/json"}
 
@@ -99,7 +139,19 @@ async def fetch_juniper_data_async(
 
 
 def parse_cpu(raw_route_engine: dict[str, Any]) -> int:
-    """Extract CPU usage percentage from Juniper route-engine information."""
+    """Extract CPU utilization from Junos route-engine information.
+
+    Args:
+        raw_route_engine: JSON payload from
+            ``/rpc/get-route-engine-information``.
+
+    Returns:
+        CPU usage as ``100 - cpu-idle`` (integer percentage).
+
+    Raises:
+        KeyError: When expected nested keys are missing.
+        ValueError: When ``cpu-idle`` cannot be converted to ``int``.
+    """
 
     re_info = raw_route_engine["route-engine-information"][0]
     route_engine = re_info["route-engine"][0]
@@ -111,7 +163,22 @@ def parse_cpu(raw_route_engine: dict[str, Any]) -> int:
 
 
 def parse_memory(raw_route_engine: dict[str, Any]) -> tuple[int, int, float]:
-    """Extract total memory, used memory, and utilization percentage from Juniper route-engine information."""
+    """Extract memory metrics from Junos route-engine information.
+
+    Args:
+        raw_route_engine: JSON payload from
+            ``/rpc/get-route-engine-information``.
+
+    Returns:
+        ``(total_memory, used_memory, memory_pct)`` where ``total_memory``
+        and ``used_memory`` are in bytes and ``memory_pct`` is the buffer
+        utilization percentage reported by Junos.
+
+    Note:
+        Total memory is parsed from ``memory-installed-size`` (MB in
+        parentheses) and converted to bytes. When parsing fails,
+        ``total_memory`` defaults to ``0`` and a warning is logged.
+    """
 
     re_data = raw_route_engine["route-engine-information"][0]["route-engine"][0]
     total_raw = re_data["memory-installed-size"][0]["data"]
@@ -131,7 +198,21 @@ def parse_memory(raw_route_engine: dict[str, Any]) -> tuple[int, int, float]:
 
 
 def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
-    """Parse interface state data and return statistics for active physical interfaces."""
+    """Parse admin-up physical interfaces with byte counters for polling.
+
+    Args:
+        raw_interfaces: JSON payload from
+            ``/rpc/get-interface-information``.
+
+    Returns:
+        List of :class:`~poller.models.InterfaceData` for physical
+        interfaces with ``admin-status`` equal to ``"up"``. Byte counters
+        are read from the first logical sub-interface's
+        ``traffic-statistics``.
+
+    Raises:
+        ValueError: When no qualifying interfaces are found.
+    """
 
     phys_interfaces = raw_interfaces["interface-information"][0]["physical-interface"]
     parsed_results = []
@@ -178,7 +259,20 @@ def parse_interfaces(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
 
 
 def parse_interfaces_catalog(raw_interfaces: dict[str, Any]) -> list[InterfaceData]:
-    """Parse all physical interface entries for inventory discovery."""
+    """Parse all physical interfaces for inventory discovery.
+
+    Unlike :func:`parse_interfaces`, includes administratively down
+    interfaces. Used by :mod:`poller.interface_discovery` when syncing
+    the PostgreSQL interface catalog.
+
+    Args:
+        raw_interfaces: JSON payload from
+            ``/rpc/get-interface-information``.
+
+    Returns:
+        List of :class:`~poller.models.InterfaceData` for every physical
+        interface in the response (may be empty).
+    """
 
     phys_interfaces = raw_interfaces["interface-information"][0]["physical-interface"]
     parsed_results: list[InterfaceData] = []

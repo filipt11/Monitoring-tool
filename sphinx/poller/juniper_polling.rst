@@ -5,3 +5,4 @@ juniper_polling module
    :members:
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource

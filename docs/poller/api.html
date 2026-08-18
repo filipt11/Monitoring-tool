@@ -46,7 +46,24 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../poller.html">Poller Module Documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="../poller.html#submodules">Submodules</a><ul class="current">
-<li class="toctree-l3 current"><a class="current reference internal" href="#">api module</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">api module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.app"><code class="docutils literal notranslate"><span class="pre">app</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.app_lifespan_data"><code class="docutils literal notranslate"><span class="pre">app_lifespan_data</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.lifespan"><code class="docutils literal notranslate"><span class="pre">lifespan()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.model_cisco_device_info"><code class="docutils literal notranslate"><span class="pre">model_cisco_device_info()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.model_juniper_device_info"><code class="docutils literal notranslate"><span class="pre">model_juniper_device_info()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.discover_and_sync_interfaces"><code class="docutils literal notranslate"><span class="pre">discover_and_sync_interfaces()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.health"><code class="docutils literal notranslate"><span class="pre">health()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.add_device"><code class="docutils literal notranslate"><span class="pre">add_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.delete_device"><code class="docutils literal notranslate"><span class="pre">delete_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.rediscover_device"><code class="docutils literal notranslate"><span class="pre">rediscover_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.get_device"><code class="docutils literal notranslate"><span class="pre">get_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.get_device_interfaces"><code class="docutils literal notranslate"><span class="pre">get_device_interfaces()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.get_devices"><code class="docutils literal notranslate"><span class="pre">get_devices()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.update_device"><code class="docutils literal notranslate"><span class="pre">update_device()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#poller.api.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l3"><a class="reference internal" href="main.html">main module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="config.html">config module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="models.html">models module</a></li>
@@ -90,8 +107,322 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <section id="api-module">
-<h1>api module<a class="headerlink" href="#api-module" title="Link to this heading"></a></h1>
+  <section id="module-poller.api">
+<span id="api-module"></span><h1>api module<a class="headerlink" href="#module-poller.api" title="Link to this heading"></a></h1>
+<p>FastAPI application for network device discovery and inventory management.</p>
+<p>The poller API registers Cisco and Juniper devices in PostgreSQL after
+validating connectivity and retrieving hostname, model, and interface
+inventory from vendor-specific HTTP endpoints (RESTCONF for Cisco, RPC for
+Juniper). A background polling loop in <a class="reference internal" href="main.html#module-poller.main" title="poller.main"><code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.main</span></code></a> reads the same
+database and writes metrics to InfluxDB.</p>
+<dl class="simple">
+<dt>Configuration:</dt><dd><p>API listen port is defined by <code class="xref py py-data docutils literal notranslate"><span class="pre">API_PORT</span></code> (default
+<code class="docutils literal notranslate"><span class="pre">8000</span></code>). PostgreSQL and InfluxDB connection settings live in
+<a class="reference internal" href="config.html#module-poller.config" title="poller.config"><code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.config</span></code></a>.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="poller.api.app">
+<span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">app</span></span><a class="headerlink" href="#poller.api.app" title="Link to this definition"></a></dt>
+<dd><p>Root FastAPI application instance with pagination
+enabled via <code class="docutils literal notranslate"><span class="pre">fastapi-pagination</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>fastapi.FastAPI</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="poller.api.app_lifespan_data">
+<span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">app_lifespan_data</span></span><a class="headerlink" href="#poller.api.app_lifespan_data" title="Link to this definition"></a></dt>
+<dd><p>Mutable store populated during application
+lifespan. Key <code class="docutils literal notranslate"><span class="pre">&quot;http_client&quot;</span></code> holds a shared
+<code class="xref py py-class docutils literal notranslate"><span class="pre">httpx.AsyncClient</span></code> used for device HTTP calls.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.lifespan">
+<span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">lifespan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">app</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">fastapi.FastAPI</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/poller/api.html#lifespan"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.api.lifespan" title="Link to this definition"></a></dt>
+<dd><p>Create and tear down the shared HTTP client for the API lifespan.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>app</strong> – FastAPI application instance (unused; required by the lifespan
+protocol).</p>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p>Control back to FastAPI while <a class="reference internal" href="#poller.api.app_lifespan_data" title="poller.api.app_lifespan_data"><code class="xref py py-data docutils literal notranslate"><span class="pre">app_lifespan_data</span></code></a> contains an
+open <code class="xref py py-class docutils literal notranslate"><span class="pre">httpx.AsyncClient</span></code> with <code class="docutils literal notranslate"><span class="pre">verify=False</span></code> and a
+<code class="docutils literal notranslate"><span class="pre">10.0</span></code> second read timeout.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.model_cisco_device_info">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">model_cisco_device_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">httpx.AsyncClient</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/poller/api.html#model_cisco_device_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.api.model_cisco_device_info" title="Link to this definition"></a></dt>
+<dd><p>Retrieve hostname and hardware model from a Cisco IOS XE device.</p>
+<p>Queries RESTCONF endpoints for native hostname and device inventory in
+parallel via <a class="reference internal" href="cisco_polling.html#poller.cisco_polling.fetch_cisco_data_async" title="poller.cisco_polling.fetch_cisco_data_async"><code class="xref py py-func docutils literal notranslate"><span class="pre">fetch_cisco_data_async()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ip</strong> – Device management IP address.</p></li>
+<li><p><strong>port</strong> – TCP port for RESTCONF (typically <code class="docutils literal notranslate"><span class="pre">443</span></code> or <code class="docutils literal notranslate"><span class="pre">80</span></code>).</p></li>
+<li><p><strong>username</strong> – HTTP Basic authentication username.</p></li>
+<li><p><strong>password</strong> – HTTP Basic authentication password.</p></li>
+<li><p><strong>https</strong> – When <code class="docutils literal notranslate"><span class="pre">True</span></code>, use <code class="docutils literal notranslate"><span class="pre">https://</span></code>; otherwise <code class="docutils literal notranslate"><span class="pre">http://</span></code>.</p></li>
+<li><p><strong>client</strong> – Shared async HTTP client from application lifespan.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">(hostname,</span> <span class="pre">model)</span></code> tuple. Missing fields fall back to
+<code class="docutils literal notranslate"><span class="pre">&quot;Unknown&quot;</span></code>. <code class="docutils literal notranslate"><span class="pre">model</span></code> is taken from the first inventory entry’s
+<code class="docutils literal notranslate"><span class="pre">hw-description</span></code>, stripped of surrounding whitespace.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ConnectionError</strong> – When either RESTCONF request fails or returns
+    unparseable data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.model_juniper_device_info">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">model_juniper_device_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">httpx.AsyncClient</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/poller/api.html#model_juniper_device_info"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.api.model_juniper_device_info" title="Link to this definition"></a></dt>
+<dd><p>Retrieve hostname and hardware model from a Juniper device.</p>
+<p>Calls the <code class="docutils literal notranslate"><span class="pre">/rpc/get-system-information</span></code> endpoint via
+<a class="reference internal" href="juniper_polling.html#poller.juniper_polling.fetch_juniper_data_async" title="poller.juniper_polling.fetch_juniper_data_async"><code class="xref py py-func docutils literal notranslate"><span class="pre">fetch_juniper_data_async()</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ip</strong> – Device management IP address.</p></li>
+<li><p><strong>port</strong> – TCP port for Junos HTTP API (typically <code class="docutils literal notranslate"><span class="pre">443</span></code> or <code class="docutils literal notranslate"><span class="pre">830</span></code>).</p></li>
+<li><p><strong>username</strong> – HTTP Basic authentication username.</p></li>
+<li><p><strong>password</strong> – HTTP Basic authentication password.</p></li>
+<li><p><strong>https</strong> – When <code class="docutils literal notranslate"><span class="pre">True</span></code>, use <code class="docutils literal notranslate"><span class="pre">https://</span></code>; otherwise <code class="docutils literal notranslate"><span class="pre">http://</span></code>.</p></li>
+<li><p><strong>client</strong> – Shared async HTTP client from application lifespan.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <code class="docutils literal notranslate"><span class="pre">(hostname,</span> <span class="pre">model)</span></code> tuple parsed from <code class="docutils literal notranslate"><span class="pre">system-information</span></code>.
+Missing fields fall back to <code class="docutils literal notranslate"><span class="pre">&quot;Unknown&quot;</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ConnectionError</strong> – When the RPC request fails or returns unparseable
+    data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.discover_and_sync_interfaces">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">discover_and_sync_interfaces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#poller.models.Device" title="poller.models.Device"><span class="pre">Device</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">httpx.AsyncClient</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="models.html#poller.models.Interface" title="poller.models.Interface"><span class="pre">Interface</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/poller/api.html#discover_and_sync_interfaces"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.api.discover_and_sync_interfaces" title="Link to this definition"></a></dt>
+<dd><p>Discover interfaces on a device and upsert them in PostgreSQL.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>device</strong> – SQLAlchemy <a class="reference internal" href="models.html#poller.models.Device" title="poller.models.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> row to query.</p></li>
+<li><p><strong>client</strong> – Shared async HTTP client from application lifespan.</p></li>
+<li><p><strong>db</strong> – Active SQLAlchemy session bound to PostgreSQL.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of <a class="reference internal" href="models.html#poller.models.Interface" title="poller.models.Interface"><code class="xref py py-class docutils literal notranslate"><span class="pre">Interface</span></code></a> rows after
+<code class="xref py py-func docutils literal notranslate"><span class="pre">sync_device_interfaces()</span></code>
+reconciles the inventory with the database.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.health">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">health</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#poller.api.health" title="Link to this definition"></a></dt>
+<dd><p>Health-check endpoint for the poller API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><p>A JSON object with a single key:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"OK"</span><span class="p">}</span>
+</pre></div>
+</div>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Does not verify database or InfluxDB connectivity.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.add_device">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">add_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device_in</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#poller.models.DeviceCreate" title="poller.models.DeviceCreate"><span class="pre">DeviceCreate</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#poller.api.add_device" title="Link to this definition"></a></dt>
+<dd><p>Register a new network device after live connectivity validation.</p>
+<p>Contacts the device to resolve hostname and model, persists a
+<a class="reference internal" href="models.html#poller.models.Device" title="poller.models.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> row, then attempts interface discovery.
+Interface discovery failures are logged but do not roll back device
+creation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>device_in</strong> – Request body with <code class="docutils literal notranslate"><span class="pre">ip</span></code>, <code class="docutils literal notranslate"><span class="pre">port</span></code>, <code class="docutils literal notranslate"><span class="pre">vendor</span></code>,
+<code class="docutils literal notranslate"><span class="pre">username</span></code>, <code class="docutils literal notranslate"><span class="pre">password</span></code>, and <code class="docutils literal notranslate"><span class="pre">https</span></code> fields.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The created <a class="reference internal" href="models.html#poller.models.Device" title="poller.models.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> ORM object (serialized
+without an explicit <code class="docutils literal notranslate"><span class="pre">response_model</span></code>).</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>fastapi.HTTPException</strong> – <code class="docutils literal notranslate"><span class="pre">400</span></code> for unsupported vendor; <code class="docutils literal notranslate"><span class="pre">502</span></code> when
+    the device is unreachable; <code class="docutils literal notranslate"><span class="pre">409</span></code> on duplicate <code class="docutils literal notranslate"><span class="pre">ip</span></code>/<code class="docutils literal notranslate"><span class="pre">port</span></code>;
+    <code class="docutils literal notranslate"><span class="pre">500</span></code> on other database errors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.delete_device">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">delete_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#poller.api.delete_device" title="Link to this definition"></a></dt>
+<dd><p>Remove a device and its interfaces from PostgreSQL by primary key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>id</strong> – Device primary key.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>Confirmation payload:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="nt">"status"</span><span class="p">:</span><span class="w"> </span><span class="s2">"deleted"</span><span class="p">,</span><span class="w"> </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Successfully deleted device"</span><span class="p">}</span>
+</pre></div>
+</div>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>fastapi.HTTPException</strong> – <code class="docutils literal notranslate"><span class="pre">404</span></code> when no device matches <code class="docutils literal notranslate"><span class="pre">id</span></code>;
+    <code class="docutils literal notranslate"><span class="pre">500</span></code> on database errors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.rediscover_device">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">rediscover_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#poller.api.rediscover_device" title="Link to this definition"></a></dt>
+<dd><p>Refresh hostname, model, and interface inventory for an existing device.</p>
+<p>Re-runs vendor-specific modeling and interface discovery against the
+stored credentials, then updates the device row in place.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>id</strong> – Device primary key.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updated <a class="reference internal" href="models.html#poller.models.Device" title="poller.models.Device"><code class="xref py py-class docutils literal notranslate"><span class="pre">Device</span></code></a> ORM object.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>fastapi.HTTPException</strong> – <code class="docutils literal notranslate"><span class="pre">404</span></code> when the device does not exist;
+    <code class="docutils literal notranslate"><span class="pre">400</span></code> for unsupported vendor; <code class="docutils literal notranslate"><span class="pre">502</span></code> when the device is
+    unreachable; <code class="docutils literal notranslate"><span class="pre">500</span></code> on database errors.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.get_device">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">get_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#poller.api.get_device" title="Link to this definition"></a></dt>
+<dd><p>Return a single device record by primary key.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>id</strong> – Device primary key.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Device details including
+credentials and <code class="docutils literal notranslate"><span class="pre">created_at</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="models.html#poller.models.DeviceOut" title="poller.models.DeviceOut"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeviceOut</span></code></a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>fastapi.HTTPException</strong> – <code class="docutils literal notranslate"><span class="pre">404</span></code> when no device matches <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.get_device_interfaces">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">get_device_interfaces</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#poller.api.get_device_interfaces" title="Link to this definition"></a></dt>
+<dd><p>List interfaces discovered on a device, ordered by <code class="docutils literal notranslate"><span class="pre">if_index</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>id</strong> – Device primary key.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of <a class="reference internal" href="models.html#poller.models.InterfaceOut" title="poller.models.InterfaceOut"><code class="xref py py-class docutils literal notranslate"><span class="pre">InterfaceOut</span></code></a> entries for the device.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>fastapi.HTTPException</strong> – <code class="docutils literal notranslate"><span class="pre">404</span></code> when no device matches <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.get_devices">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">get_devices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#poller.api.get_devices" title="Link to this definition"></a></dt>
+<dd><p>Return a paginated list of all registered devices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">fastapi_pagination.Page</span></code> of
+<a class="reference internal" href="models.html#poller.models.DeviceOut" title="poller.models.DeviceOut"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeviceOut</span></code></a> items ordered by ascending <code class="docutils literal notranslate"><span class="pre">id</span></code>.
+Page size follows <code class="docutils literal notranslate"><span class="pre">fastapi-pagination</span></code> defaults (typically <code class="docutils literal notranslate"><span class="pre">50</span></code>).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.update_device">
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">update_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device_update</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#poller.models.DeviceUpdate" title="poller.models.DeviceUpdate"><span class="pre">DeviceUpdate</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#poller.api.update_device" title="Link to this definition"></a></dt>
+<dd><p>Partially update mutable device fields (credentials, port, HTTPS).</p>
+<p>Only fields present in the request body are changed; omitted fields
+remain unchanged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> – Device primary key.</p></li>
+<li><p><strong>device_update</strong> – Partial update with optional <code class="docutils literal notranslate"><span class="pre">port</span></code>, <code class="docutils literal notranslate"><span class="pre">username</span></code>,
+<code class="docutils literal notranslate"><span class="pre">password</span></code>, and <code class="docutils literal notranslate"><span class="pre">https</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updated <a class="reference internal" href="models.html#poller.models.DeviceOut" title="poller.models.DeviceOut"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeviceOut</span></code></a> representation.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>fastapi.HTTPException</strong> – <code class="docutils literal notranslate"><span class="pre">404</span></code> when no device matches <code class="docutils literal notranslate"><span class="pre">id</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="poller.api.main">
+<span class="sig-prename descclassname"><span class="pre">poller.api.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/poller/api.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.api.main" title="Link to this definition"></a></dt>
+<dd><p>Initialize PostgreSQL schema and start the Uvicorn API server.</p>
+<p>Calls <a class="reference internal" href="config.html#poller.config.init_db" title="poller.config.init_db"><code class="xref py py-func docutils literal notranslate"><span class="pre">init_db()</span></code></a> before binding to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on
+<code class="xref py py-data docutils literal notranslate"><span class="pre">API_PORT</span></code>. Returns early without starting the server
+when the database is unreachable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">False</span></code> when <a class="reference internal" href="config.html#poller.config.init_db" title="poller.config.init_db"><code class="xref py py-func docutils literal notranslate"><span class="pre">init_db()</span></code></a> raises
+<code class="xref py py-class docutils literal notranslate"><span class="pre">ConnectionError</span></code>; otherwise <code class="docutils literal notranslate"><span class="pre">None</span></code> (Uvicorn blocks until
+shutdown).</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
 
