@@ -74,7 +74,14 @@
            <div itemprop="articleBody">
              
   <h1>Source code for poller.models</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
+<span></span><span class="sd">"""SQLAlchemy ORM models and Pydantic schemas for the poller service.</span>
+
+<span class="sd">Defines PostgreSQL tables for device inventory and discovered interfaces,</span>
+<span class="sd">plus request/response schemas used by :mod:`poller.api` and transient</span>
+<span class="sd">structures passed between polling modules and :mod:`poller.main`.</span>
+<span class="sd">"""</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timezone</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span><span class="p">,</span> <span class="n">ConfigDict</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">DateTime</span><span class="p">,</span> <span class="n">ForeignKey</span><span class="p">,</span> <span class="n">String</span><span class="p">,</span> <span class="n">Integer</span><span class="p">,</span> <span class="n">BigInteger</span><span class="p">,</span> <span class="n">Boolean</span><span class="p">,</span> <span class="n">UniqueConstraint</span><span class="p">,</span> <span class="n">func</span>
@@ -87,6 +94,11 @@
 <div class="viewcode-block" id="utc_now">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.utc_now">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">utc_now</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">datetime</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""Return the current UTC timestamp for ORM defaults.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Timezone-aware :class:`datetime.datetime` in UTC.</span>
+<span class="sd">    """</span>
     <span class="k">return</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span></div>
 
 
@@ -94,9 +106,27 @@
 <div class="viewcode-block" id="Device">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.Device">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Device</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;SQLAlchemy model representing a network device stored in the database.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""SQLAlchemy model representing a monitored network device.</span>
 
-    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;devices&quot;</span>
+<span class="sd">    Stored in the ``devices`` table. Uniqueness of ``ip`` + ``port`` is</span>
+<span class="sd">    enforced at the database level. Related interfaces are deleted</span>
+<span class="sd">    automatically when the device row is removed.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        id: Surrogate primary key.</span>
+<span class="sd">        hostname: Resolved hostname from the device API.</span>
+<span class="sd">        ip: Management IP address.</span>
+<span class="sd">        vendor: Device vendor (``cisco`` or ``juniper``).</span>
+<span class="sd">        model: Hardware model string from device inventory.</span>
+<span class="sd">        username: HTTP Basic authentication username.</span>
+<span class="sd">        password: HTTP Basic authentication password.</span>
+<span class="sd">        port: TCP port for RESTCONF/RPC access.</span>
+<span class="sd">        https: Whether HTTPS is used for device HTTP calls.</span>
+<span class="sd">        created_at: UTC timestamp when the device was registered.</span>
+<span class="sd">        interfaces: Related :class:`Interface` rows (one-to-many).</span>
+<span class="sd">    """</span>
+
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">"devices"</span>
 
     <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">autoincrement</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">hostname</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -114,11 +144,11 @@
         <span class="n">nullable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">__table_args__</span> <span class="o">=</span> <span class="p">(</span><span class="n">UniqueConstraint</span><span class="p">(</span><span class="s2">&quot;ip&quot;</span><span class="p">,</span> <span class="s2">&quot;port&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;_ip_port_uc&quot;</span><span class="p">),)</span>
+    <span class="n">__table_args__</span> <span class="o">=</span> <span class="p">(</span><span class="n">UniqueConstraint</span><span class="p">(</span><span class="s2">"ip"</span><span class="p">,</span> <span class="s2">"port"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"_ip_port_uc"</span><span class="p">),)</span>
 
-    <span class="n">interfaces</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="s2">&quot;Interface&quot;</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span>
-        <span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;device&quot;</span><span class="p">,</span>
-        <span class="n">cascade</span><span class="o">=</span><span class="s2">&quot;all, delete-orphan&quot;</span><span class="p">,</span>
+    <span class="n">interfaces</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="s2">"Interface"</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span>
+        <span class="n">back_populates</span><span class="o">=</span><span class="s2">"device"</span><span class="p">,</span>
+        <span class="n">cascade</span><span class="o">=</span><span class="s2">"all, delete-orphan"</span><span class="p">,</span>
         <span class="n">passive_deletes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
     <span class="p">)</span></div>
 
@@ -127,13 +157,30 @@
 <div class="viewcode-block" id="Interface">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.Interface">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Interface</span><span class="p">(</span><span class="n">Base</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;SQLAlchemy model representing a network interface discovered on a device.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""SQLAlchemy model representing a discovered network interface.</span>
 
-    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">&quot;interfaces&quot;</span>
+<span class="sd">    Stored in the ``interfaces`` table. Each row belongs to one</span>
+<span class="sd">    :class:`Device` and is uniquely identified by ``device_id`` +</span>
+<span class="sd">    ``if_index``.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        id: Surrogate primary key.</span>
+<span class="sd">        device_id: Foreign key to :class:`Device`.</span>
+<span class="sd">        name: Interface name as reported by the device (e.g. ``Gi0/0``).</span>
+<span class="sd">        if_index: SNMP/interface index from vendor API.</span>
+<span class="sd">        mac: Physical (MAC) address, if available.</span>
+<span class="sd">        speed_bps: Link speed in bits per second.</span>
+<span class="sd">        admin_status: Administrative status (``up`` / ``down``).</span>
+<span class="sd">        oper_status: Operational status (``up`` / ``down``).</span>
+<span class="sd">        discovered_at: UTC timestamp of the last successful discovery.</span>
+<span class="sd">        device: Parent :class:`Device` relationship.</span>
+<span class="sd">    """</span>
+
+    <span class="n">__tablename__</span> <span class="o">=</span> <span class="s2">"interfaces"</span>
 
     <span class="nb">id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">primary_key</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">autoincrement</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="n">device_id</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span>
-        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">&quot;devices.id&quot;</span><span class="p">,</span> <span class="n">ondelete</span><span class="o">=</span><span class="s2">&quot;CASCADE&quot;</span><span class="p">),</span>
+        <span class="n">ForeignKey</span><span class="p">(</span><span class="s2">"devices.id"</span><span class="p">,</span> <span class="n">ondelete</span><span class="o">=</span><span class="s2">"CASCADE"</span><span class="p">),</span>
         <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span>
     <span class="n">name</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">mapped_column</span><span class="p">(</span><span class="n">String</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
@@ -148,10 +195,10 @@
         <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="n">device</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">&quot;Device&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">back_populates</span><span class="o">=</span><span class="s2">&quot;interfaces&quot;</span><span class="p">)</span>
+    <span class="n">device</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="s2">"Device"</span><span class="p">]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">back_populates</span><span class="o">=</span><span class="s2">"interfaces"</span><span class="p">)</span>
 
     <span class="n">__table_args__</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">UniqueConstraint</span><span class="p">(</span><span class="s2">&quot;device_id&quot;</span><span class="p">,</span> <span class="s2">&quot;if_index&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;_device_if_index_uc&quot;</span><span class="p">),</span>
+        <span class="n">UniqueConstraint</span><span class="p">(</span><span class="s2">"device_id"</span><span class="p">,</span> <span class="s2">"if_index"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"_device_if_index_uc"</span><span class="p">),</span>
     <span class="p">)</span></div>
 
 
@@ -159,7 +206,10 @@
 <div class="viewcode-block" id="InterfaceOut">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.InterfaceOut">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InterfaceOut</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pydantic model used for API responses containing interface details.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Pydantic schema for interface records returned by the REST API.</span>
+
+<span class="sd">    Serialized from :class:`Interface` ORM rows via ``from_attributes``.</span>
+<span class="sd">    """</span>
 
     <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">device_id</span><span class="p">:</span> <span class="nb">int</span>
@@ -178,7 +228,11 @@
 <div class="viewcode-block" id="DeviceWithPolledData">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.DeviceWithPolledData">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DeviceWithPolledData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pydantic model representing a device with polling metrics for InfluxDB.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Transient device snapshot with metrics for InfluxDB writes.</span>
+
+<span class="sd">    Built in :mod:`poller.main` after a successful poll and passed to</span>
+<span class="sd">    :func:`~poller.main.save_polled_device_data`.</span>
+<span class="sd">    """</span>
 
     <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span>
@@ -193,7 +247,7 @@
 <div class="viewcode-block" id="DeviceCreate">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.DeviceCreate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DeviceCreate</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pydantic model for device creation requests.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Request body schema for ``POST /api/device``."""</span>
 
     <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">port</span><span class="p">:</span> <span class="nb">int</span>
@@ -207,7 +261,10 @@
 <div class="viewcode-block" id="DeviceOut">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.DeviceOut">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DeviceOut</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pydantic model used for API responses containing device details.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Response schema for device records exposed by the REST API.</span>
+
+<span class="sd">    Serialized from :class:`Device` ORM rows via ``from_attributes``.</span>
+<span class="sd">    """</span>
 
     <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
     <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span>
@@ -227,7 +284,10 @@
 <div class="viewcode-block" id="DeviceUpdate">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.DeviceUpdate">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">DeviceUpdate</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Pydantic model for partial device updates.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Request body schema for ``PATCH /api/device/{id}``.</span>
+
+<span class="sd">    All fields are optional; only provided keys are updated.</span>
+<span class="sd">    """</span>
 
     <span class="n">port</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">65535</span><span class="p">)</span>
     <span class="n">username</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
@@ -239,7 +299,7 @@
 <div class="viewcode-block" id="InterfaceData">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.InterfaceData">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">InterfaceData</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;TypedDict describing interface counters and state returned by polling.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Normalized interface metrics returned by vendor polling functions."""</span>
 
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">if_index</span><span class="p">:</span> <span class="nb">int</span>
@@ -255,7 +315,7 @@
 <div class="viewcode-block" id="PollingResult">
 <a class="viewcode-back" href="../../poller/models.html#poller.models.PollingResult">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">PollingResult</span><span class="p">(</span><span class="n">TypedDict</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;TypedDict describing the polling result returned from device polling.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">"""Aggregated poll result returned by Cisco/Juniper polling modules."""</span>
 
     <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">cpu</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span>
