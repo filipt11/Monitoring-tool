@@ -135,7 +135,7 @@ services:
       - DEVICE_MODEL=Catalyst 9000
       - DEVICE_PORT=8001
     ports:
-      - "127.0.0.1:8001:8001"
+      - "0.0.0.0:8001:8001"
 
   cisco-low:
     build:
@@ -150,7 +150,7 @@ services:
       - DEVICE_MODEL=Catalys 9000x
       - DEVICE_PORT=8002
     ports:
-      - "127.0.0.1:8002:8002"
+      - "0.0.0.0:8002:8002"
 
   cisco-avg:
     build:
@@ -165,7 +165,7 @@ services:
       - DEVICE_MODEL=Catalyst 8000
       - DEVICE_PORT=8003
     ports:
-      - "127.0.0.1:8003:8003"
+      - "0.0.0.0:8003:8003"
 
   juniper-avg:
     build:
@@ -180,7 +180,7 @@ services:
       - DEVICE_MODEL=ACX5400
       - DEVICE_PORT=8004
     ports:
-      - "127.0.0.1:8004:8004"
+      - "0.0.0.0:8004:8004"
 
   juniper-high:
     build:
@@ -195,7 +195,7 @@ services:
       - DEVICE_MODEL=EX4200
       - DEVICE_PORT=8005
     ports:
-      - "127.0.0.1:8005:8005"
+      - "0.0.0.0:8005:8005"
 
   juniper-low:
     build:
@@ -210,7 +210,7 @@ services:
       - DEVICE_MODEL=EX400
       - DEVICE_PORT=8006
     ports:
-      - "127.0.0.1:8006:8006"
+      - "0.0.0.0:8006:8006"
 
 volumes:
   influxdb_data:
