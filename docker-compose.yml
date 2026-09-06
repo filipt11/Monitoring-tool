@@ -1,0 +1,221 @@
+# UBER docker that should starts everything.
+
+services:
+  influxdb:
+    container_name: monitoring-tool-influxdb
+    image: influxdb:2.7
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=adminpassword123
+      - DOCKER_INFLUXDB_INIT_ORG=my_org
+      - DOCKER_INFLUXDB_INIT_BUCKET=network_metrics
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=secret_token
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  postgres:
+    container_name: monitoring-tool-postgres
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_DB=applicationdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d applicationdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  poller:
+    container_name: monitoring-tool-poller
+    image: "monitoring-tool-poller:latest"
+    build:
+      context: ./poller
+      dockerfile: Dockerfile
+    command: ["python", "-m", "poller.main"]
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: secret_token
+      INFLUX_ORG: my_org
+      INFLUX_BUCKET: network_metrics
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/applicationdb
+      POSTGRES_USERNAME: admin
+      POSTGRES_PASSWORD: 123
+
+  poller-api:
+    container_name: monitoring-tool-poller-api
+    image: "monitoring-tool-poller-api:latest"
+    build:
+      context: ./poller
+      dockerfile: Dockerfile
+    command: ["python", "-m", "poller.api"]
+    ports:
+      - "8000:8000"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: secret_token
+      INFLUX_ORG: my_org
+      INFLUX_BUCKET: network_metrics
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/applicationdb
+      POSTGRES_USERNAME: admin
+      POSTGRES_PASSWORD: 123
+
+  application-server:
+    container_name: monitoring-tool-application-server
+    image: "monitoring-tool-application-server:latest"
+    build:
+      context: ./application_server/app
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      # Same Postgres as poller/docker-compose.yml (devices + interfaces live there)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/applicationdb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: 123
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: secret_token
+      INFLUX_ORG: my_org
+      INFLUX_BUCKET: network_metrics
+      POLLER_API_URL: http://poller-api:8000
+
+  frontend:
+    container_name: monitoring-tool-frontend
+    image: "monitoring-tool-frontend:latest"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - "application-server"
+
+  cisco-high:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: simulator-cisco-high
+    image: "simulator-cisco-high:latest"
+    environment:
+      - DEVICE_PROFILE=high_utilized
+      - DEVICE_HOSTNAME=r-high-1
+      - DEVICE_VENDOR=cisco
+      - DEVICE_MODEL=Catalyst 9000
+      - DEVICE_PORT=8001
+    ports:
+      - "127.0.0.1:8001:8001"
+
+  cisco-low:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: simulator-cisco-low
+    image: "simulator-cisco-low:latest"
+    environment:
+      - DEVICE_PROFILE=low_utilized
+      - DEVICE_HOSTNAME=r-low-1
+      - DEVICE_VENDOR=cisco
+      - DEVICE_MODEL=Catalys 9000x
+      - DEVICE_PORT=8002
+    ports:
+      - "127.0.0.1:8002:8002"
+
+  cisco-avg:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: simulator-cisco-avg
+    image: "simulator-cisco-avg:latest"
+    environment:
+      - DEVICE_PROFILE=standard
+      - DEVICE_HOSTNAME=r-avg-1
+      - DEVICE_VENDOR=cisco
+      - DEVICE_MODEL=Catalyst 8000
+      - DEVICE_PORT=8003
+    ports:
+      - "127.0.0.1:8003:8003"
+
+  juniper-avg:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: simulator-juniper-avg
+    image: "simulator-juniper-avg:latest"
+    environment:
+      - DEVICE_PROFILE=standard
+      - DEVICE_HOSTNAME=r-junos-avg-1
+      - DEVICE_VENDOR=juniper
+      - DEVICE_MODEL=ACX5400
+      - DEVICE_PORT=8004
+    ports:
+      - "127.0.0.1:8004:8004"
+
+  juniper-high:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: simulator-juniper-high
+    image: "simulator-juniper-high:latest"
+    environment:
+      - DEVICE_PROFILE=standard
+      - DEVICE_HOSTNAME=r-junos-2
+      - DEVICE_VENDOR=juniper
+      - DEVICE_MODEL=EX4200
+      - DEVICE_PORT=8005
+    ports:
+      - "127.0.0.1:8005:8005"
+
+  juniper-low:
+    build:
+      context: ./simulator
+      dockerfile: Dockerfile
+    container_name: simulator-juniper-low
+    image: "simulator-juniper-low:latest"
+    environment:
+      - DEVICE_PROFILE=low_utilzed
+      - DEVICE_HOSTNAME=s-low-2
+      - DEVICE_VENDOR=juniper
+      - DEVICE_MODEL=EX400
+      - DEVICE_PORT=8006
+    ports:
+      - "127.0.0.1:8006:8006"
+
+volumes:
+  influxdb_data:
+  postgres_data:
+
+networks:
+  default:
+    name: monitoring_network

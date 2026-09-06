@@ -8,7 +8,7 @@ def seed_devices() -> None:
 
     initial_devices = [
         {
-            "ip": "127.0.0.1",
+            "ip": "host.docker.internal",
             "hostname": "r-high-1",
             "vendor": "cisco",
             "model": "Catalyst 9000",
@@ -18,7 +18,7 @@ def seed_devices() -> None:
             "https": False,
         },
         {
-            "ip": "127.0.0.1",
+            "ip": "host.docker.internal",
             "hostname": "r-low-1",
             "vendor": "cisco",
             "model": "Catalyst 9000x",
@@ -28,7 +28,7 @@ def seed_devices() -> None:
             "https": False,
         },
         {
-            "ip": "127.0.0.1",
+            "ip": "host.docker.internal",
             "hostname": "r-avg-1",
             "vendor": "cisco",
             "model": "Catalyst 8000",
@@ -38,7 +38,7 @@ def seed_devices() -> None:
             "https": False,
         },
         {
-            "ip": "127.0.0.1",
+            "ip": "host.docker.internal",
             "hostname": "r-junos-avg-1",
             "vendor": "juniper",
             "model": "ACX5400",
@@ -48,7 +48,7 @@ def seed_devices() -> None:
             "https": False,
         },
         {
-            "ip": "127.0.0.1",
+            "ip": "host.docker.internal",
             "hostname": "r-junos-2",
             "vendor": "juniper",
             "model": "EX4200",
@@ -58,7 +58,7 @@ def seed_devices() -> None:
             "https": False,
         },
         {
-            "ip": "127.0.0.1",
+            "ip": "host.docker.internal",
             "hostname": "s-low-2",
             "vendor": "juniper",
             "model": "EX400",
