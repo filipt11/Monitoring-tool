@@ -67,10 +67,7 @@
 </li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../run.html">run module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 
         </div>
@@ -100,20 +97,11 @@
              
   <section id="module-simulator.devices">
 <span id="devices-module"></span><h1>devices module<a class="headerlink" href="#module-simulator.devices" title="Link to this heading"></a></h1>
-<p>Simulated network device models for Cisco and Juniper vendors.</p>
-<p>Each concrete class represents a device with a specific utilization profile
-(high, low, average, or custom). Devices expose <a class="reference internal" href="#simulator.devices.BaseDevice.get_cpu" title="simulator.devices.BaseDevice.get_cpu"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_cpu()</span></code></a>,
-<a class="reference internal" href="#simulator.devices.BaseDevice.get_used_memory" title="simulator.devices.BaseDevice.get_used_memory"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_used_memory()</span></code></a>, <a class="reference internal" href="#simulator.devices.BaseDevice.get_total_memory" title="simulator.devices.BaseDevice.get_total_memory"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_total_memory()</span></code></a>, and
-<a class="reference internal" href="#simulator.devices.BaseDevice.get_interfaces" title="simulator.devices.BaseDevice.get_interfaces"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_interfaces()</span></code></a> which the FastAPI layer in
-<a class="reference internal" href="main.html#module-simulator.main" title="simulator.main"><code class="xref py py-mod docutils literal notranslate"><span class="pre">simulator.main</span></code></a> calls to build vendor-specific API responses.</p>
-<p>Interface counters are stateful: each call to <a class="reference internal" href="#simulator.devices.BaseDevice.get_interfaces" title="simulator.devices.BaseDevice.get_interfaces"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BaseDevice.get_interfaces()</span></code></a>
-advances <code class="docutils literal notranslate"><span class="pre">in-octets</span></code> and <code class="docutils literal notranslate"><span class="pre">out-octets</span></code> based on interface speed and admin
-status.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="simulator.devices.BaseDevice">
 <span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.devices.</span></span><span class="sig-name descname"><span class="pre">BaseDevice</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip_address</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vendor</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hostname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">https</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/devices.html#BaseDevice"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.devices.BaseDevice" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Abstract base model for a simulated network device.</p>
+<p>Base model for a simulated network device.</p>
 <p>Stores connection metadata and maintains rolling interface byte counters.
 Subclasses override metric methods and populate <a class="reference internal" href="#simulator.devices.BaseDevice.interfaces_list" title="simulator.devices.BaseDevice.interfaces_list"><code class="xref py py-attr docutils literal notranslate"><span class="pre">interfaces_list</span></code></a>
 with vendor-specific interface definitions.</p>
@@ -239,7 +227,8 @@ a string).</p>
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
 <dd class="field-odd"><p>Integer CPU usage in the range <code class="docutils literal notranslate"><span class="pre">0</span></code>–<code class="docutils literal notranslate"><span class="pre">100</span></code>. The base
 implementation delegates to
-<a class="reference internal" href="logic.html#simulator.logic.get_average_utilized_cpu" title="simulator.logic.get_average_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_average_utilized_cpu()</span></code></a>.</p>
+<a class="reference internal" href="logic.html#simulator.logic.get_average_utilized_cpu" title="simulator.logic.get_average_utilized_cpu"><code class="xref py py-func docutils literal notranslate"><span class="pre">simulator.logic.get_average_utilized_cpu()</span></code></a>.
+Also updates <code class="xref py py-attr docutils literal notranslate"><span class="pre">last_cpu_sim_event</span></code>.</p>
 </dd>
 </dl>
 </dd></dl>

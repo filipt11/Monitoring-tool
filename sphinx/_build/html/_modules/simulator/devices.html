@@ -43,6 +43,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
 <ul>
@@ -74,20 +75,7 @@
            <div itemprop="articleBody">
              
   <h1>Source code for simulator.devices</h1><div class="highlight"><pre>
-<span></span><span class="sd">"""Simulated network device models for Cisco and Juniper vendors.</span>
-
-<span class="sd">Each concrete class represents a device with a specific utilization profile</span>
-<span class="sd">(high, low, average, or custom). Devices expose :meth:`BaseDevice.get_cpu`,</span>
-<span class="sd">:meth:`BaseDevice.get_used_memory`, :meth:`BaseDevice.get_total_memory`, and</span>
-<span class="sd">:meth:`BaseDevice.get_interfaces` which the FastAPI layer in</span>
-<span class="sd">:mod:`simulator.main` calls to build vendor-specific API responses.</span>
-
-<span class="sd">Interface counters are stateful: each call to :meth:`BaseDevice.get_interfaces`</span>
-<span class="sd">advances ``in-octets`` and ``out-octets`` based on interface speed and admin</span>
-<span class="sd">status.</span>
-<span class="sd">"""</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">logic</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">logic</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simulator.logic</span><span class="w"> </span><span class="kn">import</span> <span class="n">CustomProfile</span>
 
@@ -95,7 +83,7 @@
 <div class="viewcode-block" id="BaseDevice">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">BaseDevice</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Abstract base model for a simulated network device.</span>
+<span class="w">    </span><span class="sd">"""Base model for a simulated network device.</span>
 
 <span class="sd">    Stores connection metadata and maintains rolling interface byte counters.</span>
 <span class="sd">    Subclasses override metric methods and populate :attr:`interfaces_list`</span>
@@ -143,6 +131,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">https</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">https</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">interface_counters</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">interfaces_list</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_cpu_sim_event</span><span class="p">:</span> <span class="n">logic</span><span class="o">.</span><span class="n">SimEvent</span> <span class="o">=</span> <span class="s2">"none"</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_cpu_sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">:</span> <span class="n">logic</span><span class="o">.</span><span class="n">CpuSample</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+
+<span class="w">        </span><span class="sd">"""Store ground-truth event and return the numeric CPU percentage."""</span>
+
+        <span class="n">value</span><span class="p">,</span> <span class="n">event</span> <span class="o">=</span> <span class="n">sample</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_cpu_sim_event</span> <span class="o">=</span> <span class="n">event</span>
+        <span class="k">return</span> <span class="n">value</span>
 
 <div class="viewcode-block" id="BaseDevice.get_cpu">
 <a class="viewcode-back" href="../../simulator/devices.html#simulator.devices.BaseDevice.get_cpu">[docs]</a>
@@ -153,8 +150,9 @@
 <span class="sd">            Integer CPU usage in the range ``0``–``100``. The base</span>
 <span class="sd">            implementation delegates to</span>
 <span class="sd">            :func:`simulator.logic.get_average_utilized_cpu`.</span>
+<span class="sd">            Also updates :attr:`last_cpu_sim_event`.</span>
 <span class="sd">        """</span>
-        <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_average_utilized_cpu</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cpu_sample</span><span class="p">(</span><span class="n">logic</span><span class="o">.</span><span class="n">get_average_utilized_cpu</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="BaseDevice.get_used_memory">
@@ -369,7 +367,7 @@
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_high_utilized_cpu`.</span>
 <span class="sd">        """</span>
-        <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_cpu</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cpu_sample</span><span class="p">(</span><span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_cpu</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="HighUtilizedCiscoDevice.get_used_memory">
@@ -423,7 +421,7 @@
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_low_utilized_cpu`.</span>
 <span class="sd">        """</span>
-        <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_cpu</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cpu_sample</span><span class="p">(</span><span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_cpu</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedCiscoDevice.get_used_memory">
@@ -620,7 +618,7 @@
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_high_utilized_cpu`.</span>
 <span class="sd">        """</span>
-        <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_cpu</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cpu_sample</span><span class="p">(</span><span class="n">logic</span><span class="o">.</span><span class="n">get_high_utilized_cpu</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="HighUtilizedJuniperDevice.get_used_memory">
@@ -673,7 +671,7 @@
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_low_utilized_cpu`.</span>
 <span class="sd">        """</span>
-        <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_cpu</span><span class="p">()</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cpu_sample</span><span class="p">(</span><span class="n">logic</span><span class="o">.</span><span class="n">get_low_utilized_cpu</span><span class="p">())</span></div>
 
 
 <div class="viewcode-block" id="LowUtilizedJuniperDevice.get_total_memory">
@@ -817,7 +815,7 @@
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_custom_utilized_cpu`.</span>
 <span class="sd">        """</span>
-        <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_cpu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cpu_sample</span><span class="p">(</span><span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_cpu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="customUtilizedCiscoDevice.get_used_memory">
@@ -890,7 +888,7 @@
 <span class="sd">            Integer in the range ``0``–``100`` from</span>
 <span class="sd">            :func:`simulator.logic.get_custom_utilized_cpu`.</span>
 <span class="sd">        """</span>
-        <span class="k">return</span> <span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_cpu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">)</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_apply_cpu_sample</span><span class="p">(</span><span class="n">logic</span><span class="o">.</span><span class="n">get_custom_utilized_cpu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">profile</span><span class="p">))</span></div>
 
 
 <div class="viewcode-block" id="customUtilizedJuniperDevice.get_used_memory">

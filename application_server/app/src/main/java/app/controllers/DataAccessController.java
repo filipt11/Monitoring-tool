@@ -1,5 +1,6 @@
 package app.controllers;
 
+import app.services.AnomalyDetectionService;
 import app.services.DataAccessService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,9 +13,14 @@ import java.util.List;
 @RestController
 public class DataAccessController {
     private final DataAccessService dataAccessService;
+    private final AnomalyDetectionService anomalyDetectionService;
 
-    public DataAccessController(DataAccessService dataAccessService) {
+    public DataAccessController(
+            DataAccessService dataAccessService,
+            AnomalyDetectionService anomalyDetectionService
+    ) {
         this.dataAccessService = dataAccessService;
+        this.anomalyDetectionService = anomalyDetectionService;
     }
 
     @GetMapping("/api/data/metrics/devices")
@@ -76,6 +82,25 @@ public class DataAccessController {
                 metrics,
                 start,
                 end
+        ));
+    }
+
+    @GetMapping("/api/data/anomalies")
+    public ResponseEntity<?> getAnomalies(
+            @RequestParam Instant start,
+            @RequestParam Instant end,
+            @RequestParam(required = false) List<String> metrics,
+            @RequestParam(required = false) List<String> detectors,
+            @RequestParam(required = false) String hostname,
+            @RequestParam(defaultValue = "true") boolean mergeCusumEpisodes
+    ) {
+        return ResponseEntity.ok(anomalyDetectionService.getAnomalies(
+                start,
+                end,
+                metrics,
+                detectors,
+                hostname,
+                mergeCusumEpisodes
         ));
     }
 

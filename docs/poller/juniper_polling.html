@@ -67,10 +67,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../simulator.html">Simulator Module Documentation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../run.html">run module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 
         </div>
@@ -100,16 +97,6 @@
              
   <section id="module-poller.juniper_polling">
 <span id="juniper-polling-module"></span><h1>juniper_polling module<a class="headerlink" href="#module-poller.juniper_polling" title="Link to this heading"></a></h1>
-<p>Juniper Junos RPC polling and response parsing.</p>
-<p>Contacts route-engine and interface RPC endpoints in parallel, parses
-Junos JSON payloads, and returns a normalized
-<a class="reference internal" href="models.html#poller.models.PollingResult" title="poller.models.PollingResult"><code class="xref py py-class docutils literal notranslate"><span class="pre">PollingResult</span></code></a> consumed by <a class="reference internal" href="main.html#module-poller.main" title="poller.main"><code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.main</span></code></a> and
-<a class="reference internal" href="api.html#module-poller.api" title="poller.api"><code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.api</span></code></a> (device modeling).</p>
-<p>RPC paths polled:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/rpc/get-route-engine-information</span></code> — CPU and memory</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">POST</span> <span class="pre">/rpc/get-interface-information</span></code> — interface counters</p></li>
-</ul>
 <dl class="py function">
 <dt class="sig sig-object py" id="poller.juniper_polling.poll_juniper_device_async">
 <span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">poll_juniper_device_async</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="models.html#poller.models.Device" title="poller.models.Device"><span class="pre">Device</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">httpx.AsyncClient</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="models.html#poller.models.PollingResult" title="poller.models.PollingResult"><span class="pre">PollingResult</span></a></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#poll_juniper_device_async"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.poll_juniper_device_async" title="Link to this definition"></a></dt>
@@ -156,7 +143,7 @@ and admin-up <a class="reference internal" href="models.html#poller.models.Inter
 
 <dl class="py function">
 <dt class="sig sig-object py" id="poller.juniper_polling.parse_cpu">
-<span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">parse_cpu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_route_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#parse_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.parse_cpu" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">poller.juniper_polling.</span></span><span class="sig-name descname"><span class="pre">parse_cpu</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">raw_route_engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/poller/juniper_polling.html#parse_cpu"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#poller.juniper_polling.parse_cpu" title="Link to this definition"></a></dt>
 <dd><p>Extract CPU utilization from Junos route-engine information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -164,7 +151,8 @@ and admin-up <a class="reference internal" href="models.html#poller.models.Inter
 <code class="docutils literal notranslate"><span class="pre">/rpc/get-route-engine-information</span></code>.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>CPU usage as <code class="docutils literal notranslate"><span class="pre">100</span> <span class="pre">-</span> <span class="pre">cpu-idle</span></code> (integer percentage).</p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(cpu_pct,</span> <span class="pre">sim_event)</span></code> where <code class="docutils literal notranslate"><span class="pre">cpu_pct</span></code> is <code class="docutils literal notranslate"><span class="pre">100</span> <span class="pre">-</span> <span class="pre">cpu-idle</span></code> and
+<code class="docutils literal notranslate"><span class="pre">sim_event</span></code> is an optional simulator ground-truth label.</p>
 </dd>
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -190,12 +178,6 @@ and <code class="docutils literal notranslate"><span class="pre">used_memory</sp
 utilization percentage reported by Junos.</p>
 </dd>
 </dl>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Total memory is parsed from <code class="docutils literal notranslate"><span class="pre">memory-installed-size</span></code> (MB in
-parentheses) and converted to bytes. When parsing fails,
-<code class="docutils literal notranslate"><span class="pre">total_memory</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code> and a warning is logged.</p>
-</div>
 </dd></dl>
 
 <dl class="py function">

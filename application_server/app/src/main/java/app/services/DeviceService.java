@@ -14,6 +14,7 @@ import app.repositories.DeviceInterfaceRepository;
 import app.repositories.DeviceRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -36,7 +37,7 @@ public class DeviceService {
             DeviceGroupRepository deviceGroupRepository,
             DeviceMapper deviceMapper,
             DeviceInterfaceMapper deviceInterfaceMapper,
-            RestClient deviceRestClient
+            @Qualifier("pollerRestClient") RestClient deviceRestClient
     ) {
         this.deviceRepository = deviceRepository;
         this.deviceInterfaceRepository = deviceInterfaceRepository;

@@ -1,0 +1,216 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anomaly Detector Module Documentation &mdash; Monitoring Tool 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="config module" href="anomaly_detector/config.html" />
+    <link rel="prev" title="logic module" href="simulator/logic.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2c3e50" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            Monitoring Tool
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="poller.html">Poller Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Anomaly Detector Module Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#detection-pipeline">Detection pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#supported-metrics">Supported metrics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#offline-evaluation">Offline evaluation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="anomaly_detector/config.html">config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="anomaly_detector/logic.html">logic module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="anomaly_detector/main.html">main module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="anomaly_detector/evaluate.html">evaluate module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2c3e50" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">Monitoring Tool</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Anomaly Detector Module Documentation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/anomaly_detector.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="anomaly-detector-module-documentation">
+<h1>Anomaly Detector Module Documentation<a class="headerlink" href="#anomaly-detector-module-documentation" title="Link to this heading"></a></h1>
+<p>The <strong>Anomaly Detector</strong> analyses polled network metrics stored in InfluxDB and
+flags unusual behaviour for the Monitoring Tool UI.</p>
+<p>It combines two classical statistical detectors:</p>
+<ul class="simple">
+<li><p><strong>EWMA</strong> (Exponentially Weighted Moving Average) — sensitive to <strong>point</strong>
+anomalies such as short CPU spikes or interface utilization drops.</p></li>
+<li><p><strong>CUSUM</strong> (Cumulative Sum) — sensitive to <strong>sustained</strong> level shifts that
+persist across multiple polling intervals.</p></li>
+</ul>
+<p>The service runs as a FastAPI application (default port <code class="docutils literal notranslate"><span class="pre">8010</span></code>). The Spring
+application server proxies <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">/api/data/anomalies</span></code> to this service; the
+React frontend presents the results on the Anomalies page and on the Main Page
+summary tile.</p>
+<section id="detection-pipeline">
+<h2>Detection pipeline<a class="headerlink" href="#detection-pipeline" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Read metric series from InfluxDB (<code class="docutils literal notranslate"><span class="pre">device_statistics</span></code> /
+<code class="docutils literal notranslate"><span class="pre">interface_statistics</span></code>).</p></li>
+<li><p>Expand the caller display window to a longer <strong>context window</strong> (at least
+<a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.CONTEXT_LOOKBACK_HOURS" title="anomaly_detector.config.CONTEXT_LOOKBACK_HOURS"><code class="xref py py-data docutils literal notranslate"><span class="pre">CONTEXT_LOOKBACK_HOURS</span></code></a>) so EWMA/CUSUM have
+enough history.</p></li>
+<li><p>Run EWMA and/or CUSUM per device or interface group.</p></li>
+<li><p>Merge consecutive CUSUM flags into episodes when enabled.</p></li>
+<li><p>Keep only events that overlap the original display <code class="docutils literal notranslate"><span class="pre">[start,</span> <span class="pre">end]</span></code> range.</p></li>
+</ol>
+</section>
+<section id="supported-metrics">
+<h2>Supported metrics<a class="headerlink" href="#supported-metrics" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">cpu_usage</span></code>, <code class="docutils literal notranslate"><span class="pre">memory_usage_pct</span></code> (device scope)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">in_util_pct</span></code>, <code class="docutils literal notranslate"><span class="pre">out_util_pct</span></code> (interface scope)</p></li>
+</ul>
+</section>
+<section id="offline-evaluation">
+<h2>Offline evaluation<a class="headerlink" href="#offline-evaluation" title="Link to this heading"></a></h2>
+<p>Against simulator ground-truth labels (<code class="docutils literal notranslate"><span class="pre">sim_anomaly</span></code> / <code class="docutils literal notranslate"><span class="pre">sim_event</span></code>) you can
+score precision, recall, and F1 with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>anomaly_detector.evaluate<span class="w"> </span>--hours<span class="w"> </span><span class="m">12</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="anomaly_detector/evaluate.html"><span class="doc">evaluate module</span></a> for details.</p>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="anomaly_detector/config.html">config module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.API_PORT"><code class="docutils literal notranslate"><span class="pre">API_PORT</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.INFLUX_URL"><code class="docutils literal notranslate"><span class="pre">INFLUX_URL</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.INFLUX_TOKEN"><code class="docutils literal notranslate"><span class="pre">INFLUX_TOKEN</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.INFLUX_ORG"><code class="docutils literal notranslate"><span class="pre">INFLUX_ORG</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.INFLUX_BUCKET"><code class="docutils literal notranslate"><span class="pre">INFLUX_BUCKET</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.POLLING_INTERVAL_SEC"><code class="docutils literal notranslate"><span class="pre">POLLING_INTERVAL_SEC</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.DEFAULT_LOOKBACK_HOURS"><code class="docutils literal notranslate"><span class="pre">DEFAULT_LOOKBACK_HOURS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/config.html#anomaly_detector.config.CONTEXT_LOOKBACK_HOURS"><code class="docutils literal notranslate"><span class="pre">CONTEXT_LOOKBACK_HOURS</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly_detector/logic.html">logic module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.METRIC_SPECS"><code class="docutils literal notranslate"><span class="pre">METRIC_SPECS</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.CUSUM_EPISODE_GAP"><code class="docutils literal notranslate"><span class="pre">CUSUM_EPISODE_GAP</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.MetricSeriesSpec"><code class="docutils literal notranslate"><span class="pre">MetricSeriesSpec</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.ensure_utc"><code class="docutils literal notranslate"><span class="pre">ensure_utc()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.to_flux_time"><code class="docutils literal notranslate"><span class="pre">to_flux_time()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.to_iso_z"><code class="docutils literal notranslate"><span class="pre">to_iso_z()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.InfluxMetricStore"><code class="docutils literal notranslate"><span class="pre">InfluxMetricStore</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.detect_anomalies_ewma_cusum"><code class="docutils literal notranslate"><span class="pre">detect_anomalies_ewma_cusum()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.apply_anomaly_detection"><code class="docutils literal notranslate"><span class="pre">apply_anomaly_detection()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.build_anomaly_item"><code class="docutils literal notranslate"><span class="pre">build_anomaly_item()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.collect_ewma_items"><code class="docutils literal notranslate"><span class="pre">collect_ewma_items()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.collect_cusum_items"><code class="docutils literal notranslate"><span class="pre">collect_cusum_items()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.parse_item_time"><code class="docutils literal notranslate"><span class="pre">parse_item_time()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.item_overlaps_display"><code class="docutils literal notranslate"><span class="pre">item_overlaps_display()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/logic.html#anomaly_detector.logic.detect_anomalies_for_range"><code class="docutils literal notranslate"><span class="pre">detect_anomalies_for_range()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly_detector/main.html">main module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/main.html#anomaly_detector.main.default_range"><code class="docutils literal notranslate"><span class="pre">default_range()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/main.html#anomaly_detector.main.compute_window"><code class="docutils literal notranslate"><span class="pre">compute_window()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/main.html#anomaly_detector.main.health"><code class="docutils literal notranslate"><span class="pre">health()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/main.html#anomaly_detector.main.get_anomalies"><code class="docutils literal notranslate"><span class="pre">get_anomalies()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly_detector/evaluate.html">evaluate module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.fetch_cpu_with_ground_truth"><code class="docutils literal notranslate"><span class="pre">fetch_cpu_with_ground_truth()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.scores"><code class="docutils literal notranslate"><span class="pre">scores()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.compute_window"><code class="docutils literal notranslate"><span class="pre">compute_window()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.run_evaluation"><code class="docutils literal notranslate"><span class="pre">run_evaluation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.main"><code class="docutils literal notranslate"><span class="pre">main()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="simulator/logic.html" class="btn btn-neutral float-left" title="logic module" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="anomaly_detector/config.html" class="btn btn-neutral float-right" title="config module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Filip Terzyk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

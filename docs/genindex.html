@@ -43,10 +43,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="poller.html">Poller Module Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulator.html">Simulator Module Documentation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="run.html">run module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 
         </div>
@@ -80,11 +77,11 @@
  | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
+ | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
  | <a href="#H"><strong>H</strong></a>
  | <a href="#I"><strong>I</strong></a>
- | <a href="#J"><strong>J</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
  | <a href="#N"><strong>N</strong></a>
@@ -100,8 +97,6 @@
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#poller.api.add_device">add_device() (in module poller.api)</a>
-</li>
       <li><a href="poller/models.html#poller.models.Interface.admin_status">admin_status (poller.models.Interface attribute)</a>
 
       <ul>
@@ -110,15 +105,39 @@
         <li><a href="poller/models.html#poller.models.InterfaceOut.admin_status">(poller.models.InterfaceOut attribute)</a>
 </li>
       </ul></li>
-      <li><a href="poller/api.html#poller.api.app">app (in module poller.api)</a>
+      <li>
+    anomaly_detector.config
 
       <ul>
-        <li><a href="simulator/main.html#simulator.main.app">(in module simulator.main)</a>
+        <li><a href="anomaly_detector/config.html#module-anomaly_detector.config">module</a>
+</li>
+      </ul></li>
+      <li>
+    anomaly_detector.evaluate
+
+      <ul>
+        <li><a href="anomaly_detector/evaluate.html#module-anomaly_detector.evaluate">module</a>
+</li>
+      </ul></li>
+      <li>
+    anomaly_detector.logic
+
+      <ul>
+        <li><a href="anomaly_detector/logic.html#module-anomaly_detector.logic">module</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#poller.api.app_lifespan_data">app_lifespan_data (in module poller.api)</a>
+      <li>
+    anomaly_detector.main
+
+      <ul>
+        <li><a href="anomaly_detector/main.html#module-anomaly_detector.main">module</a>
+</li>
+      </ul></li>
+      <li><a href="anomaly_detector/config.html#anomaly_detector.config.API_PORT">API_PORT (in module anomaly_detector.config)</a>
+</li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.apply_anomaly_detection">apply_anomaly_detection() (in module anomaly_detector.logic)</a>
 </li>
       <li><a href="simulator/main.html#simulator.main.authenticate">authenticate() (in module simulator.main)</a>
 </li>
@@ -142,6 +161,8 @@
 </li>
       <li><a href="simulator/devices.html#simulator.devices.BaseJuniperDevice">BaseJuniperDevice (class in simulator.devices)</a>
 </li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.build_anomaly_item">build_anomaly_item() (in module anomaly_detector.logic)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -152,19 +173,27 @@
 </li>
       <li><a href="poller/main.html#poller.main.calculate_utilization">calculate_utilization() (in module poller.main)</a>
 </li>
-      <li><a href="simulator/main.html#simulator.main.cisco_router">cisco_router (in module simulator.main)</a>
+      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.clamp_values_0_100">clamp_values_0_100() (simulator.logic.CustomProfile class method)</a>
 </li>
-      <li><a href="simulator/logic.html#simulator.logic.CustomProfile.clamp_values_0_100">clamp_values_0_100() (simulator.logic.CustomProfile method)</a>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.collect_cusum_items">collect_cusum_items() (in module anomaly_detector.logic)</a>
 </li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.collect_ewma_items">collect_ewma_items() (in module anomaly_detector.logic)</a>
+</li>
+      <li><a href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.compute_window">compute_window() (in module anomaly_detector.evaluate)</a>
+
+      <ul>
+        <li><a href="anomaly_detector/main.html#anomaly_detector.main.compute_window">(in module anomaly_detector.main)</a>
+</li>
+      </ul></li>
+      <li><a href="anomaly_detector/config.html#anomaly_detector.config.CONTEXT_LOOKBACK_HOURS">CONTEXT_LOOKBACK_HOURS (in module anomaly_detector.config)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="poller/models.html#poller.models.PollingResult.cpu">cpu (poller.models.PollingResult attribute)</a>
 </li>
       <li><a href="poller/models.html#poller.models.DeviceWithPolledData.cpu_usage">cpu_usage (poller.models.DeviceWithPolledData attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="simulator/main.html#simulator.main.cpu_usage">cpu_usage() (in module simulator.main)</a>
-</li>
-      <li><a href="run.html#run.create_venv">create_venv() (in module run)</a>
 </li>
       <li><a href="poller/models.html#poller.models.Device.created_at">created_at (poller.models.Device attribute)</a>
 
@@ -178,24 +207,28 @@
 </li>
       <li><a href="simulator/devices.html#simulator.devices.customUtilizedJuniperDevice">customUtilizedJuniperDevice (class in simulator.devices)</a>
 </li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.CUSUM_EPISODE_GAP">CUSUM_EPISODE_GAP (in module anomaly_detector.logic)</a>
+</li>
   </ul></td>
 </tr></table>
 
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#poller.api.delete_device">delete_device() (in module poller.api)</a>
+      <li><a href="anomaly_detector/config.html#anomaly_detector.config.DEFAULT_LOOKBACK_HOURS">DEFAULT_LOOKBACK_HOURS (in module anomaly_detector.config)</a>
+</li>
+      <li><a href="anomaly_detector/main.html#anomaly_detector.main.default_range">default_range() (in module anomaly_detector.main)</a>
+</li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.detect_anomalies_ewma_cusum">detect_anomalies_ewma_cusum() (in module anomaly_detector.logic)</a>
+</li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.detect_anomalies_for_range">detect_anomalies_for_range() (in module anomaly_detector.logic)</a>
 </li>
       <li><a href="simulator/logic.html#id1">deviation (simulator.logic.CustomProfile attribute)</a>, <a href="simulator/logic.html#simulator.logic.CustomProfile.deviation">[1]</a>
 </li>
       <li><a href="poller/models.html#poller.models.Device">Device (class in poller.models)</a>
 </li>
-      <li><a href="simulator/main.html#simulator.main.device">device (in module simulator.main)</a>
-
-      <ul>
-        <li><a href="poller/models.html#poller.models.Interface.device">(poller.models.Interface attribute)</a>
+      <li><a href="poller/models.html#poller.models.Interface.device">device (poller.models.Interface attribute)</a>
 </li>
-      </ul></li>
       <li><a href="poller/models.html#poller.models.Interface.device_id">device_id (poller.models.Interface attribute)</a>
 
       <ul>
@@ -204,15 +237,13 @@
       </ul></li>
       <li><a href="poller/models.html#poller.models.DeviceCreate">DeviceCreate (class in poller.models)</a>
 </li>
-      <li><a href="poller/models.html#poller.models.DeviceOut">DeviceOut (class in poller.models)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="poller/models.html#poller.models.DeviceOut">DeviceOut (class in poller.models)</a>
+</li>
       <li><a href="poller/models.html#poller.models.DeviceUpdate">DeviceUpdate (class in poller.models)</a>
 </li>
       <li><a href="poller/models.html#poller.models.DeviceWithPolledData">DeviceWithPolledData (class in poller.models)</a>
-</li>
-      <li><a href="poller/api.html#poller.api.discover_and_sync_interfaces">discover_and_sync_interfaces() (in module poller.api)</a>
 </li>
       <li><a href="poller/models.html#poller.models.Interface.discovered_at">discovered_at (poller.models.Interface attribute)</a>
 
@@ -233,14 +264,26 @@
   </ul></td>
 </tr></table>
 
+<h2 id="E">E</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.ensure_utc">ensure_utc() (in module anomaly_detector.logic)</a>
+</li>
+  </ul></td>
+</tr></table>
+
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="poller/cisco_polling.html#poller.cisco_polling.fetch_cisco_data_async">fetch_cisco_data_async() (in module poller.cisco_polling)</a>
 </li>
+      <li><a href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.fetch_cpu_with_ground_truth">fetch_cpu_with_ground_truth() (in module anomaly_detector.evaluate)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="poller/juniper_polling.html#poller.juniper_polling.fetch_juniper_data_async">fetch_juniper_data_async() (in module poller.juniper_polling)</a>
+</li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.InfluxMetricStore.fetch_metric_data">fetch_metric_data() (anomaly_detector.logic.InfluxMetricStore method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -248,6 +291,8 @@
 <h2 id="G">G</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="anomaly_detector/main.html#anomaly_detector.main.get_anomalies">get_anomalies() (in module anomaly_detector.main)</a>
+</li>
       <li><a href="simulator/logic.html#simulator.logic.get_average_utilized_cpu">get_average_utilized_cpu() (in module simulator.logic)</a>
 </li>
       <li><a href="simulator/logic.html#simulator.logic.get_average_utilized_ram">get_average_utilized_ram() (in module simulator.logic)</a>
@@ -274,12 +319,6 @@
 </li>
       <li><a href="simulator/logic.html#simulator.logic.get_custom_utilized_ram">get_custom_utilized_ram() (in module simulator.logic)</a>
 </li>
-      <li><a href="poller/api.html#poller.api.get_device">get_device() (in module poller.api)</a>
-</li>
-      <li><a href="poller/api.html#poller.api.get_device_interfaces">get_device_interfaces() (in module poller.api)</a>
-</li>
-      <li><a href="poller/api.html#poller.api.get_devices">get_devices() (in module poller.api)</a>
-</li>
       <li><a href="simulator/logic.html#simulator.logic.get_dynamic_interval">get_dynamic_interval() (in module simulator.logic)</a>
 </li>
       <li><a href="simulator/logic.html#simulator.logic.get_high_utilized_cpu">get_high_utilized_cpu() (in module simulator.logic)</a>
@@ -288,10 +327,10 @@
 </li>
       <li><a href="simulator/main.html#simulator.main.get_hostname">get_hostname() (in module simulator.main)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="simulator/main.html#simulator.main.get_interface_information">get_interface_information() (in module simulator.main)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="simulator/devices.html#simulator.devices.BaseDevice.get_interfaces">get_interfaces() (simulator.devices.BaseDevice method)</a>
 </li>
       <li><a href="simulator/main.html#simulator.main.get_interfaces_state">get_interfaces_state() (in module simulator.main)</a>
@@ -330,7 +369,7 @@
         <li><a href="simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice.get_used_memory">(simulator.devices.LowUtilizedJuniperDevice method)</a>
 </li>
       </ul></li>
-      <li><a href="run.html#run.get_venv_python">get_venv_python() (in module run)</a>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.MetricSeriesSpec.group_columns">group_columns (anomaly_detector.logic.MetricSeriesSpec attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -340,7 +379,7 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="poller/main.html#poller.main.handle_exit">handle_exit() (in module poller.main)</a>
 </li>
-      <li><a href="poller/api.html#poller.api.health">health() (in module poller.api)</a>
+      <li><a href="anomaly_detector/main.html#anomaly_detector.main.health">health() (in module anomaly_detector.main)</a>
 
       <ul>
         <li><a href="simulator/main.html#simulator.main.health">(in module simulator.main)</a>
@@ -349,8 +388,6 @@
       <li><a href="simulator/devices.html#simulator.devices.HighUtilizedCiscoDevice">HighUtilizedCiscoDevice (class in simulator.devices)</a>
 </li>
       <li><a href="simulator/devices.html#simulator.devices.HighUtilizedJuniperDevice">HighUtilizedJuniperDevice (class in simulator.devices)</a>
-</li>
-      <li><a href="simulator/main.html#simulator.main.HOSTNAME">HOSTNAME (in module simulator.main)</a>
 </li>
       <li><a href="poller/models.html#poller.models.Device.hostname">hostname (poller.models.Device attribute)</a>
 
@@ -364,8 +401,6 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="simulator/main.html#simulator.main.HTTPS">HTTPS (in module simulator.main)</a>
-</li>
       <li><a href="poller/models.html#poller.models.Device.https">https (poller.models.Device attribute)</a>
 
       <ul>
@@ -410,12 +445,20 @@
 </li>
       <li><a href="simulator/logic.html#simulator.logic.increase_interface_counter_for_higher_utilized">increase_interface_counter_for_higher_utilized() (in module simulator.logic)</a>
 </li>
-      <li><a href="poller/config.html#poller.config.init_db">init_db() (in module poller.config)</a>
+      <li><a href="anomaly_detector/config.html#anomaly_detector.config.INFLUX_BUCKET">INFLUX_BUCKET (in module anomaly_detector.config)</a>
 </li>
-      <li><a href="run.html#run.install_requirements">install_requirements() (in module run)</a>
+      <li><a href="anomaly_detector/config.html#anomaly_detector.config.INFLUX_ORG">INFLUX_ORG (in module anomaly_detector.config)</a>
+</li>
+      <li><a href="anomaly_detector/config.html#anomaly_detector.config.INFLUX_TOKEN">INFLUX_TOKEN (in module anomaly_detector.config)</a>
+</li>
+      <li><a href="anomaly_detector/config.html#anomaly_detector.config.INFLUX_URL">INFLUX_URL (in module anomaly_detector.config)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.InfluxMetricStore">InfluxMetricStore (class in anomaly_detector.logic)</a>
+</li>
+      <li><a href="poller/config.html#poller.config.init_db">init_db() (in module poller.config)</a>
+</li>
       <li><a href="poller/models.html#poller.models.Interface">Interface (class in poller.models)</a>
 </li>
       <li><a href="simulator/devices.html#simulator.devices.BaseDevice.interface_counters">interface_counters (simulator.devices.BaseDevice attribute)</a>
@@ -432,8 +475,6 @@
       </ul></li>
       <li><a href="simulator/devices.html#simulator.devices.BaseDevice.interfaces_list">interfaces_list (simulator.devices.BaseDevice attribute)</a>
 </li>
-      <li><a href="simulator/main.html#simulator.main.IP">IP (in module simulator.main)</a>
-</li>
       <li><a href="poller/models.html#poller.models.Device.ip">ip (poller.models.Device attribute)</a>
 
       <ul>
@@ -446,13 +487,7 @@
       </ul></li>
       <li><a href="simulator/devices.html#simulator.devices.BaseDevice.ip_address">ip_address (simulator.devices.BaseDevice attribute)</a>
 </li>
-  </ul></td>
-</tr></table>
-
-<h2 id="J">J</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="simulator/main.html#simulator.main.juniper_router">juniper_router (in module simulator.main)</a>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.item_overlaps_display">item_overlaps_display() (in module anomaly_detector.logic)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -466,8 +501,6 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#poller.api.lifespan">lifespan() (in module poller.api)</a>
-</li>
       <li><a href="simulator/devices.html#simulator.devices.LowUtilizedCiscoDevice">LowUtilizedCiscoDevice (class in simulator.devices)</a>
 </li>
       <li><a href="simulator/devices.html#simulator.devices.LowUtilizedJuniperDevice">LowUtilizedJuniperDevice (class in simulator.devices)</a>
@@ -486,7 +519,7 @@
         <li><a href="poller/models.html#poller.models.InterfaceOut.mac">(poller.models.InterfaceOut attribute)</a>
 </li>
       </ul></li>
-      <li><a href="poller/api.html#poller.api.main">main() (in module poller.api)</a>
+      <li><a href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.main">main() (in module anomaly_detector.evaluate)</a>
 
       <ul>
         <li><a href="poller/main.html#poller.main.main">(in module poller.main)</a>
@@ -498,6 +531,8 @@
 </li>
       <li><a href="simulator/logic.html#id0">mean (simulator.logic.CustomProfile attribute)</a>, <a href="simulator/logic.html#simulator.logic.CustomProfile.mean">[1]</a>
 </li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.MetricSeriesSpec.measurement">measurement (anomaly_detector.logic.MetricSeriesSpec attribute)</a>
+</li>
       <li><a href="poller/models.html#poller.models.PollingResult.memory_pct">memory_pct (poller.models.PollingResult attribute)</a>
 </li>
       <li><a href="poller/models.html#poller.models.DeviceWithPolledData.memory_total">memory_total (poller.models.DeviceWithPolledData attribute)</a>
@@ -508,9 +543,13 @@
 </li>
       <li><a href="poller/models.html#poller.models.DeviceWithPolledData.memory_usage_pct">memory_usage_pct (poller.models.DeviceWithPolledData attribute)</a>
 </li>
-      <li><a href="simulator/logic.html#id2">min_val (simulator.logic.CustomProfile attribute)</a>, <a href="simulator/logic.html#simulator.logic.CustomProfile.min_val">[1]</a>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.MetricSeriesSpec.metric">metric (anomaly_detector.logic.MetricSeriesSpec attribute)</a>
 </li>
-      <li><a href="simulator/main.html#simulator.main.MODEL">MODEL (in module simulator.main)</a>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.METRIC_SPECS">METRIC_SPECS (in module anomaly_detector.logic)</a>
+</li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.MetricSeriesSpec">MetricSeriesSpec (class in anomaly_detector.logic)</a>
+</li>
+      <li><a href="simulator/logic.html#id2">min_val (simulator.logic.CustomProfile attribute)</a>, <a href="simulator/logic.html#simulator.logic.CustomProfile.min_val">[1]</a>
 </li>
       <li><a href="poller/models.html#poller.models.Device.model">model (poller.models.Device attribute)</a>
 
@@ -522,15 +561,31 @@
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#poller.api.model_cisco_device_info">model_cisco_device_info() (in module poller.api)</a>
+      <li><a href="poller/models.html#poller.models.DeviceCreate.model_config">model_config (poller.models.DeviceCreate attribute)</a>
+
+      <ul>
+        <li><a href="poller/models.html#poller.models.DeviceOut.model_config">(poller.models.DeviceOut attribute)</a>
 </li>
-      <li><a href="poller/api.html#poller.api.model_juniper_device_info">model_juniper_device_info() (in module poller.api)</a>
+        <li><a href="poller/models.html#poller.models.DeviceUpdate.model_config">(poller.models.DeviceUpdate attribute)</a>
 </li>
+        <li><a href="poller/models.html#poller.models.DeviceWithPolledData.model_config">(poller.models.DeviceWithPolledData attribute)</a>
+</li>
+        <li><a href="poller/models.html#poller.models.InterfaceOut.model_config">(poller.models.InterfaceOut attribute)</a>
+</li>
+        <li><a href="simulator/logic.html#simulator.logic.CustomProfile.model_config">(simulator.logic.CustomProfile attribute)</a>
+</li>
+      </ul></li>
       <li>
     module
 
       <ul>
-        <li><a href="poller/api.html#module-poller.api">poller.api</a>
+        <li><a href="anomaly_detector/config.html#module-anomaly_detector.config">anomaly_detector.config</a>
+</li>
+        <li><a href="anomaly_detector/evaluate.html#module-anomaly_detector.evaluate">anomaly_detector.evaluate</a>
+</li>
+        <li><a href="anomaly_detector/logic.html#module-anomaly_detector.logic">anomaly_detector.logic</a>
+</li>
+        <li><a href="anomaly_detector/main.html#module-anomaly_detector.main">anomaly_detector.main</a>
 </li>
         <li><a href="poller/cisco_polling.html#module-poller.cisco_polling">poller.cisco_polling</a>
 </li>
@@ -543,8 +598,6 @@
         <li><a href="poller/main.html#module-poller.main">poller.main</a>
 </li>
         <li><a href="poller/models.html#module-poller.models">poller.models</a>
-</li>
-        <li><a href="run.html#module-run">run</a>
 </li>
         <li><a href="simulator/devices.html#module-simulator.devices">simulator.devices</a>
 </li>
@@ -609,14 +662,14 @@
         <li><a href="poller/juniper_polling.html#poller.juniper_polling.parse_interfaces_catalog">(in module poller.juniper_polling)</a>
 </li>
       </ul></li>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.parse_item_time">parse_item_time() (in module anomaly_detector.logic)</a>
+</li>
       <li><a href="poller/cisco_polling.html#poller.cisco_polling.parse_memory">parse_memory() (in module poller.cisco_polling)</a>
 
       <ul>
         <li><a href="poller/juniper_polling.html#poller.juniper_polling.parse_memory">(in module poller.juniper_polling)</a>
 </li>
       </ul></li>
-      <li><a href="simulator/main.html#simulator.main.PASSWORD">PASSWORD (in module simulator.main)</a>
-</li>
       <li><a href="poller/models.html#poller.models.Device.password">password (poller.models.Device attribute)</a>
 
       <ul>
@@ -638,21 +691,14 @@
       <li><a href="poller/main.html#poller.main.poll_single_device">poll_single_device() (in module poller.main)</a>
 </li>
       <li>
-    poller.api
-
-      <ul>
-        <li><a href="poller/api.html#module-poller.api">module</a>
-</li>
-      </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li>
     poller.cisco_polling
 
       <ul>
         <li><a href="poller/cisco_polling.html#module-poller.cisco_polling">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     poller.config
 
@@ -688,22 +734,22 @@
         <li><a href="poller/models.html#module-poller.models">module</a>
 </li>
       </ul></li>
-      <li><a href="poller/models.html#poller.models.PollingResult">PollingResult (class in poller.models)</a>
+      <li><a href="anomaly_detector/config.html#anomaly_detector.config.POLLING_INTERVAL_SEC">POLLING_INTERVAL_SEC (in module anomaly_detector.config)</a>
 </li>
-      <li><a href="simulator/main.html#simulator.main.PORT">PORT (in module simulator.main)</a>
+      <li><a href="poller/models.html#poller.models.PollingResult">PollingResult (class in poller.models)</a>
 </li>
       <li><a href="poller/models.html#poller.models.Device.port">port (poller.models.Device attribute)</a>
 
       <ul>
         <li><a href="poller/models.html#poller.models.DeviceCreate.port">(poller.models.DeviceCreate attribute)</a>
 </li>
+        <li><a href="poller/models.html#poller.models.DeviceOut.port">(poller.models.DeviceOut attribute)</a>
+</li>
         <li><a href="poller/models.html#poller.models.DeviceUpdate.port">(poller.models.DeviceUpdate attribute)</a>
 </li>
         <li><a href="simulator/devices.html#simulator.devices.BaseDevice.port">(simulator.devices.BaseDevice attribute)</a>
 </li>
       </ul></li>
-      <li><a href="simulator/main.html#simulator.main.PROFILE">PROFILE (in module simulator.main)</a>
-</li>
       <li><a href="simulator/devices.html#simulator.devices.customUtilizedCiscoDevice.profile">profile (simulator.devices.customUtilizedCiscoDevice attribute)</a>
 
       <ul>
@@ -716,20 +762,7 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#poller.api.rediscover_device">rediscover_device() (in module poller.api)</a>
-</li>
-      <li>
-    run
-
-      <ul>
-        <li><a href="run.html#module-run">module</a>
-</li>
-      </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="run.html#run.run_command">run_command() (in module run)</a>
-</li>
-      <li><a href="run.html#run.run_compose">run_compose() (in module run)</a>
+      <li><a href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.run_evaluation">run_evaluation() (in module anomaly_detector.evaluate)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -741,12 +774,20 @@
 </li>
       <li><a href="poller/main.html#poller.main.save_polled_interface_data">save_polled_interface_data() (in module poller.main)</a>
 </li>
-      <li><a href="simulator/main.html#simulator.main.security">security (in module simulator.main)</a>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.MetricSeriesSpec.scope">scope (anomaly_detector.logic.MetricSeriesSpec attribute)</a>
+</li>
+      <li><a href="anomaly_detector/evaluate.html#anomaly_detector.evaluate.scores">scores() (in module anomaly_detector.evaluate)</a>
 </li>
       <li><a href="poller/data_loader.html#poller.data_loader.seed_devices">seed_devices() (in module poller.data_loader)</a>
 </li>
       <li><a href="poller/main.html#poller.main.semaphore">semaphore (in module poller.main)</a>
 </li>
+      <li><a href="poller/models.html#poller.models.DeviceWithPolledData.sim_event">sim_event (poller.models.DeviceWithPolledData attribute)</a>
+
+      <ul>
+        <li><a href="poller/models.html#poller.models.PollingResult.sim_event">(poller.models.PollingResult attribute)</a>
+</li>
+      </ul></li>
       <li>
     simulator.devices
 
@@ -761,6 +802,8 @@
         <li><a href="simulator/logic.html#module-simulator.logic">module</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     simulator.main
 
@@ -768,8 +811,6 @@
         <li><a href="simulator/main.html#module-simulator.main">module</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="poller/models.html#poller.models.InterfaceData.speed">speed (poller.models.InterfaceData attribute)</a>
 </li>
       <li><a href="poller/models.html#poller.models.Interface.speed_bps">speed_bps (poller.models.Interface attribute)</a>
@@ -788,8 +829,6 @@
 </li>
       <li><a href="simulator/logic.html#id5">spike_min (simulator.logic.CustomProfile attribute)</a>, <a href="simulator/logic.html#simulator.logic.CustomProfile.spike_min">[1]</a>
 </li>
-      <li><a href="run.html#run.start_background_process">start_background_process() (in module run)</a>
-</li>
       <li><a href="poller/models.html#poller.models.PollingResult.status">status (poller.models.PollingResult attribute)</a>
 </li>
   </ul></td>
@@ -798,6 +837,12 @@
 <h2 id="T">T</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.to_flux_time">to_flux_time() (in module anomaly_detector.logic)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="anomaly_detector/logic.html#anomaly_detector.logic.to_iso_z">to_iso_z() (in module anomaly_detector.logic)</a>
+</li>
       <li><a href="poller/models.html#poller.models.PollingResult.total_memory">total_memory (poller.models.PollingResult attribute)</a>
 </li>
   </ul></td>
@@ -806,11 +851,7 @@
 <h2 id="U">U</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="poller/api.html#poller.api.update_device">update_device() (in module poller.api)</a>
-</li>
       <li><a href="poller/models.html#poller.models.PollingResult.used_memory">used_memory (poller.models.PollingResult attribute)</a>
-</li>
-      <li><a href="simulator/main.html#simulator.main.USERNAME">USERNAME (in module simulator.main)</a>
 </li>
       <li><a href="poller/models.html#poller.models.Device.username">username (poller.models.Device attribute)</a>
 
@@ -835,8 +876,6 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="simulator/logic.html#simulator.logic.CustomProfile.validate_total_chance">validate_total_chance() (simulator.logic.CustomProfile method)</a>
-</li>
-      <li><a href="simulator/main.html#simulator.main.VENDOR">VENDOR (in module simulator.main)</a>
 </li>
       <li><a href="poller/models.html#poller.models.Device.vendor">vendor (poller.models.Device attribute)</a>
 

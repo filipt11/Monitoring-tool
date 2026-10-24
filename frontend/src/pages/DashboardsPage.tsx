@@ -315,14 +315,7 @@ export function DashboardsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Dashboards</h2>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            Create custom dashboards with chart sections backed by devices, device groups,
-            interfaces, or interface groups.
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Button type="button" onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
           Create dashboard

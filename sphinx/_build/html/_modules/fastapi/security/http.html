@@ -1,0 +1,524 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fastapi.security.http &mdash; Monitoring Tool 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2c3e50" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Monitoring Tool
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../poller.html">Poller Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../run.html">run module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2c3e50" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Monitoring Tool</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">fastapi.security.http</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for fastapi.security.http</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">binascii</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">base64</span><span class="w"> </span><span class="kn">import</span> <span class="n">b64decode</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">annotated_doc</span><span class="w"> </span><span class="kn">import</span> <span class="n">Doc</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPException</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.openapi.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPBase</span> <span class="k">as</span> <span class="n">HTTPBaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.openapi.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPBearer</span> <span class="k">as</span> <span class="n">HTTPBearerModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.security.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">SecurityBase</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.security.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_authorization_scheme_param</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.requests</span><span class="w"> </span><span class="kn">import</span> <span class="n">Request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.status</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTP_401_UNAUTHORIZED</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HTTPBasicCredentials</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The HTTP Basic credentials given as the result of using `HTTPBasic` in a</span>
+<span class="sd">    dependency.</span>
+
+<span class="sd">    Read more about it in the</span>
+<span class="sd">    [FastAPI docs for HTTP Basic Auth](https://fastapi.tiangolo.com/advanced/security/http-basic-auth/).</span>
+<span class="sd">    """</span>
+
+    <span class="n">username</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Doc</span><span class="p">(</span><span class="s2">"The HTTP Basic username."</span><span class="p">)]</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Doc</span><span class="p">(</span><span class="s2">"The HTTP Basic password."</span><span class="p">)]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HTTPAuthorizationCredentials</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The HTTP authorization credentials in the result of using `HTTPBearer` or</span>
+<span class="sd">    `HTTPDigest` in a dependency.</span>
+
+<span class="sd">    The HTTP authorization header value is split by the first space.</span>
+
+<span class="sd">    The first part is the `scheme`, the second part is the `credentials`.</span>
+
+<span class="sd">    For example, in an HTTP Bearer token scheme, the client will send a header</span>
+<span class="sd">    like:</span>
+
+<span class="sd">    ```</span>
+<span class="sd">    Authorization: Bearer deadbeef12346</span>
+<span class="sd">    ```</span>
+
+<span class="sd">    In this case:</span>
+
+<span class="sd">    * `scheme` will have the value `"Bearer"`</span>
+<span class="sd">    * `credentials` will have the value `"deadbeef12346"`</span>
+<span class="sd">    """</span>
+
+    <span class="n">scheme</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+        <span class="nb">str</span><span class="p">,</span>
+        <span class="n">Doc</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">"""</span>
+<span class="sd">            The HTTP authorization scheme extracted from the header value.</span>
+<span class="sd">            """</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+    <span class="n">credentials</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+        <span class="nb">str</span><span class="p">,</span>
+        <span class="n">Doc</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">"""</span>
+<span class="sd">            The HTTP authorization credentials extracted from the header value.</span>
+<span class="sd">            """</span>
+        <span class="p">),</span>
+    <span class="p">]</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HTTPBase</span><span class="p">(</span><span class="n">SecurityBase</span><span class="p">):</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">HTTPBaseModel</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">scheme</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+        <span class="n">scheme_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auto_error</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">HTTPBaseModel</span><span class="p">(</span><span class="n">scheme</span><span class="o">=</span><span class="n">scheme</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheme_name</span> <span class="o">=</span> <span class="n">scheme_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span> <span class="o">=</span> <span class="n">auto_error</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">make_authenticate_headers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"WWW-Authenticate"</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">scheme</span><span class="o">.</span><span class="n">title</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">make_not_authenticated_error</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HTTPException</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">HTTPException</span><span class="p">(</span>
+            <span class="n">status_code</span><span class="o">=</span><span class="n">HTTP_401_UNAUTHORIZED</span><span class="p">,</span>
+            <span class="n">detail</span><span class="o">=</span><span class="s2">"Not authenticated"</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">make_authenticate_headers</span><span class="p">(),</span>
+        <span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HTTPAuthorizationCredentials</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">authorization</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Authorization"</span><span class="p">)</span>
+        <span class="n">scheme</span><span class="p">,</span> <span class="n">credentials</span> <span class="o">=</span> <span class="n">get_authorization_scheme_param</span><span class="p">(</span><span class="n">authorization</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">authorization</span> <span class="ow">and</span> <span class="n">scheme</span> <span class="ow">and</span> <span class="n">credentials</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_not_authenticated_error</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">HTTPAuthorizationCredentials</span><span class="p">(</span><span class="n">scheme</span><span class="o">=</span><span class="n">scheme</span><span class="p">,</span> <span class="n">credentials</span><span class="o">=</span><span class="n">credentials</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HTTPBasic</span><span class="p">(</span><span class="n">HTTPBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    HTTP Basic authentication.</span>
+
+<span class="sd">    Ref: https://datatracker.ietf.org/doc/html/rfc7617</span>
+
+<span class="sd">    ## Usage</span>
+
+<span class="sd">    Create an instance object and use that object as the dependency in `Depends()`.</span>
+
+<span class="sd">    The dependency result will be an `HTTPBasicCredentials` object containing the</span>
+<span class="sd">    `username` and the `password`.</span>
+
+<span class="sd">    Read more about it in the</span>
+<span class="sd">    [FastAPI docs for HTTP Basic Auth](https://fastapi.tiangolo.com/advanced/security/http-basic-auth/).</span>
+
+<span class="sd">    ## Example</span>
+
+<span class="sd">    ```python</span>
+<span class="sd">    from typing import Annotated</span>
+
+<span class="sd">    from fastapi import Depends, FastAPI</span>
+<span class="sd">    from fastapi.security import HTTPBasic, HTTPBasicCredentials</span>
+
+<span class="sd">    app = FastAPI()</span>
+
+<span class="sd">    security = HTTPBasic()</span>
+
+
+<span class="sd">    @app.get("/users/me")</span>
+<span class="sd">    def read_current_user(credentials: Annotated[HTTPBasicCredentials, Depends(security)]):</span>
+<span class="sd">        return {"username": credentials.username, "password": credentials.password}</span>
+<span class="sd">    ```</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">scheme_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                Security scheme name.</span>
+
+<span class="sd">                It will be included in the generated OpenAPI (e.g. visible at `/docs`).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">realm</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                HTTP Basic authentication realm.</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                Security scheme description.</span>
+
+<span class="sd">                It will be included in the generated OpenAPI (e.g. visible at `/docs`).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auto_error</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">bool</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                By default, if the HTTP Basic authentication is not provided (a</span>
+<span class="sd">                header), `HTTPBasic` will automatically cancel the request and send the</span>
+<span class="sd">                client an error.</span>
+
+<span class="sd">                If `auto_error` is set to `False`, when the HTTP Basic authentication</span>
+<span class="sd">                is not available, instead of erroring out, the dependency result will</span>
+<span class="sd">                be `None`.</span>
+
+<span class="sd">                This is useful when you want to have optional authentication.</span>
+
+<span class="sd">                It is also useful when you want to have authentication that can be</span>
+<span class="sd">                provided in one of multiple optional ways (for example, in HTTP Basic</span>
+<span class="sd">                authentication or in an HTTP Bearer token).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">HTTPBaseModel</span><span class="p">(</span><span class="n">scheme</span><span class="o">=</span><span class="s2">"basic"</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheme_name</span> <span class="o">=</span> <span class="n">scheme_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">realm</span> <span class="o">=</span> <span class="n">realm</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span> <span class="o">=</span> <span class="n">auto_error</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">make_authenticate_headers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">realm</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">"WWW-Authenticate"</span><span class="p">:</span> <span class="sa">f</span><span class="s1">'Basic realm="</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">realm</span><span class="si">}</span><span class="s1">"'</span><span class="p">}</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">"WWW-Authenticate"</span><span class="p">:</span> <span class="s2">"Basic"</span><span class="p">}</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HTTPBasicCredentials</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">authorization</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Authorization"</span><span class="p">)</span>
+        <span class="n">scheme</span><span class="p">,</span> <span class="n">param</span> <span class="o">=</span> <span class="n">get_authorization_scheme_param</span><span class="p">(</span><span class="n">authorization</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">authorization</span> <span class="ow">or</span> <span class="n">scheme</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">"basic"</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_not_authenticated_error</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">b64decode</span><span class="p">(</span><span class="n">param</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">"ascii"</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span> <span class="ne">UnicodeDecodeError</span><span class="p">,</span> <span class="n">binascii</span><span class="o">.</span><span class="n">Error</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_not_authenticated_error</span><span class="p">()</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+        <span class="n">username</span><span class="p">,</span> <span class="n">separator</span><span class="p">,</span> <span class="n">password</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">":"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">separator</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_not_authenticated_error</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">HTTPBasicCredentials</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HTTPBearer</span><span class="p">(</span><span class="n">HTTPBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    HTTP Bearer token authentication.</span>
+
+<span class="sd">    ## Usage</span>
+
+<span class="sd">    Create an instance object and use that object as the dependency in `Depends()`.</span>
+
+<span class="sd">    The dependency result will be an `HTTPAuthorizationCredentials` object containing</span>
+<span class="sd">    the `scheme` and the `credentials`.</span>
+
+<span class="sd">    ## Example</span>
+
+<span class="sd">    ```python</span>
+<span class="sd">    from typing import Annotated</span>
+
+<span class="sd">    from fastapi import Depends, FastAPI</span>
+<span class="sd">    from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer</span>
+
+<span class="sd">    app = FastAPI()</span>
+
+<span class="sd">    security = HTTPBearer()</span>
+
+
+<span class="sd">    @app.get("/users/me")</span>
+<span class="sd">    def read_current_user(</span>
+<span class="sd">        credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]</span>
+<span class="sd">    ):</span>
+<span class="sd">        return {"scheme": credentials.scheme, "credentials": credentials.credentials}</span>
+<span class="sd">    ```</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">bearerFormat</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Doc</span><span class="p">(</span><span class="s2">"Bearer token format."</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">scheme_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                Security scheme name.</span>
+
+<span class="sd">                It will be included in the generated OpenAPI (e.g. visible at `/docs`).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                Security scheme description.</span>
+
+<span class="sd">                It will be included in the generated OpenAPI (e.g. visible at `/docs`).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auto_error</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">bool</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                By default, if the HTTP Bearer token is not provided (in an</span>
+<span class="sd">                `Authorization` header), `HTTPBearer` will automatically cancel the</span>
+<span class="sd">                request and send the client an error.</span>
+
+<span class="sd">                If `auto_error` is set to `False`, when the HTTP Bearer token</span>
+<span class="sd">                is not available, instead of erroring out, the dependency result will</span>
+<span class="sd">                be `None`.</span>
+
+<span class="sd">                This is useful when you want to have optional authentication.</span>
+
+<span class="sd">                It is also useful when you want to have authentication that can be</span>
+<span class="sd">                provided in one of multiple optional ways (for example, in an HTTP</span>
+<span class="sd">                Bearer token or in a cookie).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">HTTPBearerModel</span><span class="p">(</span><span class="n">bearerFormat</span><span class="o">=</span><span class="n">bearerFormat</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheme_name</span> <span class="o">=</span> <span class="n">scheme_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span> <span class="o">=</span> <span class="n">auto_error</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HTTPAuthorizationCredentials</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">authorization</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Authorization"</span><span class="p">)</span>
+        <span class="n">scheme</span><span class="p">,</span> <span class="n">credentials</span> <span class="o">=</span> <span class="n">get_authorization_scheme_param</span><span class="p">(</span><span class="n">authorization</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">authorization</span> <span class="ow">and</span> <span class="n">scheme</span> <span class="ow">and</span> <span class="n">credentials</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_not_authenticated_error</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">scheme</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">"bearer"</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_not_authenticated_error</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">HTTPAuthorizationCredentials</span><span class="p">(</span><span class="n">scheme</span><span class="o">=</span><span class="n">scheme</span><span class="p">,</span> <span class="n">credentials</span><span class="o">=</span><span class="n">credentials</span><span class="p">)</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">HTTPDigest</span><span class="p">(</span><span class="n">HTTPBase</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    HTTP Digest authentication.</span>
+
+<span class="sd">    **Warning**: this is only a stub to connect the components with OpenAPI in FastAPI,</span>
+<span class="sd">    but it doesn't implement the full Digest scheme, you would need to subclass it</span>
+<span class="sd">    and implement it in your code.</span>
+
+<span class="sd">    Ref: https://datatracker.ietf.org/doc/html/rfc7616</span>
+
+<span class="sd">    ## Usage</span>
+
+<span class="sd">    Create an instance object and use that object as the dependency in `Depends()`.</span>
+
+<span class="sd">    The dependency result will be an `HTTPAuthorizationCredentials` object containing</span>
+<span class="sd">    the `scheme` and the `credentials`.</span>
+
+<span class="sd">    ## Example</span>
+
+<span class="sd">    ```python</span>
+<span class="sd">    from typing import Annotated</span>
+
+<span class="sd">    from fastapi import Depends, FastAPI</span>
+<span class="sd">    from fastapi.security import HTTPAuthorizationCredentials, HTTPDigest</span>
+
+<span class="sd">    app = FastAPI()</span>
+
+<span class="sd">    security = HTTPDigest()</span>
+
+
+<span class="sd">    @app.get("/users/me")</span>
+<span class="sd">    def read_current_user(</span>
+<span class="sd">        credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]</span>
+<span class="sd">    ):</span>
+<span class="sd">        return {"scheme": credentials.scheme, "credentials": credentials.credentials}</span>
+<span class="sd">    ```</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="o">*</span><span class="p">,</span>
+        <span class="n">scheme_name</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                Security scheme name.</span>
+
+<span class="sd">                It will be included in the generated OpenAPI (e.g. visible at `/docs`).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">description</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                Security scheme description.</span>
+
+<span class="sd">                It will be included in the generated OpenAPI (e.g. visible at `/docs`).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">auto_error</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span>
+            <span class="nb">bool</span><span class="p">,</span>
+            <span class="n">Doc</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                By default, if the HTTP Digest is not provided, `HTTPDigest` will</span>
+<span class="sd">                automatically cancel the request and send the client an error.</span>
+
+<span class="sd">                If `auto_error` is set to `False`, when the HTTP Digest is not</span>
+<span class="sd">                available, instead of erroring out, the dependency result will</span>
+<span class="sd">                be `None`.</span>
+
+<span class="sd">                This is useful when you want to have optional authentication.</span>
+
+<span class="sd">                It is also useful when you want to have authentication that can be</span>
+<span class="sd">                provided in one of multiple optional ways (for example, in HTTP</span>
+<span class="sd">                Digest or in a cookie).</span>
+<span class="sd">                """</span>
+            <span class="p">),</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">HTTPBaseModel</span><span class="p">(</span><span class="n">scheme</span><span class="o">=</span><span class="s2">"digest"</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">description</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">scheme_name</span> <span class="o">=</span> <span class="n">scheme_name</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span> <span class="o">=</span> <span class="n">auto_error</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HTTPAuthorizationCredentials</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">authorization</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"Authorization"</span><span class="p">)</span>
+        <span class="n">scheme</span><span class="p">,</span> <span class="n">credentials</span> <span class="o">=</span> <span class="n">get_authorization_scheme_param</span><span class="p">(</span><span class="n">authorization</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">authorization</span> <span class="ow">and</span> <span class="n">scheme</span> <span class="ow">and</span> <span class="n">credentials</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_not_authenticated_error</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">scheme</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">"digest"</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_error</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">make_not_authenticated_error</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">HTTPAuthorizationCredentials</span><span class="p">(</span><span class="n">scheme</span><span class="o">=</span><span class="n">scheme</span><span class="p">,</span> <span class="n">credentials</span><span class="o">=</span><span class="n">credentials</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Filip Terzyk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

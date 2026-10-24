@@ -165,15 +165,7 @@ export function AdminManageDevicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Manage Devices</h2>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            Add, update, rediscover, and remove monitored devices. Changes are
-            sent through the application server to the poller service.
-          </p>
-        </div>
-
+      <div className="flex justify-end">
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
           Add device

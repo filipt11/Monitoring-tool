@@ -198,15 +198,7 @@ export function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight">Users</h2>
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            Create, update, disable, and delete user accounts. Password and email
-            changes use the administration endpoints from the backend.
-          </p>
-        </div>
-
+      <div className="flex justify-end">
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="size-4" />
           Create user

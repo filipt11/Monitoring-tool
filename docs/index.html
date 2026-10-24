@@ -45,10 +45,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="poller.html">Poller Module Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="simulator.html">Simulator Module Documentation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="run.html">run module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 
         </div>
@@ -81,11 +78,15 @@
 <p>This documentation is automatically generated from the source code using Sphinx.</p>
 <section id="overview">
 <h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
-<p>The Monitoring Tool consists of two main components:</p>
+<p>The Monitoring Tool consists of the following Python components documented here:</p>
 <ul class="simple">
 <li><p><strong>Poller</strong>: Collects device metrics from network devices (Cisco, Juniper, etc.) and stores them in InfluxDB</p></li>
 <li><p><strong>Simulator</strong>: Simulates network devices for testing and development purposes</p></li>
+<li><p><strong>Anomaly Detector</strong>: Detects point (EWMA) and sustained (CUSUM) anomalies in polled metrics</p></li>
 </ul>
+<p>Additional platform pieces (Spring Boot application server, React frontend,
+PostgreSQL, InfluxDB) are orchestrated via the root <code class="docutils literal notranslate"><span class="pre">docker-compose.yml</span></code> and
+are not covered by this autodoc tree.</p>
 </section>
 <section id="documentation-structure">
 <h2>Documentation Structure<a class="headerlink" href="#documentation-structure" title="Link to this heading"></a></h2>
@@ -100,12 +101,13 @@
 <li class="toctree-l2"><a class="reference internal" href="simulator.html#submodules">Submodules</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="anomaly_detector.html">Anomaly Detector Module Documentation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector.html#detection-pipeline">Detection pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector.html#supported-metrics">Supported metrics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector.html#offline-evaluation">Offline evaluation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="anomaly_detector.html#submodules">Submodules</a></li>
 </ul>
-</div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="run.html">run module</a></li>
+</li>
 </ul>
 </div>
 </section>

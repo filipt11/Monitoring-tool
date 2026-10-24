@@ -1,0 +1,372 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>anomaly_detector.evaluate &mdash; Monitoring Tool 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2c3e50" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Monitoring Tool
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../run.html">run module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2c3e50" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Monitoring Tool</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">anomaly_detector.evaluate</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for anomaly_detector.evaluate</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">argparse</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span><span class="p">,</span> <span class="n">timezone</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">anomaly_detector.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">CONTEXT_LOOKBACK_HOURS</span><span class="p">,</span> <span class="n">INFLUX_BUCKET</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">anomaly_detector.logic</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">InfluxMetricStore</span><span class="p">,</span>
+    <span class="n">apply_anomaly_detection</span><span class="p">,</span>
+    <span class="n">ensure_utc</span><span class="p">,</span>
+    <span class="n">to_flux_time</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">influxdb_client.client.warnings</span><span class="w"> </span><span class="kn">import</span> <span class="n">MissingPivotFunction</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+    <span class="n">MissingPivotFunction</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">MissingPivotFunction</span><span class="p">,</span> <span class="nb">type</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">MissingPivotFunction</span><span class="p">,</span> <span class="ne">Warning</span><span class="p">):</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">"ignore"</span><span class="p">,</span> <span class="n">MissingPivotFunction</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="fetch_cpu_with_ground_truth">
+<a class="viewcode-back" href="../../anomaly_detector/evaluate.html#anomaly_detector.evaluate.fetch_cpu_with_ground_truth">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">fetch_cpu_with_ground_truth</span><span class="p">(</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">InfluxMetricStore</span><span class="p">,</span>
+    <span class="n">start</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span>
+    <span class="n">end</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span>
+    <span class="n">hostname_substr</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+
+    <span class="n">start_flux</span> <span class="o">=</span> <span class="n">to_flux_time</span><span class="p">(</span><span class="n">start</span><span class="p">)</span>
+    <span class="n">end_flux</span> <span class="o">=</span> <span class="n">to_flux_time</span><span class="p">(</span><span class="n">end</span><span class="p">)</span>
+
+    <span class="n">query</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">'''</span>
+<span class="s1">        from(bucket: "</span><span class="si">{</span><span class="n">INFLUX_BUCKET</span><span class="si">}</span><span class="s1">")</span>
+<span class="s1">          |&gt; range(start: time(v: "</span><span class="si">{</span><span class="n">start_flux</span><span class="si">}</span><span class="s1">"), stop: time(v: "</span><span class="si">{</span><span class="n">end_flux</span><span class="si">}</span><span class="s1">"))</span>
+<span class="s1">          |&gt; filter(fn: (r) =&gt; r["_measurement"] == "device_statistics")</span>
+<span class="s1">          |&gt; filter(fn: (r) =&gt;</span>
+<span class="s1">              r["_field"] == "cpu_usage" or</span>
+<span class="s1">              r["_field"] == "sim_anomaly" or</span>
+<span class="s1">              r["_field"] == "sim_event"</span>
+<span class="s1">          )</span>
+<span class="s1">          |&gt; drop(columns: ["_start", "_stop"])</span>
+<span class="s1">          |&gt; pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")</span>
+<span class="s1">    '''</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">query_api</span><span class="o">.</span><span class="n">query_data_frame</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">result</span>
+
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span>
+
+    <span class="n">df</span><span class="p">[</span><span class="s2">"_time"</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"_time"</span><span class="p">],</span> <span class="n">utc</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="s2">"cpu_usage"</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="s2">"cpu_usage"</span><span class="p">:</span> <span class="s2">"_value"</span><span class="p">})</span>
+
+    <span class="k">if</span> <span class="s2">"_value"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="s2">"sim_anomaly"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">"sim_anomaly"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="s2">"sim_event"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">"sim_event"</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"none"</span>
+
+    <span class="n">df</span><span class="p">[</span><span class="s2">"sim_anomaly"</span><span class="p">]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">"sim_anomaly"</span><span class="p">],</span> <span class="n">errors</span><span class="o">=</span><span class="s2">"coerce"</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">"sim_event"</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">"sim_event"</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s2">"none"</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">hostname_substr</span><span class="p">:</span>
+        <span class="n">needle</span> <span class="o">=</span> <span class="n">hostname_substr</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"hostname"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">needle</span><span class="p">,</span> <span class="n">regex</span><span class="o">=</span><span class="kc">False</span><span class="p">)]</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">([</span><span class="s2">"hostname"</span><span class="p">,</span> <span class="s2">"_time"</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="scores">
+<a class="viewcode-back" href="../../anomaly_detector/evaluate.html#anomaly_detector.evaluate.scores">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">scores</span><span class="p">(</span><span class="n">y_true</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">"""Compute TP/FP/FN, precision, recall, and F1 for binary series."""</span>
+
+    <span class="n">tp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(((</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">y_pred</span> <span class="o">==</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">fp</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(((</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">y_pred</span> <span class="o">==</span> <span class="mi">1</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">fn</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(((</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">y_pred</span> <span class="o">==</span> <span class="mi">0</span><span class="p">))</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="n">precision</span> <span class="o">=</span> <span class="n">tp</span> <span class="o">/</span> <span class="p">(</span><span class="n">tp</span> <span class="o">+</span> <span class="n">fp</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">tp</span> <span class="o">+</span> <span class="n">fp</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="n">recall</span> <span class="o">=</span> <span class="n">tp</span> <span class="o">/</span> <span class="p">(</span><span class="n">tp</span> <span class="o">+</span> <span class="n">fn</span><span class="p">)</span> <span class="k">if</span> <span class="p">(</span><span class="n">tp</span> <span class="o">+</span> <span class="n">fn</span><span class="p">)</span> <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="n">f1</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="mi">2</span> <span class="o">*</span> <span class="n">precision</span> <span class="o">*</span> <span class="n">recall</span> <span class="o">/</span> <span class="p">(</span><span class="n">precision</span> <span class="o">+</span> <span class="n">recall</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">precision</span> <span class="o">+</span> <span class="n">recall</span><span class="p">)</span>
+        <span class="k">else</span> <span class="mf">0.0</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"tp"</span><span class="p">:</span> <span class="n">tp</span><span class="p">,</span>
+        <span class="s2">"fp"</span><span class="p">:</span> <span class="n">fp</span><span class="p">,</span>
+        <span class="s2">"fn"</span><span class="p">:</span> <span class="n">fn</span><span class="p">,</span>
+        <span class="s2">"precision"</span><span class="p">:</span> <span class="n">precision</span><span class="p">,</span>
+        <span class="s2">"recall"</span><span class="p">:</span> <span class="n">recall</span><span class="p">,</span>
+        <span class="s2">"f1"</span><span class="p">:</span> <span class="n">f1</span><span class="p">,</span>
+    <span class="p">}</span></div>
+
+
+
+<div class="viewcode-block" id="compute_window">
+<a class="viewcode-back" href="../../anomaly_detector/evaluate.html#anomaly_detector.evaluate.compute_window">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_window</span><span class="p">(</span><span class="n">display_start</span><span class="p">:</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">display_end</span><span class="p">:</span> <span class="n">datetime</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="n">datetime</span><span class="p">]:</span>
+
+<span class="w">    </span><span class="sd">"""Same rule as the API: at least CONTEXT_LOOKBACK_HOURS ending at display_end."""</span>
+
+    <span class="n">display_span</span> <span class="o">=</span> <span class="n">display_end</span> <span class="o">-</span> <span class="n">display_start</span>
+    <span class="n">context_span</span> <span class="o">=</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">CONTEXT_LOOKBACK_HOURS</span><span class="p">)</span>
+    <span class="n">compute_span</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">display_span</span><span class="p">,</span> <span class="n">context_span</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">display_end</span> <span class="o">-</span> <span class="n">compute_span</span><span class="p">,</span> <span class="n">display_end</span></div>
+
+
+
+<div class="viewcode-block" id="run_evaluation">
+<a class="viewcode-back" href="../../anomaly_detector/evaluate.html#anomaly_detector.evaluate.run_evaluation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_evaluation</span><span class="p">(</span><span class="n">hours</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">hostname</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+
+<span class="w">    </span><span class="sd">"""Detect on the API context window, then print scores for the last ``hours``."""</span>
+
+    <span class="n">display_end</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+    <span class="n">display_start</span> <span class="o">=</span> <span class="n">display_end</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">hours</span><span class="p">)</span>
+    <span class="n">compute_start</span><span class="p">,</span> <span class="n">compute_end</span> <span class="o">=</span> <span class="n">compute_window</span><span class="p">(</span><span class="n">display_start</span><span class="p">,</span> <span class="n">display_end</span><span class="p">)</span>
+    <span class="n">store</span> <span class="o">=</span> <span class="n">InfluxMetricStore</span><span class="p">()</span>
+
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"Score window:   </span><span class="si">{</span><span class="n">ensure_utc</span><span class="p">(</span><span class="n">display_start</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2"> → "</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ensure_utc</span><span class="p">(</span><span class="n">display_end</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2">  (--hours </span><span class="si">{</span><span class="n">hours</span><span class="si">}</span><span class="s2">)"</span>
+    <span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"Compute window: </span><span class="si">{</span><span class="n">ensure_utc</span><span class="p">(</span><span class="n">compute_start</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2"> → "</span>
+        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ensure_utc</span><span class="p">(</span><span class="n">compute_end</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2">  "</span>
+        <span class="sa">f</span><span class="s2">"(context ≥ </span><span class="si">{</span><span class="n">CONTEXT_LOOKBACK_HOURS</span><span class="si">}</span><span class="s2">h, same as API)"</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">hostname</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Hostname filter (substring): </span><span class="si">{</span><span class="n">hostname</span><span class="si">!r}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">fetch_cpu_with_ground_truth</span><span class="p">(</span><span class="n">store</span><span class="p">,</span> <span class="n">compute_start</span><span class="p">,</span> <span class="n">compute_end</span><span class="p">,</span> <span class="n">hostname</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"No CPU points in the compute window."</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">analyzed</span> <span class="o">=</span> <span class="n">apply_anomaly_detection</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">group_columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"hostname"</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">analyzed</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Detection produced an empty frame."</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">display_mask</span> <span class="o">=</span> <span class="p">(</span><span class="n">analyzed</span><span class="p">[</span><span class="s2">"_time"</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="n">display_start</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span>
+        <span class="n">analyzed</span><span class="p">[</span><span class="s2">"_time"</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="n">display_end</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">scored</span> <span class="o">=</span> <span class="n">analyzed</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">display_mask</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">scored</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"No CPU points in the score window after detection."</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">y_true</span> <span class="o">=</span> <span class="p">(</span><span class="n">scored</span><span class="p">[</span><span class="s2">"sim_anomaly"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">y_true</span> <span class="o">=</span> <span class="n">y_true</span> <span class="o">|</span> <span class="n">scored</span><span class="p">[</span><span class="s2">"sim_event"</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">([</span><span class="s2">"spike"</span><span class="p">,</span> <span class="s2">"drop"</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">with_gt</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">y_true</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"CPU samples (score window): </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">scored</span><span class="p">)</span><span class="si">}</span><span class="s2">  |  compute samples: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">analyzed</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Ground-truth spike/drop points (score window): </span><span class="si">{</span><span class="n">with_gt</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">with_gt</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">"</span><span class="se">\n</span><span class="s2">No sim_event/sim_anomaly labels in the score window.</span><span class="se">\n</span><span class="s2">"</span>
+            <span class="s2">"Restart simulators + poller so new points include ground truth, "</span>
+            <span class="s2">"then wait for a few poll cycles and re-run."</span>
+        <span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">ewma_scores</span> <span class="o">=</span> <span class="n">scores</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">scored</span><span class="p">[</span><span class="s2">"ewma_anomaly"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+    <span class="n">cusum_scores</span> <span class="o">=</span> <span class="n">scores</span><span class="p">(</span><span class="n">y_true</span><span class="p">,</span> <span class="n">scored</span><span class="p">[</span><span class="s2">"cusum_anomaly"</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== EWMA vs simulator ground truth (point-level, score window) ==="</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"TP=</span><span class="si">{</span><span class="n">ewma_scores</span><span class="p">[</span><span class="s1">'tp'</span><span class="p">]</span><span class="si">}</span><span class="s2">  FP=</span><span class="si">{</span><span class="n">ewma_scores</span><span class="p">[</span><span class="s1">'fp'</span><span class="p">]</span><span class="si">}</span><span class="s2">  FN=</span><span class="si">{</span><span class="n">ewma_scores</span><span class="p">[</span><span class="s1">'fn'</span><span class="p">]</span><span class="si">}</span><span class="s2">  "</span>
+        <span class="sa">f</span><span class="s2">"precision=</span><span class="si">{</span><span class="n">ewma_scores</span><span class="p">[</span><span class="s1">'precision'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  "</span>
+        <span class="sa">f</span><span class="s2">"recall=</span><span class="si">{</span><span class="n">ewma_scores</span><span class="p">[</span><span class="s1">'recall'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  F1=</span><span class="si">{</span><span class="n">ewma_scores</span><span class="p">[</span><span class="s1">'f1'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span>
+    <span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== CUSUM vs same ground truth (note: CUSUM targets level shifts) ==="</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">"TP=</span><span class="si">{</span><span class="n">cusum_scores</span><span class="p">[</span><span class="s1">'tp'</span><span class="p">]</span><span class="si">}</span><span class="s2">  FP=</span><span class="si">{</span><span class="n">cusum_scores</span><span class="p">[</span><span class="s1">'fp'</span><span class="p">]</span><span class="si">}</span><span class="s2">  FN=</span><span class="si">{</span><span class="n">cusum_scores</span><span class="p">[</span><span class="s1">'fn'</span><span class="p">]</span><span class="si">}</span><span class="s2">  "</span>
+        <span class="sa">f</span><span class="s2">"precision=</span><span class="si">{</span><span class="n">cusum_scores</span><span class="p">[</span><span class="s1">'precision'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  "</span>
+        <span class="sa">f</span><span class="s2">"recall=</span><span class="si">{</span><span class="n">cusum_scores</span><span class="p">[</span><span class="s1">'recall'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">  F1=</span><span class="si">{</span><span class="n">cusum_scores</span><span class="p">[</span><span class="s1">'f1'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span>
+    <span class="p">)</span>
+
+    <span class="n">missed</span> <span class="o">=</span> <span class="n">scored</span><span class="p">[(</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">scored</span><span class="p">[</span><span class="s2">"ewma_anomaly"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">false_pos</span> <span class="o">=</span> <span class="n">scored</span><span class="p">[(</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">scored</span><span class="p">[</span><span class="s2">"ewma_anomaly"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">hits</span> <span class="o">=</span> <span class="n">scored</span><span class="p">[(</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">scored</span><span class="p">[</span><span class="s2">"ewma_anomaly"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"hostname"</span><span class="p">,</span> <span class="s2">"_time"</span><span class="p">,</span> <span class="s2">"_value"</span><span class="p">,</span> <span class="s2">"sim_event"</span><span class="p">,</span> <span class="s2">"ewma_anomaly"</span><span class="p">,</span> <span class="s2">"cusum_anomaly"</span><span class="p">]</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Simulator spike/drop DETECTED by EWMA (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">hits</span><span class="p">)</span><span class="si">}</span><span class="s2">) ==="</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">hits</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"(none)"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">hits</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Simulator spike/drop MISSED by EWMA (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">missed</span><span class="p">)</span><span class="si">}</span><span class="s2">) ==="</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">missed</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"(none)"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">missed</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== EWMA alerts without simulator event — false positives (</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">false_pos</span><span class="p">)</span><span class="si">}</span><span class="s2">) ==="</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">false_pos</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"(none)"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">false_pos</span><span class="p">[</span><span class="n">cols</span><span class="p">]</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">40</span><span class="p">)</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">false_pos</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">40</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"... and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">false_pos</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">40</span><span class="si">}</span><span class="s2"> more"</span><span class="p">)</span>
+
+    <span class="n">by_type</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">scored</span><span class="p">[</span><span class="n">y_true</span> <span class="o">==</span> <span class="mi">1</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">"sim_event"</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">agg</span><span class="p">(</span>
+            <span class="n">total</span><span class="o">=</span><span class="p">(</span><span class="s2">"_value"</span><span class="p">,</span> <span class="s2">"count"</span><span class="p">),</span>
+            <span class="n">ewma_caught</span><span class="o">=</span><span class="p">(</span><span class="s2">"ewma_anomaly"</span><span class="p">,</span> <span class="s2">"sum"</span><span class="p">),</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">by_type</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"</span><span class="se">\n</span><span class="s2">=== Miss rate by sim_event type (EWMA) ==="</span><span class="p">)</span>
+        <span class="n">by_type</span><span class="p">[</span><span class="s2">"missed"</span><span class="p">]</span> <span class="o">=</span> <span class="n">by_type</span><span class="p">[</span><span class="s2">"total"</span><span class="p">]</span> <span class="o">-</span> <span class="n">by_type</span><span class="p">[</span><span class="s2">"ewma_caught"</span><span class="p">]</span>
+        <span class="n">by_type</span><span class="p">[</span><span class="s2">"catch_rate"</span><span class="p">]</span> <span class="o">=</span> <span class="n">by_type</span><span class="p">[</span><span class="s2">"ewma_caught"</span><span class="p">]</span> <span class="o">/</span> <span class="n">by_type</span><span class="p">[</span><span class="s2">"total"</span><span class="p">]</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">by_type</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span></div>
+
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../anomaly_detector/evaluate.html#anomaly_detector.evaluate.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Evaluate anomaly detection against simulator ground truth in Influx. "</span>
+            <span class="s2">"Uses the same context lookback as the API"</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--hours"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">float</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="mf">12.0</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Score/display window in hours. Detection always uses ≥12h context."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s2">"--hostname"</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Optional hostname substring filter (e.g. low, avg)."</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">run_evaluation</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">hours</span><span class="p">,</span> <span class="n">hostname</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">hostname</span><span class="p">)</span></div>
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Filip Terzyk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

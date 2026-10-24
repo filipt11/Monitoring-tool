@@ -17,6 +17,7 @@ services:
       INFLUX_ORG: my_org
       INFLUX_BUCKET: network_metrics
       POLLER_API_URL: http://host.docker.internal:8000
+      ANOMALY_DETECTOR_API_URL: http://host.docker.internal:8010
 
 networks:
   monitoring_network:

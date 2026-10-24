@@ -43,6 +43,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
 <ul>
@@ -97,86 +98,21 @@
     <span class="k">pass</span></div>
 
 
-
+<span class="c1"># localhost</span>
 <span class="n">engine</span><span class="p">:</span> <span class="n">Engine</span> <span class="o">=</span> <span class="n">create_engine</span><span class="p">(</span><span class="s2">"postgresql://admin:123@localhost:5432/applicationdb"</span><span class="p">)</span>
+
+<span class="c1"># docker</span>
+<span class="c1"># engine: Engine = create_engine("postgresql://admin:123@postgres:5432/applicationdb")</span>
+
 <span class="n">Session</span> <span class="o">=</span> <span class="n">sessionmaker</span><span class="p">(</span><span class="n">bind</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_migrate_interfaces_speed_bps_to_bigint</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Widen speed_bps — 8G+ interfaces exceed PostgreSQL INTEGER max (~2.1B)."""</span>
-
-    <span class="n">inspector</span> <span class="o">=</span> <span class="n">inspect</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">inspector</span><span class="o">.</span><span class="n">has_table</span><span class="p">(</span><span class="s2">"interfaces"</span><span class="p">):</span>
-        <span class="k">return</span>
-
-    <span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="n">column</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]:</span> <span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">inspector</span><span class="o">.</span><span class="n">get_columns</span><span class="p">(</span><span class="s2">"interfaces"</span><span class="p">)}</span>
-    <span class="n">speed_column</span> <span class="o">=</span> <span class="n">columns</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"speed_bps"</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">speed_column</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">return</span>
-
-    <span class="n">column_type</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">speed_column</span><span class="p">[</span><span class="s2">"type"</span><span class="p">])</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
-    <span class="k">if</span> <span class="s2">"BIGINT"</span> <span class="ow">in</span> <span class="n">column_type</span><span class="p">:</span>
-        <span class="k">return</span>
-
-    <span class="k">with</span> <span class="n">engine</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
-        <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
-            <span class="n">text</span><span class="p">(</span><span class="s2">"ALTER TABLE interfaces ALTER COLUMN speed_bps TYPE BIGINT"</span><span class="p">)</span>
-        <span class="p">)</span>
-
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Migrated interfaces.speed_bps column to BIGINT"</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_migrate_devices_created_at</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Add created_at to devices for monitoring UI display."""</span>
-
-    <span class="n">inspector</span> <span class="o">=</span> <span class="n">inspect</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">inspector</span><span class="o">.</span><span class="n">has_table</span><span class="p">(</span><span class="s2">"devices"</span><span class="p">):</span>
-        <span class="k">return</span>
-
-    <span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="n">column</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">inspector</span><span class="o">.</span><span class="n">get_columns</span><span class="p">(</span><span class="s2">"devices"</span><span class="p">)}</span>
-
-    <span class="k">with</span> <span class="n">engine</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
-        <span class="k">if</span> <span class="s2">"created_at"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
-            <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
-                <span class="n">text</span><span class="p">(</span><span class="s2">"ALTER TABLE devices ADD COLUMN created_at TIMESTAMPTZ DEFAULT NOW()"</span><span class="p">)</span>
-            <span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Added devices.created_at column"</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
-                <span class="n">text</span><span class="p">(</span><span class="s2">"ALTER TABLE devices ALTER COLUMN created_at SET DEFAULT NOW()"</span><span class="p">)</span>
-            <span class="p">)</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Ensured devices.created_at default is NOW()"</span><span class="p">)</span>
-
-
-<span class="k">def</span><span class="w"> </span><span class="nf">_migrate_drop_interfaces_last_seen_at</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Remove unused last_seen_at column from interfaces."""</span>
-
-    <span class="n">inspector</span> <span class="o">=</span> <span class="n">inspect</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-    <span class="k">if</span> <span class="ow">not</span> <span class="n">inspector</span><span class="o">.</span><span class="n">has_table</span><span class="p">(</span><span class="s2">"interfaces"</span><span class="p">):</span>
-        <span class="k">return</span>
-
-    <span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="n">column</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">inspector</span><span class="o">.</span><span class="n">get_columns</span><span class="p">(</span><span class="s2">"interfaces"</span><span class="p">)}</span>
-    <span class="k">if</span> <span class="s2">"last_seen_at"</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">columns</span><span class="p">:</span>
-        <span class="k">return</span>
-
-    <span class="k">with</span> <span class="n">engine</span><span class="o">.</span><span class="n">begin</span><span class="p">()</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
-        <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">text</span><span class="p">(</span><span class="s2">"ALTER TABLE interfaces DROP COLUMN last_seen_at"</span><span class="p">))</span>
-
-    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Dropped interfaces.last_seen_at column"</span><span class="p">)</span>
-
 
 <div class="viewcode-block" id="init_db">
 <a class="viewcode-back" href="../../poller/config.html#poller.config.init_db">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">init_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Initalizing Connection with Postgres DB"""</span>
 
-    <span class="kn">import</span><span class="w"> </span><span class="nn">poller.models</span>  <span class="c1"># noqa: F401</span>
-
     <span class="k">try</span><span class="p">:</span>
         <span class="n">Base</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">create_all</span><span class="p">(</span><span class="n">engine</span><span class="p">)</span>
-        <span class="n">_migrate_interfaces_speed_bps_to_bigint</span><span class="p">()</span>
-        <span class="n">_migrate_devices_created_at</span><span class="p">()</span>
-        <span class="n">_migrate_drop_interfaces_last_seen_at</span><span class="p">()</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="s2">"Successfully initialized Postgres DB"</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Database error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
@@ -185,7 +121,13 @@
 
 
 <span class="c1"># InfluxDB config</span>
+
+<span class="c1"># localhost</span>
 <span class="n">INFLUX_URL</span> <span class="o">=</span> <span class="s2">"http://localhost:8086"</span>
+
+<span class="c1"># docker</span>
+<span class="c1"># INFLUX_URL = "http://influxdb:8086"</span>
+
 <span class="n">INFLUX_TOKEN</span> <span class="o">=</span> <span class="s2">"secret_token"</span>
 <span class="n">INFLUX_ORG</span> <span class="o">=</span> <span class="s2">"my_org"</span>
 <span class="n">INFLUX_BUCKET</span> <span class="o">=</span> <span class="s2">"network_metrics"</span>

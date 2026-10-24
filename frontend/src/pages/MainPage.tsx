@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Server, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Server, XCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
+import {
+  createDefaultAnomaliesRange,
+  fetchAnomalies,
+} from "@/lib/anomaliesApi";
 import { fetchDeviceList, type DeviceRecord } from "@/lib/devicesApi";
 import {
   DEVICE_STATUS_UP,
@@ -19,6 +22,7 @@ import {
   statusLabel,
 } from "@/lib/metricsApi";
 import { routes } from "@/lib/routes";
+import { cn } from "@/lib/utils";
 
 interface TopDeviceRow extends DeviceRecord {
   status?: number;
@@ -40,15 +44,28 @@ function formatCpu(value?: number): string {
 }
 
 export function MainPage() {
-  const { user } = useAuth();
-
   const [activeDeviceCount, setActiveDeviceCount] = useState<number | null>(null);
+  const [anomalyCount, setAnomalyCount] = useState<number | null>(null);
   const [topDevices, setTopDevices] = useState<TopDeviceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
+
+    async function loadAnomalyCount() {
+      try {
+        const { start, end } = createDefaultAnomaliesRange();
+        const response = await fetchAnomalies({ start, end });
+        if (active) {
+          setAnomalyCount(response.items.length);
+        }
+      } catch {
+        if (active) {
+          setAnomalyCount(null);
+        }
+      }
+    }
 
     async function loadTopDevices() {
       setLoading(true);
@@ -107,6 +124,7 @@ export function MainPage() {
     }
 
     void loadTopDevices();
+    void loadAnomalyCount();
 
     return () => {
       active = false;
@@ -120,15 +138,6 @@ export function MainPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-semibold tracking-tight">
-          Welcome back, {user?.username}
-        </h2>
-        <p className="text-muted-foreground max-w-2xl text-sm">
-          Overview of your most utilized devices based on the latest CPU readings.
-        </p>
-      </div>
-
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -142,6 +151,42 @@ export function MainPage() {
             <p className="text-muted-foreground text-xs">Registered in the monitoring system</p>
           </CardContent>
         </Card>
+
+        <Link to={routes.anomalies} className="block transition-opacity hover:opacity-90">
+          <Card
+            className={cn(
+              "h-full",
+              anomalyCount != null &&
+                anomalyCount > 0 &&
+                "border-amber-500/30 bg-amber-500/5",
+            )}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Anomalies (3h)</CardTitle>
+              <AlertTriangle
+                className={cn(
+                  "size-4",
+                  anomalyCount != null && anomalyCount > 0
+                    ? "text-amber-500"
+                    : "text-muted-foreground",
+                )}
+              />
+            </CardHeader>
+            <CardContent>
+              <div
+                className={cn(
+                  "text-2xl font-bold",
+                  anomalyCount != null && anomalyCount > 0 && "text-amber-400",
+                )}
+              >
+                {anomalyCount == null ? "—" : anomalyCount}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Detected in the last 3 hours
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <Card className="border-border/60">

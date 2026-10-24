@@ -43,6 +43,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
 <ul>
@@ -190,6 +191,7 @@
                     <span class="n">memory_total</span><span class="o">=</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"total_memory"</span><span class="p">),</span>
                     <span class="n">memory_usage</span><span class="o">=</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"used_memory"</span><span class="p">),</span>
                     <span class="n">memory_usage_pct</span><span class="o">=</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"memory_pct"</span><span class="p">),</span>
+                    <span class="n">sim_event</span><span class="o">=</span><span class="n">device_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sim_event"</span><span class="p">),</span>
                 <span class="p">)</span>
                 <span class="c1"># Save device data</span>
                 <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span>
@@ -282,6 +284,11 @@
 
         <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">memory_usage_pct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">point</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">"memory_usage_pct"</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">device</span><span class="o">.</span><span class="n">memory_usage_pct</span><span class="p">))</span>
+
+        <span class="c1"># Simulator ground truth (optional — real devices omit this)</span>
+        <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">sim_event</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"none"</span><span class="p">,</span> <span class="s2">"spike"</span><span class="p">,</span> <span class="s2">"drop"</span><span class="p">}:</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">"sim_event"</span><span class="p">,</span> <span class="n">device</span><span class="o">.</span><span class="n">sim_event</span><span class="p">)</span>
+            <span class="n">point</span><span class="o">.</span><span class="n">field</span><span class="p">(</span><span class="s2">"sim_anomaly"</span><span class="p">,</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">device</span><span class="o">.</span><span class="n">sim_event</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"spike"</span><span class="p">,</span> <span class="s2">"drop"</span><span class="p">}</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span>
 
     <span class="n">write_api</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">bucket</span><span class="o">=</span><span class="n">INFLUX_BUCKET</span><span class="p">,</span> <span class="n">org</span><span class="o">=</span><span class="n">INFLUX_ORG</span><span class="p">,</span> <span class="n">record</span><span class="o">=</span><span class="n">point</span><span class="p">)</span>
 

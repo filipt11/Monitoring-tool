@@ -1,12 +1,12 @@
 import {
   Activity,
+  AlertTriangle,
   FolderTree,
   LayoutDashboard,
   LayoutPanelTop,
   Network,
   Server,
   ServerCog,
-  Settings,
   Shield,
   Users,
   type LucideIcon,
@@ -53,6 +53,7 @@ const mainNavItems: MainNavItem[] = [
   { kind: "link", to: routes.mainPage, label: "Main Page", icon: LayoutDashboard, end: true },
   { kind: "link", to: routes.devices, label: "Devices", icon: Server, end: true },
   { kind: "link", to: routes.interfaces, label: "Interfaces", icon: Network, end: true },
+  { kind: "link", to: routes.anomalies, label: "Anomalies", icon: AlertTriangle, end: true },
   {
     kind: "section",
     label: "Groups",
@@ -72,14 +73,24 @@ const adminNavItems = [
     label: "Manage Devices",
     icon: ServerCog,
   },
-  {
-    to: routes.admin.configuration,
-    label: "Application configuration",
-    icon: Settings,
-  },
 ];
 
-function getPageHeader(pathname: string): { title: string; description: string } {
+function getPageHeader(
+  pathname: string,
+): { title: string; description: string } | null {
+  // Detail / entity pages render their own titles in page content.
+  if (pathname.startsWith(`${routes.devices}/`)) {
+    return null;
+  }
+
+  if (pathname.startsWith(`${routes.interfaces}/`)) {
+    return null;
+  }
+
+  if (/^\/dashboards\/\d+$/.test(pathname)) {
+    return null;
+  }
+
   if (pathname === routes.mainPage) {
     return {
       title: "Main Page",
@@ -108,6 +119,13 @@ function getPageHeader(pathname: string): { title: string; description: string }
     };
   }
 
+  if (pathname === routes.anomalies) {
+    return {
+      title: "Anomalies",
+      description: "Point and sustained anomalies detected from live metrics",
+    };
+  }
+
   if (pathname === routes.interfaceGroups) {
     return {
       title: "Interface Groups",
@@ -122,31 +140,24 @@ function getPageHeader(pathname: string): { title: string; description: string }
     };
   }
 
-  if (/^\/dashboards\/\d+\/sections(\/new|\/\d+\/edit)?$/.test(pathname)) {
+  if (/^\/dashboards\/\d+\/sections\/new$/.test(pathname)) {
+    return {
+      title: "Add section",
+      description: "Configure chart type, data source, and metrics",
+    };
+  }
+
+  if (/^\/dashboards\/\d+\/sections\/\d+\/edit$/.test(pathname)) {
+    return {
+      title: "Edit section",
+      description: "Configure chart type, data source, and metrics",
+    };
+  }
+
+  if (/^\/dashboards\/\d+\/sections$/.test(pathname)) {
     return {
       title: "Edit sections",
       description: "Configure dashboard chart sections",
-    };
-  }
-
-  if (/^\/dashboards\/\d+$/.test(pathname)) {
-    return {
-      title: "Dashboard",
-      description: "Live metrics and charts",
-    };
-  }
-
-  if (pathname.startsWith(`${routes.devices}/`)) {
-    return {
-      title: "Device details",
-      description: "Live metrics and availability for this device",
-    };
-  }
-
-  if (pathname.startsWith(`${routes.interfaces}/`)) {
-    return {
-      title: "Interface details",
-      description: "Utilization and throughput for this interface",
     };
   }
 
@@ -161,13 +172,6 @@ function getPageHeader(pathname: string): { title: string; description: string }
     return {
       title: "Manage Devices",
       description: "Register and configure monitored devices",
-    };
-  }
-
-  if (pathname === routes.admin.configuration) {
-    return {
-      title: "Application configuration",
-      description: "Adjust global monitoring settings",
     };
   }
 
@@ -335,10 +339,16 @@ export function AppLayout() {
             </Link>
           </div>
 
-          <div className="hidden md:block">
-            <h1 className="text-lg font-semibold">{pageHeader.title}</h1>
-            <p className="text-muted-foreground text-sm">{pageHeader.description}</p>
-          </div>
+          {pageHeader ? (
+            <div className="hidden md:block">
+              <h1 className="text-lg font-semibold">{pageHeader.title}</h1>
+              <p className="text-muted-foreground text-sm">
+                {pageHeader.description}
+              </p>
+            </div>
+          ) : (
+            <div className="hidden md:block" />
+          )}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

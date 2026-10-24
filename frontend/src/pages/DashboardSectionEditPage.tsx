@@ -128,14 +128,11 @@ export function DashboardSectionEditPage() {
             Back to sections
           </Link>
         </Button>
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
-            {isEditing ? "Edit section" : "Add section"}
-          </h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {dashboard.name} — configure chart type, data source, and metrics
-          </p>
-        </div>
+        <p className="text-muted-foreground text-sm">
+          <span className="text-foreground font-medium">{dashboard.name}</span>
+          {" — "}
+          configure chart type, data source, and metrics
+        </p>
       </div>
 
       <Card>

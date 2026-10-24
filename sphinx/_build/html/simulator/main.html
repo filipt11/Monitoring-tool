@@ -48,20 +48,6 @@
 <li class="toctree-l1 current"><a class="reference internal" href="../simulator.html">Simulator Module Documentation</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="../simulator.html#submodules">Submodules</a><ul class="current">
 <li class="toctree-l3 current"><a class="current reference internal" href="#">main module</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.app"><code class="docutils literal notranslate"><span class="pre">app</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.security"><code class="docutils literal notranslate"><span class="pre">security</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.PROFILE"><code class="docutils literal notranslate"><span class="pre">PROFILE</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.IP"><code class="docutils literal notranslate"><span class="pre">IP</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.HOSTNAME"><code class="docutils literal notranslate"><span class="pre">HOSTNAME</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.VENDOR"><code class="docutils literal notranslate"><span class="pre">VENDOR</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.MODEL"><code class="docutils literal notranslate"><span class="pre">MODEL</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.USERNAME"><code class="docutils literal notranslate"><span class="pre">USERNAME</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.PASSWORD"><code class="docutils literal notranslate"><span class="pre">PASSWORD</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.PORT"><code class="docutils literal notranslate"><span class="pre">PORT</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.HTTPS"><code class="docutils literal notranslate"><span class="pre">HTTPS</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.device"><code class="docutils literal notranslate"><span class="pre">device</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.cisco_router"><code class="docutils literal notranslate"><span class="pre">cisco_router</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="#simulator.main.juniper_router"><code class="docutils literal notranslate"><span class="pre">juniper_router</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#simulator.main.authenticate"><code class="docutils literal notranslate"><span class="pre">authenticate()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#simulator.main.health"><code class="docutils literal notranslate"><span class="pre">health()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#simulator.main.cpu_usage"><code class="docutils literal notranslate"><span class="pre">cpu_usage()</span></code></a></li>
@@ -81,10 +67,7 @@
 </li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../run.html">run module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 
         </div>
@@ -114,204 +97,9 @@
              
   <section id="module-simulator.main">
 <span id="main-module"></span><h1>main module<a class="headerlink" href="#module-simulator.main" title="Link to this heading"></a></h1>
-<p>FastAPI application simulating Cisco IOS XE or Juniper network devices.</p>
-<p>The simulator exposes vendor-specific HTTP endpoints that return realistic
-RESTCONF (Cisco) or RPC-style (Juniper) JSON payloads. Device behaviour
-(CPU, memory, interface counters) is driven by a <a class="reference internal" href="devices.html#simulator.devices.BaseDevice" title="simulator.devices.BaseDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDevice</span></code></a>
-subclass selected at startup from environment variables.</p>
-<dl>
-<dt>Environment Variables:</dt><dd><dl class="simple">
-<dt>DEVICE_PROFILE (str): Utilization preset. Accepted values are</dt><dd><p><code class="docutils literal notranslate"><span class="pre">high_utilized</span></code>, <code class="docutils literal notranslate"><span class="pre">low_utilized</span></code>, <code class="docutils literal notranslate"><span class="pre">average_utilized</span></code>, or
-<code class="docutils literal notranslate"><span class="pre">custom</span></code>. Any other value (including the default <code class="docutils literal notranslate"><span class="pre">standard</span></code>)
-falls back to <a class="reference internal" href="devices.html#simulator.devices.AverageUtilizedCiscoDevice" title="simulator.devices.AverageUtilizedCiscoDevice"><code class="xref py py-class docutils literal notranslate"><span class="pre">AverageUtilizedCiscoDevice</span></code></a>.</p>
-</dd>
-</dl>
-<p>DEVICE_IP (str): Simulated device IP address. Default: <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code>.
-DEVICE_HOSTNAME (str): Simulated hostname. Default: <code class="docutils literal notranslate"><span class="pre">s-cat-def-1</span></code>.
-DEVICE_VENDOR (str): Device vendor, <code class="docutils literal notranslate"><span class="pre">cisco</span></code> or <code class="docutils literal notranslate"><span class="pre">juniper</span></code>. Default:</p>
-<blockquote>
-<div><p><code class="docutils literal notranslate"><span class="pre">cisco</span></code>.</p>
-</div></blockquote>
-<dl class="simple">
-<dt>DEVICE_MODEL (str): Hardware model string returned in inventory/system</dt><dd><p>responses. Default: <code class="docutils literal notranslate"><span class="pre">Catalyst</span> <span class="pre">9000</span></code>.</p>
-</dd>
-</dl>
-<p>DEVICE_USERNAME (str): HTTP Basic auth username. Default: <code class="docutils literal notranslate"><span class="pre">admin</span></code>.
-DEVICE_PASSWORD (str): HTTP Basic auth password. Default: <code class="docutils literal notranslate"><span class="pre">123</span></code>.
-DEVICE_PORT (int): Uvicorn listen port. Default: <code class="docutils literal notranslate"><span class="pre">443</span></code>.
-DEVICE_IS_HTTPS (str): Whether the simulated device uses HTTPS</p>
-<blockquote>
-<div><p>(informational only). Truthy values: <code class="docutils literal notranslate"><span class="pre">true</span></code>, <code class="docutils literal notranslate"><span class="pre">1</span></code>, <code class="docutils literal notranslate"><span class="pre">yes</span></code>.
-Default: <code class="docutils literal notranslate"><span class="pre">false</span></code>.</p>
-</div></blockquote>
-<p>When <code class="docutils literal notranslate"><span class="pre">DEVICE_PROFILE=custom</span></code>, the following optional variables override
-fields on <a class="reference internal" href="logic.html#simulator.logic.CustomProfile" title="simulator.logic.CustomProfile"><code class="xref py py-class docutils literal notranslate"><span class="pre">CustomProfile</span></code></a>:</p>
-<p>DEVICE_MEAN, DEVICE_DEVIATION, DEVICE_MIN_VAL, DEVICE_MAX_VAL,
-DEVICE_SPIKE_CHANCE, DEVICE_SPIKE_MIN, DEVICE_SPIKE_MAX,
-DEVICE_SPIKE_MEAN, DEVICE_SPIKE_DEVIATION, DEVICE_DROP_CHANCE,
-DEVICE_DROP_MIN, DEVICE_DROP_MAX, DEVICE_DROP_MEAN,
-DEVICE_DROP_DEVIATION.</p>
-</dd>
-</dl>
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.app">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">app</span></span><a class="headerlink" href="#simulator.main.app" title="Link to this definition"></a></dt>
-<dd><p>Root FastAPI application instance.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>fastapi.FastAPI</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.security">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">security</span></span><a class="headerlink" href="#simulator.main.security" title="Link to this definition"></a></dt>
-<dd><p>HTTP Basic authentication scheme.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>fastapi.security.HTTPBasic</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.PROFILE">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">PROFILE</span></span><a class="headerlink" href="#simulator.main.PROFILE" title="Link to this definition"></a></dt>
-<dd><p>Lowercased value of <code class="docutils literal notranslate"><span class="pre">DEVICE_PROFILE</span></code>.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.IP">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">IP</span></span><a class="headerlink" href="#simulator.main.IP" title="Link to this definition"></a></dt>
-<dd><p>Simulated device IP address.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.HOSTNAME">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">HOSTNAME</span></span><a class="headerlink" href="#simulator.main.HOSTNAME" title="Link to this definition"></a></dt>
-<dd><p>Simulated device hostname.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.VENDOR">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">VENDOR</span></span><a class="headerlink" href="#simulator.main.VENDOR" title="Link to this definition"></a></dt>
-<dd><p>Lowercased device vendor (<code class="docutils literal notranslate"><span class="pre">cisco</span></code> or <code class="docutils literal notranslate"><span class="pre">juniper</span></code>).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.MODEL">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">MODEL</span></span><a class="headerlink" href="#simulator.main.MODEL" title="Link to this definition"></a></dt>
-<dd><p>Device model string.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.USERNAME">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">USERNAME</span></span><a class="headerlink" href="#simulator.main.USERNAME" title="Link to this definition"></a></dt>
-<dd><p>Expected HTTP Basic username.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.PASSWORD">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">PASSWORD</span></span><a class="headerlink" href="#simulator.main.PASSWORD" title="Link to this definition"></a></dt>
-<dd><p>Expected HTTP Basic password.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>str</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.PORT">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">PORT</span></span><a class="headerlink" href="#simulator.main.PORT" title="Link to this definition"></a></dt>
-<dd><p>Server listen port.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>int</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.HTTPS">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">HTTPS</span></span><a class="headerlink" href="#simulator.main.HTTPS" title="Link to this definition"></a></dt>
-<dd><p>Whether HTTPS is enabled for the simulated device.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>bool</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.device">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">device</span></span><a class="headerlink" href="#simulator.main.device" title="Link to this definition"></a></dt>
-<dd><p>Active simulated device instance.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p><a class="reference internal" href="devices.html#simulator.devices.BaseDevice" title="simulator.devices.BaseDevice">simulator.devices.BaseDevice</a></p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.cisco_router">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">cisco_router</span></span><a class="headerlink" href="#simulator.main.cisco_router" title="Link to this definition"></a></dt>
-<dd><p>RESTCONF routes for Cisco devices
-(prefix <code class="docutils literal notranslate"><span class="pre">/restconf/data</span></code>).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>fastapi.APIRouter</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="simulator.main.juniper_router">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">juniper_router</span></span><a class="headerlink" href="#simulator.main.juniper_router" title="Link to this definition"></a></dt>
-<dd><p>RPC routes for Juniper devices
-(prefix <code class="docutils literal notranslate"><span class="pre">/rpc</span></code>).</p>
-<dl class="field-list simple">
-<dt class="field-odd">Type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>fastapi.APIRouter</p>
-</dd>
-</dl>
-</dd></dl>
-
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.authenticate">
-<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">authenticate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">credentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">fastapi.security.HTTPBasicCredentials</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Depends</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/simulator/main.html#authenticate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.authenticate" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">authenticate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">credentials</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">HTTPBasicCredentials</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">Depends(dependency=&lt;fastapi.security.http.HTTPBasic</span> <span class="pre">object&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_cache</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scope</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None)</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/simulator/main.html#authenticate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.authenticate" title="Link to this definition"></a></dt>
 <dd><p>Validate HTTP Basic credentials for all simulator endpoints.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -332,7 +120,7 @@ DEVICE_DROP_DEVIATION.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.health">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">health</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.health" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">health</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#health"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.health" title="Link to this definition"></a></dt>
 <dd><p>Health-check endpoint for the Cisco RESTCONF simulator.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -354,7 +142,7 @@ DEVICE_DROP_DEVIATION.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.cpu_usage">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">cpu_usage</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.cpu_usage" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">cpu_usage</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#cpu_usage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.cpu_usage" title="Link to this definition"></a></dt>
 <dd><p>Return simulated five-second CPU utilization (Cisco RESTCONF).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -378,7 +166,7 @@ integer percentage in the range <code class="docutils literal notranslate"><span
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.memory_usage">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">memory_usage</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.memory_usage" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">memory_usage</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#memory_usage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.memory_usage" title="Link to this definition"></a></dt>
 <dd><p>Return simulated processor memory statistics (Cisco RESTCONF).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -404,7 +192,7 @@ entries are static placeholders.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.get_model">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.get_model" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#get_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.get_model" title="Link to this definition"></a></dt>
 <dd><p>Return simulated device hardware inventory (Cisco RESTCONF).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -428,7 +216,7 @@ for chassis entries use <a class="reference internal" href="devices.html#simulat
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.get_hostname">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_hostname</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.get_hostname" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_hostname</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#get_hostname"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.get_hostname" title="Link to this definition"></a></dt>
 <dd><p>Return the simulated device hostname (Cisco RESTCONF).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -451,7 +239,7 @@ for chassis entries use <a class="reference internal" href="devices.html#simulat
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.get_interfaces_state">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_interfaces_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.get_interfaces_state" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_interfaces_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#get_interfaces_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.get_interfaces_state" title="Link to this definition"></a></dt>
 <dd><p>Return simulated interface state and traffic counters (Cisco RESTCONF).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -477,7 +265,7 @@ status, speed, MAC address, and <code class="docutils literal notranslate"><span
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.get_interface_information">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_interface_information</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.get_interface_information" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_interface_information</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#get_interface_information"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.get_interface_information" title="Link to this definition"></a></dt>
 <dd><p>Return simulated Juniper interface information (RPC).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -503,7 +291,7 @@ status are static placeholders.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.get_route_engine_information">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_route_engine_information</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.get_route_engine_information" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_route_engine_information</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#get_route_engine_information"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.get_route_engine_information" title="Link to this definition"></a></dt>
 <dd><p>Return simulated Juniper route-engine CPU and memory statistics (RPC).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -528,7 +316,7 @@ fields are static placeholders.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="simulator.main.get_system_information">
-<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_system_information</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#simulator.main.get_system_information" title="Link to this definition"></a></dt>
+<span class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">get_system_information</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/simulator/main.html#get_system_information"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.get_system_information" title="Link to this definition"></a></dt>
 <dd><p>Return simulated Juniper system information (RPC).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
@@ -555,8 +343,8 @@ number are static placeholders.</p>
 <dt class="sig sig-object py" id="simulator.main.main">
 <span class="sig-prename descclassname"><span class="pre">simulator.main.</span></span><span class="sig-name descname"><span class="pre">main</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../_modules/simulator/main.html#main"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#simulator.main.main" title="Link to this definition"></a></dt>
 <dd><p>Start the simulator FastAPI server with Uvicorn.</p>
-<p>Binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on <a class="reference internal" href="#simulator.main.PORT" title="simulator.main.PORT"><code class="xref py py-data docutils literal notranslate"><span class="pre">PORT</span></code></a>. Vendor-specific routes are already
-registered on <a class="reference internal" href="#simulator.main.app" title="simulator.main.app"><code class="xref py py-data docutils literal notranslate"><span class="pre">app</span></code></a> at import time based on <a class="reference internal" href="#simulator.main.VENDOR" title="simulator.main.VENDOR"><code class="xref py py-data docutils literal notranslate"><span class="pre">VENDOR</span></code></a>.</p>
+<p>Binds to <code class="docutils literal notranslate"><span class="pre">0.0.0.0</span></code> on <code class="xref py py-data docutils literal notranslate"><span class="pre">PORT</span></code>. Vendor-specific routes are already
+registered on <code class="xref py py-data docutils literal notranslate"><span class="pre">app</span></code> at import time based on <code class="xref py py-data docutils literal notranslate"><span class="pre">VENDOR</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>OSError</strong> – If the configured port is already in use or cannot be bound.</p>

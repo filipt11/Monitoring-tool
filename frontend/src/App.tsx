@@ -7,7 +7,6 @@ import { GuestRoute, ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout, AuthLayout } from "@/components/layout/AppLayout";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { defaultAuthenticatedPath, routes } from "@/lib/routes";
-import { AdminAppConfigPage } from "@/pages/admin/AdminAppConfigPage";
 import { AdminManageDevicesPage } from "@/pages/admin/AdminManageDevicesPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { DeviceDetailsPage } from "@/pages/DeviceDetailsPage";
@@ -20,6 +19,7 @@ import { InterfaceGroupsPage } from "@/pages/InterfaceGroupsPage";
 import { DevicesPage } from "@/pages/DevicesPage";
 import { InterfacesPage } from "@/pages/InterfacesPage";
 import { InterfaceDetailsPage } from "@/pages/InterfaceDetailsPage";
+import { AnomaliesPage } from "@/pages/AnomaliesPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { MainPage } from "@/pages/MainPage";
 import { RegisterPage } from "@/pages/RegisterPage";
@@ -51,6 +51,7 @@ export default function App() {
             <Route path={routes.mainPage} element={<MainPage />} />
             <Route path={routes.devices} element={<DevicesPage />} />
             <Route path={routes.interfaces} element={<InterfacesPage />} />
+            <Route path={routes.anomalies} element={<AnomaliesPage />} />
             <Route path={routes.deviceGroups} element={<DeviceGroupsPage />} />
             <Route path={routes.interfaceGroups} element={<InterfaceGroupsPage />} />
             <Route path={routes.dashboards} element={<DashboardsPage />} />
@@ -73,7 +74,6 @@ export default function App() {
             <Route element={<AdminRoute />}>
               <Route path={routes.admin.users} element={<AdminUsersPage />} />
               <Route path={routes.admin.devices} element={<AdminManageDevicesPage />} />
-              <Route path={routes.admin.configuration} element={<AdminAppConfigPage />} />
             </Route>
           </Route>
         </Route>
@@ -87,10 +87,6 @@ export default function App() {
         />
         <Route path="/dashboard/admin/users" element={<Navigate to={routes.admin.users} replace />} />
         <Route path="/dashboard/admin/devices" element={<Navigate to={routes.admin.devices} replace />} />
-        <Route
-          path="/dashboard/admin/configuration"
-          element={<Navigate to={routes.admin.configuration} replace />}
-        />
         <Route path="*" element={<Navigate to={defaultAuthenticatedPath} replace />} />
       </Routes>
 

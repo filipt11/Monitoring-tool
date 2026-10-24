@@ -43,6 +43,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
 <ul>
@@ -120,6 +121,7 @@
 
     <span class="c1"># Initialize default values for parsed metrics</span>
     <span class="n">cpu_val</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">sim_event</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">memory_val</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">total_memory</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">memory_pct</span> <span class="o">=</span> <span class="kc">None</span>
@@ -156,7 +158,7 @@
     <span class="c1"># Parse each result only when request succeeded</span>
     <span class="k">if</span> <span class="n">raw_cpu</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">cpu_val</span> <span class="o">=</span> <span class="n">parse_cpu</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">)</span>
+            <span class="n">cpu_val</span><span class="p">,</span> <span class="n">sim_event</span> <span class="o">=</span> <span class="n">parse_cpu</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Error parsing CPU for </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="si">}</span><span class="s2"> | </span><span class="si">{</span><span class="n">device</span><span class="o">.</span><span class="n">ip</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
@@ -186,6 +188,7 @@
         <span class="s2">"used_memory"</span><span class="p">:</span> <span class="n">memory_val</span><span class="p">,</span>
         <span class="s2">"memory_pct"</span><span class="p">:</span> <span class="n">memory_pct</span><span class="p">,</span>
         <span class="s2">"interfaces"</span><span class="p">:</span> <span class="n">interfaces</span><span class="p">,</span>
+        <span class="s2">"sim_event"</span><span class="p">:</span> <span class="n">sim_event</span><span class="p">,</span>
     <span class="p">}</span>
 
     <span class="k">if</span> <span class="n">result</span><span class="p">[</span><span class="s2">"status"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"up"</span><span class="p">:</span>
@@ -238,21 +241,26 @@
 
 <div class="viewcode-block" id="parse_cpu">
 <a class="viewcode-back" href="../../poller/cisco_polling.html#poller.cisco_polling.parse_cpu">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">parse_cpu</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_cpu</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">"""Extract five-second CPU utilization from a RESTCONF CPU response.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        raw_cpu: JSON payload from the Cisco CPU RESTCONF endpoint.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        CPU usage as an integer percentage (``0``–``100``).</span>
+<span class="sd">        ``(cpu_pct, sim_event)`` where ``sim_event`` is an optional simulator</span>
+<span class="sd">        ground-truth label (``none`` / ``spike`` / ``drop``).</span>
 
 <span class="sd">    Raises:</span>
 <span class="sd">        KeyError: When the expected YANG key is missing.</span>
 <span class="sd">        ValueError: When the value cannot be converted to ``int``.</span>
 <span class="sd">    """</span>
 
-    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">[</span><span class="s2">"Cisco-IOS-XE-process-cpu-oper:five-seconds"</span><span class="p">])</span></div>
+    <span class="n">cpu</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">raw_cpu</span><span class="p">[</span><span class="s2">"Cisco-IOS-XE-process-cpu-oper:five-seconds"</span><span class="p">])</span>
+    <span class="n">sim_event</span> <span class="o">=</span> <span class="n">raw_cpu</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"sim-event"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sim_event</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="n">sim_event</span> <span class="ow">in</span> <span class="p">{</span><span class="s2">"none"</span><span class="p">,</span> <span class="s2">"spike"</span><span class="p">,</span> <span class="s2">"drop"</span><span class="p">}:</span>
+        <span class="k">return</span> <span class="n">cpu</span><span class="p">,</span> <span class="n">sim_event</span>
+    <span class="k">return</span> <span class="n">cpu</span><span class="p">,</span> <span class="kc">None</span></div>
 
 
 

@@ -43,6 +43,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
 <ul>
@@ -74,60 +75,7 @@
            <div itemprop="articleBody">
              
   <h1>Source code for simulator.main</h1><div class="highlight"><pre>
-<span></span><span class="sd">"""FastAPI application simulating Cisco IOS XE or Juniper network devices.</span>
-
-<span class="sd">The simulator exposes vendor-specific HTTP endpoints that return realistic</span>
-<span class="sd">RESTCONF (Cisco) or RPC-style (Juniper) JSON payloads. Device behaviour</span>
-<span class="sd">(CPU, memory, interface counters) is driven by a :class:`~simulator.devices.BaseDevice`</span>
-<span class="sd">subclass selected at startup from environment variables.</span>
-
-<span class="sd">Environment Variables:</span>
-<span class="sd">    DEVICE_PROFILE (str): Utilization preset. Accepted values are</span>
-<span class="sd">        ``high_utilized``, ``low_utilized``, ``average_utilized``, or</span>
-<span class="sd">        ``custom``. Any other value (including the default ``standard``)</span>
-<span class="sd">        falls back to :class:`~simulator.devices.AverageUtilizedCiscoDevice`.</span>
-<span class="sd">    DEVICE_IP (str): Simulated device IP address. Default: ``0.0.0.0``.</span>
-<span class="sd">    DEVICE_HOSTNAME (str): Simulated hostname. Default: ``s-cat-def-1``.</span>
-<span class="sd">    DEVICE_VENDOR (str): Device vendor, ``cisco`` or ``juniper``. Default:</span>
-<span class="sd">        ``cisco``.</span>
-<span class="sd">    DEVICE_MODEL (str): Hardware model string returned in inventory/system</span>
-<span class="sd">        responses. Default: ``Catalyst 9000``.</span>
-<span class="sd">    DEVICE_USERNAME (str): HTTP Basic auth username. Default: ``admin``.</span>
-<span class="sd">    DEVICE_PASSWORD (str): HTTP Basic auth password. Default: ``123``.</span>
-<span class="sd">    DEVICE_PORT (int): Uvicorn listen port. Default: ``443``.</span>
-<span class="sd">    DEVICE_IS_HTTPS (str): Whether the simulated device uses HTTPS</span>
-<span class="sd">        (informational only). Truthy values: ``true``, ``1``, ``yes``.</span>
-<span class="sd">        Default: ``false``.</span>
-
-<span class="sd">    When ``DEVICE_PROFILE=custom``, the following optional variables override</span>
-<span class="sd">    fields on :class:`~simulator.logic.CustomProfile`:</span>
-
-<span class="sd">    DEVICE_MEAN, DEVICE_DEVIATION, DEVICE_MIN_VAL, DEVICE_MAX_VAL,</span>
-<span class="sd">    DEVICE_SPIKE_CHANCE, DEVICE_SPIKE_MIN, DEVICE_SPIKE_MAX,</span>
-<span class="sd">    DEVICE_SPIKE_MEAN, DEVICE_SPIKE_DEVIATION, DEVICE_DROP_CHANCE,</span>
-<span class="sd">    DEVICE_DROP_MIN, DEVICE_DROP_MAX, DEVICE_DROP_MEAN,</span>
-<span class="sd">    DEVICE_DROP_DEVIATION.</span>
-
-<span class="sd">Attributes:</span>
-<span class="sd">    app (fastapi.FastAPI): Root FastAPI application instance.</span>
-<span class="sd">    security (fastapi.security.HTTPBasic): HTTP Basic authentication scheme.</span>
-<span class="sd">    PROFILE (str): Lowercased value of ``DEVICE_PROFILE``.</span>
-<span class="sd">    IP (str): Simulated device IP address.</span>
-<span class="sd">    HOSTNAME (str): Simulated device hostname.</span>
-<span class="sd">    VENDOR (str): Lowercased device vendor (``cisco`` or ``juniper``).</span>
-<span class="sd">    MODEL (str): Device model string.</span>
-<span class="sd">    USERNAME (str): Expected HTTP Basic username.</span>
-<span class="sd">    PASSWORD (str): Expected HTTP Basic password.</span>
-<span class="sd">    PORT (int): Server listen port.</span>
-<span class="sd">    HTTPS (bool): Whether HTTPS is enabled for the simulated device.</span>
-<span class="sd">    device (simulator.devices.BaseDevice): Active simulated device instance.</span>
-<span class="sd">    cisco_router (fastapi.APIRouter): RESTCONF routes for Cisco devices</span>
-<span class="sd">        (prefix ``/restconf/data``).</span>
-<span class="sd">    juniper_router (fastapi.APIRouter): RPC routes for Juniper devices</span>
-<span class="sd">        (prefix ``/rpc``).</span>
-<span class="sd">"""</span>
-
-<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
+<span></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">status</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.security</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTTPBasic</span><span class="p">,</span> <span class="n">HTTPBasicCredentials</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">simulator</span><span class="w"> </span><span class="kn">import</span> <span class="n">devices</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
@@ -241,6 +189,8 @@
 <span class="n">cisco_router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">"/restconf/data"</span><span class="p">)</span>
 
 
+<div class="viewcode-block" id="health">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.health">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/health"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Health-check endpoint for the Cisco RESTCONF simulator.</span>
@@ -256,9 +206,12 @@
 <span class="sd">        This route requires HTTP Basic authentication (applied at router level).</span>
 <span class="sd">    """</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"OK"</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"OK"</span><span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="cpu_usage">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.cpu_usage">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="s2">"/Cisco-IOS-XE-process-cpu-oper</span><span class="si">{colon}</span><span class="s2">cpu-usage/cpu-utilization/five-seconds"</span>
 <span class="p">)</span>
@@ -275,9 +228,17 @@
 <span class="sd">        Requires HTTP Basic authentication.</span>
 <span class="sd">    """</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">"Cisco-IOS-XE-process-cpu-oper:five-seconds"</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">()}</span>
+    <span class="n">cpu</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"Cisco-IOS-XE-process-cpu-oper:five-seconds"</span><span class="p">:</span> <span class="n">cpu</span><span class="p">,</span>
+        <span class="c1"># Simulator ground truth (ignored by real IOS-XE devices / optional in poller)</span>
+        <span class="s2">"sim-event"</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">last_cpu_sim_event</span><span class="p">,</span>
+    <span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="memory_usage">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.memory_usage">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/Cisco-IOS-XE-memory-oper</span><span class="si">{colon}</span><span class="s2">memory-statistics"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">memory_usage</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Return simulated processor memory statistics (Cisco RESTCONF).</span>
@@ -327,9 +288,12 @@
                 <span class="p">},</span>
             <span class="p">]</span>
         <span class="p">}</span>
-    <span class="p">}</span>
+    <span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="get_model">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_model">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
     <span class="s2">"/Cisco-IOS-XE-device-hardware-oper</span><span class="si">{colon}</span><span class="s2">device-hardware-data/device-hardware/device-inventory"</span>
 <span class="p">)</span>
@@ -393,9 +357,12 @@
                 <span class="s2">"hw-class"</span><span class="p">:</span> <span class="s2">"hw-class-physical"</span><span class="p">,</span>
             <span class="p">},</span>
         <span class="p">]</span>
-    <span class="p">}</span>
+    <span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="get_hostname">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_hostname">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/Cisco-IOS-XE-native</span><span class="si">{colon}</span><span class="s2">native/hostname"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_hostname</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Return the simulated device hostname (Cisco RESTCONF).</span>
@@ -409,9 +376,12 @@
 <span class="sd">        Requires HTTP Basic authentication.</span>
 <span class="sd">    """</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">"Cisco-IOS-XE-native:hostname"</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"Cisco-IOS-XE-native:hostname"</span><span class="p">:</span> <span class="n">device</span><span class="o">.</span><span class="n">hostname</span><span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="get_interfaces_state">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_interfaces_state">[docs]</a>
 <span class="nd">@cisco_router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/ietf-interfaces</span><span class="si">{colon}</span><span class="s2">interfaces-state"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_interfaces_state</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Return simulated interface state and traffic counters (Cisco RESTCONF).</span>
@@ -462,13 +432,16 @@
             <span class="p">}</span>
         <span class="p">)</span>
 
-    <span class="k">return</span> <span class="p">{</span><span class="s2">"ietf-interfaces:interfaces-state"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"interface"</span><span class="p">:</span> <span class="n">interface_output</span><span class="p">}}</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"ietf-interfaces:interfaces-state"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"interface"</span><span class="p">:</span> <span class="n">interface_output</span><span class="p">}}</span></div>
+
 
 
 <span class="c1"># Define URL paths for Juniper devices</span>
 <span class="n">juniper_router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">"/rpc"</span><span class="p">)</span>
 
 
+<div class="viewcode-block" id="get_interface_information">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_interface_information">[docs]</a>
 <span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/get-interface-information"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_interface_information</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Return simulated Juniper interface information (RPC).</span>
@@ -587,9 +560,12 @@
 
     <span class="k">return</span> <span class="p">{</span>
         <span class="s2">"interface-information"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"physical-interface"</span><span class="p">:</span> <span class="n">physical_interfaces_output</span><span class="p">}]</span>
-    <span class="p">}</span>
+    <span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="get_route_engine_information">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_route_engine_information">[docs]</a>
 <span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/get-route-engine-information"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_route_engine_information</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Return simulated Juniper route-engine CPU and memory statistics (RPC).</span>
@@ -606,6 +582,7 @@
 <span class="sd">    """</span>
 
     <span class="n">cpu_idle</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">100</span> <span class="o">-</span> <span class="n">device</span><span class="o">.</span><span class="n">get_cpu</span><span class="p">())</span>
+    <span class="n">sim_event</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">last_cpu_sim_event</span>
     <span class="n">total_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_total_memory</span><span class="p">()</span>
     <span class="n">used_memory</span> <span class="o">=</span> <span class="n">device</span><span class="o">.</span><span class="n">get_used_memory</span><span class="p">()</span>
     <span class="n">memory_MB</span> <span class="o">=</span> <span class="n">total_memory</span> <span class="o">//</span> <span class="p">(</span><span class="mi">1024</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
@@ -627,6 +604,7 @@
                         <span class="s2">"memory-buffer-utilization"</span><span class="p">:</span> <span class="p">[</span>
                             <span class="p">{</span><span class="s2">"data"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">memory_utilization</span><span class="p">)}</span>
                         <span class="p">],</span>
+                        <span class="s2">"sim-event"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"data"</span><span class="p">:</span> <span class="n">sim_event</span><span class="p">}],</span>
                         <span class="s2">"cpu-user"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"data"</span><span class="p">:</span> <span class="s2">"0"</span><span class="p">}],</span>
                         <span class="s2">"cpu-background"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"data"</span><span class="p">:</span> <span class="s2">"0"</span><span class="p">}],</span>
                         <span class="s2">"cpu-system"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"data"</span><span class="p">:</span> <span class="s2">"1"</span><span class="p">}],</span>
@@ -670,9 +648,12 @@
                 <span class="p">]</span>
             <span class="p">}</span>
         <span class="p">]</span>
-    <span class="p">}</span>
+    <span class="p">}</span></div>
 
 
+
+<div class="viewcode-block" id="get_system_information">
+<a class="viewcode-back" href="../../simulator/main.html#simulator.main.get_system_information">[docs]</a>
 <span class="nd">@juniper_router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/get-system-information"</span><span class="p">)</span>
 <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_system_information</span><span class="p">():</span>
 <span class="w">    </span><span class="sd">"""Return simulated Juniper system information (RPC).</span>
@@ -698,7 +679,8 @@
                 <span class="s2">"serial-number"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"data"</span><span class="p">:</span> <span class="s2">"VM69F21129F0"</span><span class="p">}],</span>
             <span class="p">}</span>
         <span class="p">]</span>
-    <span class="p">}</span>
+    <span class="p">}</span></div>
+
 
 
 <span class="c1"># Choose API Router based on device Vendor</span>

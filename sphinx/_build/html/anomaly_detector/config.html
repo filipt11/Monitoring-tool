@@ -1,0 +1,185 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>config module &mdash; Monitoring Tool 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="logic module" href="logic.html" />
+    <link rel="prev" title="Anomaly Detector Module Documentation" href="../anomaly_detector.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #2c3e50" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            Monitoring Tool
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Modules:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../poller.html">Poller Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../anomaly_detector.html">Anomaly Detector Module Documentation</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../anomaly_detector.html#detection-pipeline">Detection pipeline</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../anomaly_detector.html#supported-metrics">Supported metrics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../anomaly_detector.html#offline-evaluation">Offline evaluation</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../anomaly_detector.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">config module</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#anomaly_detector.config.API_PORT"><code class="docutils literal notranslate"><span class="pre">API_PORT</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#anomaly_detector.config.INFLUX_URL"><code class="docutils literal notranslate"><span class="pre">INFLUX_URL</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#anomaly_detector.config.INFLUX_TOKEN"><code class="docutils literal notranslate"><span class="pre">INFLUX_TOKEN</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#anomaly_detector.config.INFLUX_ORG"><code class="docutils literal notranslate"><span class="pre">INFLUX_ORG</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#anomaly_detector.config.INFLUX_BUCKET"><code class="docutils literal notranslate"><span class="pre">INFLUX_BUCKET</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#anomaly_detector.config.POLLING_INTERVAL_SEC"><code class="docutils literal notranslate"><span class="pre">POLLING_INTERVAL_SEC</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#anomaly_detector.config.DEFAULT_LOOKBACK_HOURS"><code class="docutils literal notranslate"><span class="pre">DEFAULT_LOOKBACK_HOURS</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#anomaly_detector.config.CONTEXT_LOOKBACK_HOURS"><code class="docutils literal notranslate"><span class="pre">CONTEXT_LOOKBACK_HOURS</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="logic.html">logic module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="main.html">main module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="evaluate.html">evaluate module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2c3e50" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Monitoring Tool</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
+      <li class="breadcrumb-item active">config module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/anomaly_detector/config.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-anomaly_detector.config">
+<span id="config-module"></span><h1>config module<a class="headerlink" href="#module-anomaly_detector.config" title="Link to this heading"></a></h1>
+<p>Runtime configuration for the anomaly detector service.</p>
+<p>Values are read from environment variables when present, with sensible
+defaults for local development (InfluxDB on localhost, API on port 8010).</p>
+<dl class="py data">
+<dt class="sig sig-object py" id="anomaly_detector.config.API_PORT">
+<span class="sig-prename descclassname"><span class="pre">anomaly_detector.config.</span></span><span class="sig-name descname"><span class="pre">API_PORT</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8010</span></span><a class="headerlink" href="#anomaly_detector.config.API_PORT" title="Link to this definition"></a></dt>
+<dd><p>TCP port for the FastAPI anomaly detector HTTP server.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="anomaly_detector.config.INFLUX_URL">
+<span class="sig-prename descclassname"><span class="pre">anomaly_detector.config.</span></span><span class="sig-name descname"><span class="pre">INFLUX_URL</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'http://localhost:8086'</span></span><a class="headerlink" href="#anomaly_detector.config.INFLUX_URL" title="Link to this definition"></a></dt>
+<dd><p>Base URL of the InfluxDB instance that stores polled metrics.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="anomaly_detector.config.INFLUX_TOKEN">
+<span class="sig-prename descclassname"><span class="pre">anomaly_detector.config.</span></span><span class="sig-name descname"><span class="pre">INFLUX_TOKEN</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'secret_token'</span></span><a class="headerlink" href="#anomaly_detector.config.INFLUX_TOKEN" title="Link to this definition"></a></dt>
+<dd><p>Authentication token for InfluxDB queries.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="anomaly_detector.config.INFLUX_ORG">
+<span class="sig-prename descclassname"><span class="pre">anomaly_detector.config.</span></span><span class="sig-name descname"><span class="pre">INFLUX_ORG</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'my_org'</span></span><a class="headerlink" href="#anomaly_detector.config.INFLUX_ORG" title="Link to this definition"></a></dt>
+<dd><p>InfluxDB organization name.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="anomaly_detector.config.INFLUX_BUCKET">
+<span class="sig-prename descclassname"><span class="pre">anomaly_detector.config.</span></span><span class="sig-name descname"><span class="pre">INFLUX_BUCKET</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'network_metrics'</span></span><a class="headerlink" href="#anomaly_detector.config.INFLUX_BUCKET" title="Link to this definition"></a></dt>
+<dd><p>Bucket that holds <code class="docutils literal notranslate"><span class="pre">device_statistics</span></code> / <code class="docutils literal notranslate"><span class="pre">interface_statistics</span></code> measurements.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="anomaly_detector.config.POLLING_INTERVAL_SEC">
+<span class="sig-prename descclassname"><span class="pre">anomaly_detector.config.</span></span><span class="sig-name descname"><span class="pre">POLLING_INTERVAL_SEC</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">300</span></span><a class="headerlink" href="#anomaly_detector.config.POLLING_INTERVAL_SEC" title="Link to this definition"></a></dt>
+<dd><p>Expected poll interval in seconds; used to merge nearby CUSUM flags into episodes.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="anomaly_detector.config.DEFAULT_LOOKBACK_HOURS">
+<span class="sig-prename descclassname"><span class="pre">anomaly_detector.config.</span></span><span class="sig-name descname"><span class="pre">DEFAULT_LOOKBACK_HOURS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">12</span></span><a class="headerlink" href="#anomaly_detector.config.DEFAULT_LOOKBACK_HOURS" title="Link to this definition"></a></dt>
+<dd><p>Default <code class="docutils literal notranslate"><span class="pre">[start,</span> <span class="pre">end]</span></code> window length (hours) when the client omits both parameters.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="anomaly_detector.config.CONTEXT_LOOKBACK_HOURS">
+<span class="sig-prename descclassname"><span class="pre">anomaly_detector.config.</span></span><span class="sig-name descname"><span class="pre">CONTEXT_LOOKBACK_HOURS</span></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">12</span></span><a class="headerlink" href="#anomaly_detector.config.CONTEXT_LOOKBACK_HOURS" title="Link to this definition"></a></dt>
+<dd><p>Minimum computation window (hours) so EWMA/CUSUM have enough history before filtering.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../anomaly_detector.html" class="btn btn-neutral float-left" title="Anomaly Detector Module Documentation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="logic.html" class="btn btn-neutral float-right" title="logic module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Filip Terzyk.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

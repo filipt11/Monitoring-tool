@@ -13,11 +13,11 @@ export const routes = {
   dashboardEditor: (dashboardId: string) => `/dashboards/${dashboardId}`,
   deviceDetails: (deviceId: string) => `/devices/${deviceId}`,
   interfaces: "/interfaces",
+  anomalies: "/anomalies",
   interfaceDetails: (interfaceId: string) => `/interfaces/${interfaceId}`,
   admin: {
     users: "/admin/users",
     devices: "/admin/devices",
-    configuration: "/admin/configuration",
   },
   login: "/login",
   register: "/register",

@@ -144,13 +144,11 @@ export function DashboardSectionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Edit sections</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Manage chart sections for <span className="font-medium">{dashboard.name}</span>
-          </p>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-muted-foreground text-sm">
+          Manage chart sections for{" "}
+          <span className="text-foreground font-medium">{dashboard.name}</span>
+        </p>
 
         <div className="flex flex-wrap gap-2">
           {editable ? (

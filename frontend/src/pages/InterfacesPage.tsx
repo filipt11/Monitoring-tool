@@ -193,13 +193,6 @@ export function InterfacesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl font-semibold tracking-tight">Interfaces</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Browse discovered interfaces and open their detail view.
-        </p>
-      </div>
-
       <Card className="border-border/60">
         <CardHeader className="gap-4">
           <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">

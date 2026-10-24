@@ -18,6 +18,7 @@ import sys
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../poller'))
 sys.path.insert(0, os.path.abspath('../simulator'))
+sys.path.insert(0, os.path.abspath('../anomaly_detector'))
 
 extensions = [
 	'sphinx.ext.autodoc',
@@ -39,7 +40,9 @@ autodoc_default_options = {
 
 # Napoleon configuration (Google/NumPy style docstrings)
 napoleon_google_docstring = True
-napoleon_numpy_docstring = True
+# NumPy-style parsing is disabled: Sphinx 9.1 + Napoleon can crash on
+# ``Options.__len__`` when processing NumPy sections (issubclass TypeError).
+napoleon_numpy_docstring = False
 napoleon_include_private_members = False
 napoleon_include_special_members = False
 
@@ -55,6 +58,7 @@ autodoc_mock_imports = [
 	'influxdb_client',
 	'influxdb_client.client',
 	'influxdb_client.client.write_api',
+	'influxdb_client.client.warnings',
 	'sqlalchemy',
 	'sqlalchemy.exc',
 	'sqlalchemy.orm',
@@ -62,6 +66,8 @@ autodoc_mock_imports = [
 	'pydantic_settings',
 	'psycopg2',
 	'psycopg2_binary',
+	'numpy',
+	'pandas',
 ]
 
 # Autodoc member order

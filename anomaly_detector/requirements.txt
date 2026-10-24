@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+influxdb-client
+pandas
+numpy
+pytest

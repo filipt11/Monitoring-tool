@@ -72,10 +72,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../simulator.html">Simulator Module Documentation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../run.html">run module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 
         </div>
@@ -107,7 +104,7 @@
 <span id="main-module"></span><h1>main module<a class="headerlink" href="#module-poller.main" title="Link to this heading"></a></h1>
 <p>Background polling loop for Cisco and Juniper network devices.</p>
 <p>Reads the device inventory from PostgreSQL (populated via
-<a class="reference internal" href="api.html#module-poller.api" title="poller.api"><code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.api</span></code></a>), polls each device asynchronously, and writes CPU,
+<code class="xref py py-mod docutils literal notranslate"><span class="pre">poller.api</span></code>), polls each device asynchronously, and writes CPU,
 memory, availability, and interface metrics to InfluxDB. Concurrency is
 limited by <a class="reference internal" href="#poller.main.semaphore" title="poller.main.semaphore"><code class="xref py py-data docutils literal notranslate"><span class="pre">semaphore</span></code></a> to <code class="xref py py-data docutils literal notranslate"><span class="pre">MAX_DEVICES</span></code> devices
 in parallel.</p>

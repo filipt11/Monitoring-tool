@@ -43,6 +43,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../poller.html">Poller Module Documentation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../simulator.html">Simulator Module Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../anomaly_detector.html">Anomaly Detector Module Documentation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Additional:</span></p>
 <ul>
@@ -90,9 +91,13 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">time</span><span class="w"> </span><span class="kn">import</span> <span class="n">time</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">field_validator</span><span class="p">,</span> <span class="n">model_validator</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Literal</span>
 
 <span class="n">last_sim_times</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c1"># Ground-truth label for simulated CPU events (written through to Influx via poller).</span>
+<span class="n">SimEvent</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"none"</span><span class="p">,</span> <span class="s2">"spike"</span><span class="p">,</span> <span class="s2">"drop"</span><span class="p">]</span>
+<span class="n">CpuSample</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">SimEvent</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="CustomProfile">
@@ -156,6 +161,8 @@
     <span class="n">drop_mean</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.0</span>
     <span class="n">drop_deviation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2.0</span>
 
+<div class="viewcode-block" id="CustomProfile.clamp_values_0_100">
+<a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.CustomProfile.clamp_values_0_100">[docs]</a>
     <span class="nd">@field_validator</span><span class="p">(</span><span class="s2">"*"</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
     <span class="nd">@classmethod</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">clamp_values_0_100</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
@@ -171,8 +178,11 @@
             <span class="k">return</span> <span class="mi">0</span>
         <span class="k">if</span> <span class="n">v</span> <span class="o">&gt;</span> <span class="mi">100</span><span class="p">:</span>
             <span class="k">return</span> <span class="mi">100</span>
-        <span class="k">return</span> <span class="n">v</span>
+        <span class="k">return</span> <span class="n">v</span></div>
 
+
+<div class="viewcode-block" id="CustomProfile.validate_total_chance">
+<a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.CustomProfile.validate_total_chance">[docs]</a>
     <span class="nd">@model_validator</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s2">"after"</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">validate_total_chance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">"CustomProfile"</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">"""Ensure combined spike and drop probability does not exceed 100%.</span>
@@ -190,12 +200,13 @@
                 <span class="sa">f</span><span class="s2">"chance for spike and drop cannot exceed 100% in total"</span>
             <span class="p">)</span>
         <span class="k">return</span> <span class="bp">self</span></div>
+</div>
 
 
 
 <div class="viewcode-block" id="get_high_utilized_cpu">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_high_utilized_cpu">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_high_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_high_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">CpuSample</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Simulate CPU usage for a persistently high-utilization device.</span>
 
 <span class="sd">    Distribution:</span>
@@ -204,27 +215,27 @@
 <span class="sd">        * Otherwise: Gaussian around ``85`` (clamped to ``70``–``100``).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Integer CPU utilization percentage in the range ``0``–``100``.</span>
+<span class="sd">        ``(cpu_pct, sim_event)`` where ``sim_event`` is ``spike``, ``drop``,</span>
+<span class="sd">        or ``none``.</span>
 <span class="sd">    """</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
 
     <span class="c1"># 5% chance for 100% spike</span>
     <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;</span> <span class="mf">0.95</span><span class="p">:</span>
-        <span class="k">return</span> <span class="mi">100</span>
+        <span class="k">return</span> <span class="mi">100</span><span class="p">,</span> <span class="s2">"spike"</span>
 
     <span class="c1"># 3% chance for drop</span>
-    <span class="k">elif</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="mf">0.03</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">30</span><span class="p">)))</span>
-    
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">85</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">val</span><span class="p">)))</span></div>
+    <span class="k">if</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="mf">0.03</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">30</span><span class="p">))),</span> <span class="s2">"drop"</span>
+
+    <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">85</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="n">val</span><span class="p">))),</span> <span class="s2">"none"</span></div>
 
 
 
 <div class="viewcode-block" id="get_average_utilized_cpu">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_average_utilized_cpu">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_average_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_average_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">CpuSample</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Simulate CPU usage for an average-utilization device.</span>
 
 <span class="sd">    Distribution:</span>
@@ -233,27 +244,27 @@
 <span class="sd">        * Otherwise: Gaussian around ``40`` (clamped to ``20``–``60``).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Integer CPU utilization percentage in the range ``0``–``100``.</span>
+<span class="sd">        ``(cpu_pct, sim_event)`` where ``sim_event`` is ``spike``, ``drop``,</span>
+<span class="sd">        or ``none``.</span>
 <span class="sd">    """</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
 
     <span class="c1"># 5% chance for spike</span>
     <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;</span> <span class="mf">0.95</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">60</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">60</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="s2">"spike"</span>
 
     <span class="c1"># 3% chance for drop</span>
-    <span class="k">elif</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="mf">0.03</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="mf">0.03</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">))),</span> <span class="s2">"drop"</span>
 
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">60</span><span class="p">,</span> <span class="n">val</span><span class="p">)))</span></div>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">7</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">60</span><span class="p">,</span> <span class="n">val</span><span class="p">))),</span> <span class="s2">"none"</span></div>
 
 
 
 <div class="viewcode-block" id="get_low_utilized_cpu">
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_low_utilized_cpu">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_low_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_low_utilized_cpu</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">CpuSample</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Simulate CPU usage for a low-utilization device.</span>
 
 <span class="sd">    Distribution:</span>
@@ -262,21 +273,21 @@
 <span class="sd">        * Otherwise: Gaussian around ``8`` (clamped to ``1``–``20``).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Integer CPU utilization percentage in the range ``0``–``100``.</span>
+<span class="sd">        ``(cpu_pct, sim_event)`` where ``sim_event`` is ``spike`` or ``none``</span>
+<span class="sd">        (low profile has no dedicated drop branch).</span>
 <span class="sd">    """</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
 
     <span class="c1"># 5% chance for spike</span>
     <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;</span> <span class="mf">0.95</span><span class="p">:</span>
-        <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">25</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">11</span><span class="p">,</span> <span class="mi">25</span><span class="p">),</span> <span class="s2">"spike"</span>
 
     <span class="c1"># 1% chance for big spike</span>
-    <span class="k">elif</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">:</span>
-        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">20</span><span class="p">))))</span>
+    <span class="k">if</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="mf">0.01</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">min</span><span class="p">(</span><span class="mi">100</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span> <span class="mi">20</span><span class="p">)))),</span> <span class="s2">"spike"</span>
 
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
-        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">val</span><span class="p">)))</span></div>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="n">val</span><span class="p">))),</span> <span class="s2">"none"</span></div>
 
 
 
@@ -440,7 +451,7 @@
 <a class="viewcode-back" href="../../simulator/logic.html#simulator.logic.get_custom_utilized_cpu">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_custom_utilized_cpu</span><span class="p">(</span>
     <span class="n">profile</span><span class="p">:</span> <span class="n">CustomProfile</span>
-<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CpuSample</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Simulate CPU usage using a :class:`CustomProfile` distribution.</span>
 
 <span class="sd">    On each call a random value selects one of three scenarios:</span>
@@ -457,25 +468,25 @@
 <span class="sd">            probabilities.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Integer CPU utilization percentage.</span>
+<span class="sd">        ``(cpu_pct, sim_event)`` for the selected scenario.</span>
 <span class="sd">    """</span>
     <span class="n">r</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">random</span><span class="p">()</span>
     <span class="c1"># spike scenario</span>
     <span class="k">if</span> <span class="n">r</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">profile</span><span class="o">.</span><span class="n">spike_chance_pct</span> <span class="o">/</span> <span class="mi">100</span><span class="p">:</span>
         <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">spike_mean</span><span class="p">,</span> <span class="n">profile</span><span class="o">.</span><span class="n">spike_deviation</span><span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">spike_min</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">spike_max</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="s2">"spike"</span>
 
     <span class="c1"># drop scenario</span>
-    <span class="k">elif</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="n">profile</span><span class="o">.</span><span class="n">drop_chance_pct</span> <span class="o">/</span> <span class="mi">100</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">r</span> <span class="o">&lt;</span> <span class="n">profile</span><span class="o">.</span><span class="n">drop_chance_pct</span> <span class="o">/</span> <span class="mi">100</span><span class="p">:</span>
         <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">drop_mean</span><span class="p">,</span> <span class="n">profile</span><span class="o">.</span><span class="n">drop_deviation</span><span class="p">)</span>
         <span class="n">result</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">drop_min</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">drop_max</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="s2">"drop"</span>
 
     <span class="c1"># normal scenario</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">profile</span><span class="o">.</span><span class="n">deviation</span><span class="p">)</span>
-        <span class="n">result</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">min_val</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">max_val</span><span class="p">,</span> <span class="n">val</span><span class="p">)))</span>
-
-    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">)</span></div>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">gauss</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">profile</span><span class="o">.</span><span class="n">deviation</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">min_val</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">max_val</span><span class="p">,</span> <span class="n">val</span><span class="p">))</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="s2">"none"</span></div>
 
 
 
