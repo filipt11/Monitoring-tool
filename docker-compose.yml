@@ -62,6 +62,25 @@ services:
       POSTGRES_USERNAME: admin
       POSTGRES_PASSWORD: 123
 
+  anomaly-detector:
+    container_name: monitoring-tool-anomaly-detector
+    image: "monitoring-tool-anomaly-detector:latest"
+    build:
+      context: ./anomaly_detector
+      dockerfile: Dockerfile
+    ports:
+      - "8010:8010"
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    environment:
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: secret_token
+      INFLUX_ORG: my_org
+      INFLUX_BUCKET: network_metrics
+      ANOMALY_DETECTOR_API_PORT: 8010
+      POLLING_INTERVAL_SEC: 300
+
   poller-api:
     container_name: monitoring-tool-poller-api
     image: "monitoring-tool-poller-api:latest"
@@ -100,8 +119,9 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      anomaly-detector:
+        condition: service_started
     environment:
-      # Same Postgres as poller/docker-compose.yml (devices + interfaces live there)
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/applicationdb
       SPRING_DATASOURCE_USERNAME: admin
       SPRING_DATASOURCE_PASSWORD: 123
@@ -110,6 +130,7 @@ services:
       INFLUX_ORG: my_org
       INFLUX_BUCKET: network_metrics
       POLLER_API_URL: http://poller-api:8000
+      ANOMALY_DETECTOR_API_URL: http://anomaly-detector:8010
 
   frontend:
     container_name: monitoring-tool-frontend

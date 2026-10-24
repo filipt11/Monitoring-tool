@@ -1,16 +1,3 @@
-"""Juniper Junos RPC polling and response parsing.
-
-Contacts route-engine and interface RPC endpoints in parallel, parses
-Junos JSON payloads, and returns a normalized
-:class:`~poller.models.PollingResult` consumed by :mod:`poller.main` and
-:mod:`poller.api` (device modeling).
-
-RPC paths polled:
-
-- ``POST /rpc/get-route-engine-information`` — CPU and memory
-- ``POST /rpc/get-interface-information`` — interface counters
-"""
-
 from loguru import logger
 from .models import Device, PollingResult, InterfaceData
 from re import search
@@ -40,6 +27,7 @@ async def poll_juniper_device_async(
 
     # Initialize default values
     cpu_val = None
+    sim_event = None
     memory_val = None
     total_memory = None
     memory_pct = None
@@ -71,7 +59,7 @@ async def poll_juniper_device_async(
 
     if raw_route_engine:
         try:
-            cpu_val = parse_cpu(raw_route_engine)
+            cpu_val, sim_event = parse_cpu(raw_route_engine)
             total_memory, memory_val, memory_pct = parse_memory(raw_route_engine)
         except Exception as e:
             logger.error(
@@ -94,6 +82,7 @@ async def poll_juniper_device_async(
         "used_memory": memory_val,
         "memory_pct": memory_pct,
         "interfaces": interfaces,
+        "sim_event": sim_event,
     }
 
     if result["status"] == "up":
@@ -138,7 +127,7 @@ async def fetch_juniper_data_async(
     return response.json()
 
 
-def parse_cpu(raw_route_engine: dict[str, Any]) -> int:
+def parse_cpu(raw_route_engine: dict[str, Any]) -> tuple[int, str | None]:
     """Extract CPU utilization from Junos route-engine information.
 
     Args:
@@ -146,7 +135,8 @@ def parse_cpu(raw_route_engine: dict[str, Any]) -> int:
             ``/rpc/get-route-engine-information``.
 
     Returns:
-        CPU usage as ``100 - cpu-idle`` (integer percentage).
+        ``(cpu_pct, sim_event)`` where ``cpu_pct`` is ``100 - cpu-idle`` and
+        ``sim_event`` is an optional simulator ground-truth label.
 
     Raises:
         KeyError: When expected nested keys are missing.
@@ -158,8 +148,16 @@ def parse_cpu(raw_route_engine: dict[str, Any]) -> int:
 
     idle_str = route_engine["cpu-idle"][0]["data"]
     idle_val = int(idle_str)
+    cpu = 100 - idle_val
 
-    return 100 - idle_val
+    sim_raw = route_engine.get("sim-event")
+    sim_event = None
+    if isinstance(sim_raw, list) and sim_raw:
+        data = sim_raw[0].get("data") if isinstance(sim_raw[0], dict) else None
+        if isinstance(data, str) and data in {"none", "spike", "drop"}:
+            sim_event = data
+
+    return cpu, sim_event
 
 
 def parse_memory(raw_route_engine: dict[str, Any]) -> tuple[int, int, float]:
@@ -173,11 +171,6 @@ def parse_memory(raw_route_engine: dict[str, Any]) -> tuple[int, int, float]:
         ``(total_memory, used_memory, memory_pct)`` where ``total_memory``
         and ``used_memory`` are in bytes and ``memory_pct`` is the buffer
         utilization percentage reported by Junos.
-
-    Note:
-        Total memory is parsed from ``memory-installed-size`` (MB in
-        parentheses) and converted to bytes. When parsing fails,
-        ``total_memory`` defaults to ``0`` and a warning is logged.
     """
 
     re_data = raw_route_engine["route-engine-information"][0]["route-engine"][0]

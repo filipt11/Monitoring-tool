@@ -1,56 +1,3 @@
-"""FastAPI application simulating Cisco IOS XE or Juniper network devices.
-
-The simulator exposes vendor-specific HTTP endpoints that return realistic
-RESTCONF (Cisco) or RPC-style (Juniper) JSON payloads. Device behaviour
-(CPU, memory, interface counters) is driven by a :class:`~simulator.devices.BaseDevice`
-subclass selected at startup from environment variables.
-
-Environment Variables:
-    DEVICE_PROFILE (str): Utilization preset. Accepted values are
-        ``high_utilized``, ``low_utilized``, ``average_utilized``, or
-        ``custom``. Any other value (including the default ``standard``)
-        falls back to :class:`~simulator.devices.AverageUtilizedCiscoDevice`.
-    DEVICE_IP (str): Simulated device IP address. Default: ``0.0.0.0``.
-    DEVICE_HOSTNAME (str): Simulated hostname. Default: ``s-cat-def-1``.
-    DEVICE_VENDOR (str): Device vendor, ``cisco`` or ``juniper``. Default:
-        ``cisco``.
-    DEVICE_MODEL (str): Hardware model string returned in inventory/system
-        responses. Default: ``Catalyst 9000``.
-    DEVICE_USERNAME (str): HTTP Basic auth username. Default: ``admin``.
-    DEVICE_PASSWORD (str): HTTP Basic auth password. Default: ``123``.
-    DEVICE_PORT (int): Uvicorn listen port. Default: ``443``.
-    DEVICE_IS_HTTPS (str): Whether the simulated device uses HTTPS
-        (informational only). Truthy values: ``true``, ``1``, ``yes``.
-        Default: ``false``.
-
-    When ``DEVICE_PROFILE=custom``, the following optional variables override
-    fields on :class:`~simulator.logic.CustomProfile`:
-
-    DEVICE_MEAN, DEVICE_DEVIATION, DEVICE_MIN_VAL, DEVICE_MAX_VAL,
-    DEVICE_SPIKE_CHANCE, DEVICE_SPIKE_MIN, DEVICE_SPIKE_MAX,
-    DEVICE_SPIKE_MEAN, DEVICE_SPIKE_DEVIATION, DEVICE_DROP_CHANCE,
-    DEVICE_DROP_MIN, DEVICE_DROP_MAX, DEVICE_DROP_MEAN,
-    DEVICE_DROP_DEVIATION.
-
-Attributes:
-    app (fastapi.FastAPI): Root FastAPI application instance.
-    security (fastapi.security.HTTPBasic): HTTP Basic authentication scheme.
-    PROFILE (str): Lowercased value of ``DEVICE_PROFILE``.
-    IP (str): Simulated device IP address.
-    HOSTNAME (str): Simulated device hostname.
-    VENDOR (str): Lowercased device vendor (``cisco`` or ``juniper``).
-    MODEL (str): Device model string.
-    USERNAME (str): Expected HTTP Basic username.
-    PASSWORD (str): Expected HTTP Basic password.
-    PORT (int): Server listen port.
-    HTTPS (bool): Whether HTTPS is enabled for the simulated device.
-    device (simulator.devices.BaseDevice): Active simulated device instance.
-    cisco_router (fastapi.APIRouter): RESTCONF routes for Cisco devices
-        (prefix ``/restconf/data``).
-    juniper_router (fastapi.APIRouter): RPC routes for Juniper devices
-        (prefix ``/rpc``).
-"""
-
 from fastapi import APIRouter, FastAPI, Depends, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from simulator import devices
@@ -196,7 +143,12 @@ async def cpu_usage():
         Requires HTTP Basic authentication.
     """
 
-    return {"Cisco-IOS-XE-process-cpu-oper:five-seconds": device.get_cpu()}
+    cpu = device.get_cpu()
+    return {
+        "Cisco-IOS-XE-process-cpu-oper:five-seconds": cpu,
+        # Simulator ground truth (ignored by real IOS-XE devices / optional in poller)
+        "sim-event": device.last_cpu_sim_event,
+    }
 
 
 @cisco_router.get("/Cisco-IOS-XE-memory-oper{colon}memory-statistics")
@@ -527,6 +479,7 @@ async def get_route_engine_information():
     """
 
     cpu_idle = int(100 - device.get_cpu())
+    sim_event = device.last_cpu_sim_event
     total_memory = device.get_total_memory()
     used_memory = device.get_used_memory()
     memory_MB = total_memory // (1024**2)
@@ -548,6 +501,7 @@ async def get_route_engine_information():
                         "memory-buffer-utilization": [
                             {"data": str(memory_utilization)}
                         ],
+                        "sim-event": [{"data": sim_event}],
                         "cpu-user": [{"data": "0"}],
                         "cpu-background": [{"data": "0"}],
                         "cpu-system": [{"data": "1"}],

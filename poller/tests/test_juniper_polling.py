@@ -21,10 +21,11 @@ def test_parse_cpu_juniper_success():
         ]
     }
 
-    cpu_usage = juniper_polling.parse_cpu(sample_response)
+    cpu_usage, sim_event = juniper_polling.parse_cpu(sample_response)
 
     # 100 - 88 = 12% CPU usage
     assert cpu_usage == 12
+    assert sim_event is None
     assert isinstance(cpu_usage, int)
 
 
@@ -283,7 +284,7 @@ async def test_poll_juniper_device_async_success(monkeypatch, mock_device):
     # Simulate successful data fetch and parsing for CPU, Memory, and Interfaces
     monkeypatch.setattr(juniper_polling, "fetch_juniper_data_async", _mock_juniper_fetch_success)
 
-    monkeypatch.setattr(juniper_polling, "parse_cpu", lambda raw: 12)
+    monkeypatch.setattr(juniper_polling, "parse_cpu", lambda raw: (12, None))
     monkeypatch.setattr(juniper_polling, "parse_memory", lambda raw: (16000, 4000, 25.0))
     monkeypatch.setattr(juniper_polling, "parse_interfaces", lambda raw: [{"name": "ge-0/0/0"}])
 
@@ -346,7 +347,7 @@ async def test_poll_juniper_device_async_interfaces_parsing_crash(monkeypatch, m
     # Simulate a parsing error in the interfaces data, which should be logged but not crash the entire polling process
     monkeypatch.setattr(juniper_polling, "fetch_juniper_data_async", _mock_juniper_fetch_success)
 
-    monkeypatch.setattr(juniper_polling, "parse_cpu", lambda raw: 10)
+    monkeypatch.setattr(juniper_polling, "parse_cpu", lambda raw: (10, "drop"))
     monkeypatch.setattr(juniper_polling, "parse_memory", lambda raw: (8000, 2000, 25.0))
 
     def mock_parse_interfaces_crash(raw):

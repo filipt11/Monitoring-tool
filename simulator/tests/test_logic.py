@@ -6,64 +6,64 @@ from simulator import logic
 def test_get_high_utilized_cpu_spike(monkeypatch):
     # Force spike branch (random.random() > 0.95)
     monkeypatch.setattr(logic.random, "random", lambda: 0.96)
-    assert logic.get_high_utilized_cpu() == 100
+    assert logic.get_high_utilized_cpu() == (100, "spike")
 
 
 def test_get_high_utilized_cpu_drop(monkeypatch):
     # Force drop branch (random.random() < 0.03)
     monkeypatch.setattr(logic.random, "random", lambda: 0.01)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 10)
-    assert logic.get_high_utilized_cpu() == 10
+    assert logic.get_high_utilized_cpu() == (10, "drop")
 
 
 def test_high_utilized_cpu_normal(monkeypatch):
     # Normal path for high CPU
     monkeypatch.setattr(logic.random, "random", lambda: 0.5)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 80)
-    assert logic.get_high_utilized_cpu() == 80
+    assert logic.get_high_utilized_cpu() == (80, "none")
 
 
 def test_cpu_average_default(monkeypatch):
     # Normal path for average CPU
     monkeypatch.setattr(logic.random, "random", lambda: 0.5)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 45)
-    assert logic.get_average_utilized_cpu() == 45
+    assert logic.get_average_utilized_cpu() == (45, "none")
 
 
 def test_cpu_average_spike(monkeypatch):
     # Force spike branch (random.random() > 0.95)
     monkeypatch.setattr(logic.random, "random", lambda: 0.96)
     monkeypatch.setattr(logic.random, "randint", lambda a, b: 85)
-    assert logic.get_average_utilized_cpu() == 85
+    assert logic.get_average_utilized_cpu() == (85, "spike")
 
 
 def test_cpu_average_drop(monkeypatch):
     # Force drop branch (random.random() < 0.03)
     monkeypatch.setattr(logic.random, "random", lambda: 0.01)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 10)
-    
-    assert logic.get_average_utilized_cpu() == 10
+
+    assert logic.get_average_utilized_cpu() == (10, "drop")
 
 
 def test_cpu_low_default(monkeypatch):
     # Normal path for low CPU
     monkeypatch.setattr(logic.random, "random", lambda: 0.5)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 8)
-    assert logic.get_low_utilized_cpu() == 8
+    assert logic.get_low_utilized_cpu() == (8, "none")
 
 
 def test_cpu_low_spike(monkeypatch):
     # Force little spike branch (random.random() > 0.95)
     monkeypatch.setattr(logic.random, "random", lambda: 0.96)
     monkeypatch.setattr(logic.random, "randint", lambda a, b: 15)
-    assert logic.get_low_utilized_cpu() == 15
+    assert logic.get_low_utilized_cpu() == (15, "spike")
 
 
 def test_cpu_low_big_spike(monkeypatch):
     # Force big spike branch (random.random() < 0.01)
     monkeypatch.setattr(logic.random, "random", lambda: 0.005)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 80)
-    assert logic.get_low_utilized_cpu() == 80
+    assert logic.get_low_utilized_cpu() == (80, "spike")
 
 
 def test_ram_functions_deterministic(monkeypatch):
@@ -114,21 +114,21 @@ def test_get_custom_utilized_cpu(monkeypatch):
     # Force spike branch (random.random() > 0.95)
     monkeypatch.setattr(logic.random, "random", lambda: 0.96)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 100)
-    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == 100
+    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == (100, "spike")
 
 
 def test_get_custom_utilized_cpu_drop(monkeypatch):
     # Force drop branch (random.random() < 0.03)
     monkeypatch.setattr(logic.random, "random", lambda: 0.01)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 10)
-    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == 10
+    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == (10, "drop")
 
 
 def test_get_custom_utilized_cpu_normal(monkeypatch):
     # Normal path for custom CPU
     monkeypatch.setattr(logic.random, "random", lambda: 0.5)
     monkeypatch.setattr(logic.random, "gauss", lambda mu, sigma: 80)
-    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == 80
+    assert logic.get_custom_utilized_cpu(logic.CustomProfile()) == (80, "none")
 
 
 def test_get_custom_utilized_ram(monkeypatch):

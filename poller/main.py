@@ -1,27 +1,3 @@
-"""Background polling loop for Cisco and Juniper network devices.
-
-Reads the device inventory from PostgreSQL (populated via
-:mod:`poller.api`), polls each device asynchronously, and writes CPU,
-memory, availability, and interface metrics to InfluxDB. Concurrency is
-limited by :data:`semaphore` to :data:`~poller.config.MAX_DEVICES` devices
-in parallel.
-
-Configuration:
-    Polling interval is :data:`~poller.config.POLLING_INERVAL` seconds
-    (default ``300``). InfluxDB bucket and organisation come from
-    :mod:`poller.config`.
-
-Attributes:
-    cached_device_list (list[poller.models.Device]): Last successfully loaded
-        device list from PostgreSQL. Reused when the database is temporarily
-        unreachable.
-    last_polls (dict[str, tuple[float, int]]): Previous interface counter
-        samples keyed by ``"{hostname}_{if_name}_{direction}"`` for
-        utilization calculation in :func:`calculate_utilization`.
-    semaphore (asyncio.Semaphore): Limits concurrent device polls to
-        :data:`~poller.config.MAX_DEVICES`.
-"""
-
 from poller.config import (
     Session,
     INFLUX_ORG,
@@ -109,6 +85,7 @@ async def poll_single_device(device: Device, client: httpx.AsyncClient) -> None:
                     memory_total=device_data.get("total_memory"),
                     memory_usage=device_data.get("used_memory"),
                     memory_usage_pct=device_data.get("memory_pct"),
+                    sim_event=device_data.get("sim_event"),
                 )
                 # Save device data
                 await asyncio.to_thread(
@@ -195,6 +172,11 @@ def save_polled_device_data(device: DeviceWithPolledData, status: int) -> None:
 
         if device.memory_usage_pct is not None:
             point.field("memory_usage_pct", float(device.memory_usage_pct))
+
+        # Simulator ground truth (optional — real devices omit this)
+        if device.sim_event in {"none", "spike", "drop"}:
+            point.field("sim_event", device.sim_event)
+            point.field("sim_anomaly", 1 if device.sim_event in {"spike", "drop"} else 0)
 
     write_api.write(bucket=INFLUX_BUCKET, org=INFLUX_ORG, record=point)
 

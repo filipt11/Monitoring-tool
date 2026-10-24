@@ -24,6 +24,15 @@ The tool provides a REST API for device management and uses Docker Compose for s
 
 ### Complete Source Code documentation is available in HTML format: [Documentation](https://filipt11.github.io/Monitoring-tool/index.html)
 
+### Anomaly detector tests
+
+See [anomaly_detector/README.md](anomaly_detector/README.md). Quick run from repo root:
+
+```bash
+py -m pip install -r anomaly_detector/requirements.txt
+py -m pytest anomaly_detector/tests -q
+```
+
 ## API Documentation
 
 ### Poller API

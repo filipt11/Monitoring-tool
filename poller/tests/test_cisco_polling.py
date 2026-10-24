@@ -9,7 +9,15 @@ def test_parse_cpu():
     sample_response = {
         "Cisco-IOS-XE-process-cpu-oper:five-seconds": 20
     }
-    assert cisco_polling.parse_cpu(sample_response) == 20
+    assert cisco_polling.parse_cpu(sample_response) == (20, None)
+
+
+def test_parse_cpu_with_sim_event():
+    sample_response = {
+        "Cisco-IOS-XE-process-cpu-oper:five-seconds": 100,
+        "sim-event": "spike",
+    }
+    assert cisco_polling.parse_cpu(sample_response) == (100, "spike")
 
 
 def test_parse_cpu_missing_key():
@@ -218,7 +226,7 @@ async def test_poll_cisco_device_async_success(monkeypatch, mock_device):
 
     monkeypatch.setattr(cisco_polling, "fetch_cisco_data_async", mock_fetch)
 
-    monkeypatch.setattr(cisco_polling, "parse_cpu", lambda raw: 15)
+    monkeypatch.setattr(cisco_polling, "parse_cpu", lambda raw: (15, None))
     monkeypatch.setattr(cisco_polling, "parse_memory", lambda raw: (1000, 400))
     monkeypatch.setattr(cisco_polling, "parse_interfaces", lambda raw: [{"name": "Gi0/1"}])
 
@@ -287,7 +295,7 @@ async def test_poll_cisco_device_async_memory_parsing_error(monkeypatch, mock_de
     # Mock fetch to return valid data for all endpoints
     monkeypatch.setattr(cisco_polling, "fetch_cisco_data_async", _mock_fetch_all_success)
 
-    monkeypatch.setattr(cisco_polling, "parse_cpu", lambda raw: 25)
+    monkeypatch.setattr(cisco_polling, "parse_cpu", lambda raw: (25, "spike"))
     monkeypatch.setattr(cisco_polling, "parse_interfaces", lambda raw: [{"name": "Gi0/1"}])
     
     def mock_parse_memory_fail(raw):
@@ -311,7 +319,7 @@ async def test_poll_cisco_device_async_interfaces_parsing_error(monkeypatch, moc
     # Mock fetch to return valid data for all endpoints
     monkeypatch.setattr(cisco_polling, "fetch_cisco_data_async", _mock_fetch_all_success)
 
-    monkeypatch.setattr(cisco_polling, "parse_cpu", lambda raw: 5)
+    monkeypatch.setattr(cisco_polling, "parse_cpu", lambda raw: (5, None))
     monkeypatch.setattr(cisco_polling, "parse_memory", lambda raw: (2000, 1000))
     
     def mock_parse_interfaces_fail(raw):

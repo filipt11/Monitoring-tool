@@ -1,10 +1,3 @@
-"""SQLAlchemy ORM models and Pydantic schemas for the poller service.
-
-Defines PostgreSQL tables for device inventory and discovered interfaces,
-plus request/response schemas used by :mod:`poller.api` and transient
-structures passed between polling modules and :mod:`poller.main`.
-"""
-
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -151,6 +144,8 @@ class DeviceWithPolledData(BaseModel):
     memory_total: Optional[int] = Field(None, ge=0)
     memory_usage: Optional[int] = Field(None, ge=0)
     memory_usage_pct: Optional[float] = Field(None, ge=0, le=100)
+    # Simulator ground truth: "none" | "spike" | "drop" (absent on real devices)
+    sim_event: Optional[str] = None
 
 
 class DeviceCreate(BaseModel):
@@ -209,7 +204,7 @@ class InterfaceData(TypedDict):
     mac: str
 
 
-class PollingResult(TypedDict):
+class PollingResult(TypedDict, total=False):
     """Aggregated poll result returned by Cisco/Juniper polling modules."""
 
     status: str
@@ -218,3 +213,4 @@ class PollingResult(TypedDict):
     used_memory: int | None
     memory_pct: float | None
     interfaces: list[InterfaceData]
+    sim_event: str | None

@@ -75,7 +75,6 @@ export function LoginPage() {
                   <FormControl>
                     <Input
                       autoComplete="username"
-                      placeholder="admin"
                       {...field}
                     />
                   </FormControl>

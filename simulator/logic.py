@@ -1,22 +1,12 @@
-"""Randomized utilization and traffic-counter logic for the device simulator.
-
-Provides CPU and memory percentage generators for high, average, and low
-utilization profiles, plus a configurable :class:`CustomProfile` model.
-Interface byte counters grow proportionally to link speed and elapsed time
-since the previous poll.
-
-Attributes:
-    last_sim_times (dict[str, float]): Timestamp of the last counter update
-        per key, used by :func:`get_dynamic_interval` to compute elapsed
-        seconds between successive calls.
-"""
-
 import random
 from time import time
 from pydantic import BaseModel, field_validator, model_validator
-from typing import Any
+from typing import Any, Literal
 
 last_sim_times: dict[str, float] = {}
+
+SimEvent = Literal["none", "spike", "drop"]
+CpuSample = tuple[int, SimEvent]
 
 
 class CustomProfile(BaseModel):
@@ -114,7 +104,7 @@ class CustomProfile(BaseModel):
         return self
 
 
-def get_high_utilized_cpu() -> int:
+def get_high_utilized_cpu() -> CpuSample:
     """Simulate CPU usage for a persistently high-utilization device.
 
     Distribution:
@@ -123,24 +113,24 @@ def get_high_utilized_cpu() -> int:
         * Otherwise: Gaussian around ``85`` (clamped to ``70``–``100``).
 
     Returns:
-        Integer CPU utilization percentage in the range ``0``–``100``.
+        ``(cpu_pct, sim_event)`` where ``sim_event`` is ``spike``, ``drop``,
+        or ``none``.
     """
     r = random.random()
 
     # 5% chance for 100% spike
     if r > 0.95:
-        return 100
+        return 100, "spike"
 
     # 3% chance for drop
-    elif r < 0.03:
-        return int(max(5, random.gauss(40, 30)))
-    
-    else:
-        val = random.gauss(85, 10)
-        return int(max(70, min(100, val)))
+    if r < 0.03:
+        return int(max(5, random.gauss(40, 30))), "drop"
+
+    val = random.gauss(85, 10)
+    return int(max(70, min(100, val))), "none"
 
 
-def get_average_utilized_cpu() -> int:
+def get_average_utilized_cpu() -> CpuSample:
     """Simulate CPU usage for an average-utilization device.
 
     Distribution:
@@ -149,24 +139,24 @@ def get_average_utilized_cpu() -> int:
         * Otherwise: Gaussian around ``40`` (clamped to ``20``–``60``).
 
     Returns:
-        Integer CPU utilization percentage in the range ``0``–``100``.
+        ``(cpu_pct, sim_event)`` where ``sim_event`` is ``spike``, ``drop``,
+        or ``none``.
     """
     r = random.random()
 
     # 5% chance for spike
     if r > 0.95:
-        return random.randint(60, 100)
+        return random.randint(60, 100), "spike"
 
     # 3% chance for drop
-    elif r < 0.03:
-        return int(max(5, random.gauss(20, 20)))
+    if r < 0.03:
+        return int(max(5, random.gauss(20, 20))), "drop"
 
-    else:
-        val = random.gauss(40, 7)
-        return int(max(20, min(60, val)))
+    val = random.gauss(40, 7)
+    return int(max(20, min(60, val))), "none"
 
 
-def get_low_utilized_cpu() -> int:
+def get_low_utilized_cpu() -> CpuSample:
     """Simulate CPU usage for a low-utilization device.
 
     Distribution:
@@ -175,21 +165,21 @@ def get_low_utilized_cpu() -> int:
         * Otherwise: Gaussian around ``8`` (clamped to ``1``–``20``).
 
     Returns:
-        Integer CPU utilization percentage in the range ``0``–``100``.
+        ``(cpu_pct, sim_event)`` where ``sim_event`` is ``spike`` or ``none``
+        (low profile has no dedicated drop branch).
     """
     r = random.random()
 
     # 5% chance for spike
     if r > 0.95:
-        return random.randint(11, 25)
+        return random.randint(11, 25), "spike"
 
     # 1% chance for big spike
-    elif r < 0.01:
-        return min(100, int(max(0, random.gauss(70, 20))))
+    if r < 0.01:
+        return min(100, int(max(0, random.gauss(70, 20)))), "spike"
 
-    else:
-        val = random.gauss(8, 3)
-        return int(max(1, min(20, val)))
+    val = random.gauss(8, 3)
+    return int(max(1, min(20, val))), "none"
 
 
 def get_high_utilized_ram(total_memory: int) -> int:
@@ -332,7 +322,7 @@ def increase_interface_counter_for_higher_utilized(
 
 def get_custom_utilized_cpu(
     profile: CustomProfile
-) -> int:
+) -> CpuSample:
     """Simulate CPU usage using a :class:`CustomProfile` distribution.
 
     On each call a random value selects one of three scenarios:
@@ -349,25 +339,25 @@ def get_custom_utilized_cpu(
             probabilities.
 
     Returns:
-        Integer CPU utilization percentage.
+        ``(cpu_pct, sim_event)`` for the selected scenario.
     """
     r = random.random()
     # spike scenario
     if r > 1 - profile.spike_chance_pct / 100:
         val = random.gauss(profile.spike_mean, profile.spike_deviation)
         result = max(profile.spike_min, min(profile.spike_max, val))
+        return int(result), "spike"
 
     # drop scenario
-    elif r < profile.drop_chance_pct / 100:
+    if r < profile.drop_chance_pct / 100:
         val = random.gauss(profile.drop_mean, profile.drop_deviation)
         result = max(profile.drop_min, min(profile.drop_max, val))
+        return int(result), "drop"
 
     # normal scenario
-    else:
-        val = random.gauss(profile.mean, profile.deviation)
-        result = (max(profile.min_val, min(profile.max_val, val)))
-
-    return int(result)
+    val = random.gauss(profile.mean, profile.deviation)
+    result = max(profile.min_val, min(profile.max_val, val))
+    return int(result), "none"
 
 
 def get_custom_utilized_ram(

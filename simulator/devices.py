@@ -1,23 +1,10 @@
-"""Simulated network device models for Cisco and Juniper vendors.
-
-Each concrete class represents a device with a specific utilization profile
-(high, low, average, or custom). Devices expose :meth:`BaseDevice.get_cpu`,
-:meth:`BaseDevice.get_used_memory`, :meth:`BaseDevice.get_total_memory`, and
-:meth:`BaseDevice.get_interfaces` which the FastAPI layer in
-:mod:`simulator.main` calls to build vendor-specific API responses.
-
-Interface counters are stateful: each call to :meth:`BaseDevice.get_interfaces`
-advances ``in-octets`` and ``out-octets`` based on interface speed and admin
-status.
-"""
-
 from simulator import logic
 from typing import Any, Optional
 from simulator.logic import CustomProfile
 
 
 class BaseDevice:
-    """Abstract base model for a simulated network device.
+    """Base model for a simulated network device.
 
     Stores connection metadata and maintains rolling interface byte counters.
     Subclasses override metric methods and populate :attr:`interfaces_list`
@@ -65,6 +52,15 @@ class BaseDevice:
         self.https: bool = https
         self.interface_counters: dict[str, int] = {}
         self.interfaces_list: list[dict[str, Any]] = []
+        self.last_cpu_sim_event: logic.SimEvent = "none"
+
+    def _apply_cpu_sample(self, sample: logic.CpuSample) -> int:
+
+        """Store ground-truth event and return the numeric CPU percentage."""
+
+        value, event = sample
+        self.last_cpu_sim_event = event
+        return value
 
     def get_cpu(self) -> int:
         """Return the current simulated CPU utilization percentage.
@@ -73,8 +69,9 @@ class BaseDevice:
             Integer CPU usage in the range ``0``–``100``. The base
             implementation delegates to
             :func:`simulator.logic.get_average_utilized_cpu`.
+            Also updates :attr:`last_cpu_sim_event`.
         """
-        return logic.get_average_utilized_cpu()
+        return self._apply_cpu_sample(logic.get_average_utilized_cpu())
 
     def get_used_memory(self) -> int:
         """Return the current simulated used memory in bytes.
@@ -271,7 +268,7 @@ class HighUtilizedCiscoDevice(BaseCiscoDevice):
             Integer in the range ``0``–``100`` from
             :func:`simulator.logic.get_high_utilized_cpu`.
         """
-        return logic.get_high_utilized_cpu()
+        return self._apply_cpu_sample(logic.get_high_utilized_cpu())
 
     def get_used_memory(self) -> int:
         """Return high memory usage in bytes.
@@ -316,7 +313,7 @@ class LowUtilizedCiscoDevice(BaseCiscoDevice):
             Integer in the range ``0``–``100`` from
             :func:`simulator.logic.get_low_utilized_cpu`.
         """
-        return logic.get_low_utilized_cpu()
+        return self._apply_cpu_sample(logic.get_low_utilized_cpu())
 
     def get_used_memory(self) -> int:
         """Return low memory usage in bytes.
@@ -495,7 +492,7 @@ class HighUtilizedJuniperDevice(BaseJuniperDevice):
             Integer in the range ``0``–``100`` from
             :func:`simulator.logic.get_high_utilized_cpu`.
         """
-        return logic.get_high_utilized_cpu()
+        return self._apply_cpu_sample(logic.get_high_utilized_cpu())
 
     def get_used_memory(self) -> int:
         """Return high memory usage in bytes.
@@ -539,7 +536,7 @@ class LowUtilizedJuniperDevice(BaseJuniperDevice):
             Integer in the range ``0``–``100`` from
             :func:`simulator.logic.get_low_utilized_cpu`.
         """
-        return logic.get_low_utilized_cpu()
+        return self._apply_cpu_sample(logic.get_low_utilized_cpu())
 
     def get_total_memory(self) -> int:
         """Return reduced total memory for a smaller Juniper device.
@@ -668,7 +665,7 @@ class customUtilizedCiscoDevice(BaseCiscoDevice):
             Integer in the range ``0``–``100`` from
             :func:`simulator.logic.get_custom_utilized_cpu`.
         """
-        return logic.get_custom_utilized_cpu(self.profile)
+        return self._apply_cpu_sample(logic.get_custom_utilized_cpu(self.profile))
 
     def get_used_memory(self) -> int:
         """Return memory usage based on :attr:`profile`.
@@ -732,7 +729,7 @@ class customUtilizedJuniperDevice(BaseJuniperDevice):
             Integer in the range ``0``–``100`` from
             :func:`simulator.logic.get_custom_utilized_cpu`.
         """
-        return logic.get_custom_utilized_cpu(self.profile)
+        return self._apply_cpu_sample(logic.get_custom_utilized_cpu(self.profile))
 
     def get_used_memory(self) -> int:
         """Return memory usage based on :attr:`profile`.

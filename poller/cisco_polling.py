@@ -42,6 +42,7 @@ async def poll_cisco_device_async(
 
     # Initialize default values for parsed metrics
     cpu_val = None
+    sim_event = None
     memory_val = None
     total_memory = None
     memory_pct = None
@@ -78,7 +79,7 @@ async def poll_cisco_device_async(
     # Parse each result only when request succeeded
     if raw_cpu:
         try:
-            cpu_val = parse_cpu(raw_cpu)
+            cpu_val, sim_event = parse_cpu(raw_cpu)
         except Exception as e:
             logger.error(f"Error parsing CPU for {device.hostname} | {device.ip}: {e}")
 
@@ -108,6 +109,7 @@ async def poll_cisco_device_async(
         "used_memory": memory_val,
         "memory_pct": memory_pct,
         "interfaces": interfaces,
+        "sim_event": sim_event,
     }
 
     if result["status"] == "up":
@@ -154,21 +156,26 @@ async def fetch_cisco_data_async(
     return response.json()
 
 
-def parse_cpu(raw_cpu: dict[str, Any]) -> int:
+def parse_cpu(raw_cpu: dict[str, Any]) -> tuple[int, str | None]:
     """Extract five-second CPU utilization from a RESTCONF CPU response.
 
     Args:
         raw_cpu: JSON payload from the Cisco CPU RESTCONF endpoint.
 
     Returns:
-        CPU usage as an integer percentage (``0``–``100``).
+        ``(cpu_pct, sim_event)`` where ``sim_event`` is an optional simulator
+        ground-truth label (``none`` / ``spike`` / ``drop``).
 
     Raises:
         KeyError: When the expected YANG key is missing.
         ValueError: When the value cannot be converted to ``int``.
     """
 
-    return int(raw_cpu["Cisco-IOS-XE-process-cpu-oper:five-seconds"])
+    cpu = int(raw_cpu["Cisco-IOS-XE-process-cpu-oper:five-seconds"])
+    sim_event = raw_cpu.get("sim-event")
+    if isinstance(sim_event, str) and sim_event in {"none", "spike", "drop"}:
+        return cpu, sim_event
+    return cpu, None
 
 
 def parse_memory(raw_memory: dict[str, Any]) -> tuple[int, int]:

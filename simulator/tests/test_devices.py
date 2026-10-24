@@ -2,7 +2,7 @@ from simulator import devices, logic
 
 
 def test_base_cisco_device_cpu_and_memory(monkeypatch):
-    monkeypatch.setattr(logic, "get_average_utilized_cpu", lambda: 42)
+    monkeypatch.setattr(logic, "get_average_utilized_cpu", lambda: (42, "none"))
     monkeypatch.setattr(logic, "get_average_utilized_ram", lambda total: 1234)
 
     dev = devices.BaseCiscoDevice(
@@ -10,11 +10,12 @@ def test_base_cisco_device_cpu_and_memory(monkeypatch):
     )
 
     assert dev.get_cpu() == 42
+    assert dev.last_cpu_sim_event == "none"
     assert dev.get_used_memory() == 1234
 
 
 def test_high_utilized_cisco_device_cpu_and_memory(monkeypatch):
-    monkeypatch.setattr(logic, "get_high_utilized_cpu", lambda: 84)
+    monkeypatch.setattr(logic, "get_high_utilized_cpu", lambda: (84, "spike"))
     monkeypatch.setattr(logic, "get_high_utilized_ram", lambda total: 5678)
 
     dev = devices.HighUtilizedCiscoDevice(
@@ -22,11 +23,12 @@ def test_high_utilized_cisco_device_cpu_and_memory(monkeypatch):
     )
 
     assert dev.get_cpu() == 84
+    assert dev.last_cpu_sim_event == "spike"
     assert dev.get_used_memory() == 5678
 
 
 def test_low_utilized_cisco_device_cpu_and_memory(monkeypatch):
-    monkeypatch.setattr(logic, "get_low_utilized_cpu", lambda: 21)
+    monkeypatch.setattr(logic, "get_low_utilized_cpu", lambda: (21, "none"))
     monkeypatch.setattr(logic, "get_low_utilized_ram", lambda total: 4321)
 
     dev = devices.LowUtilizedCiscoDevice(
@@ -38,7 +40,7 @@ def test_low_utilized_cisco_device_cpu_and_memory(monkeypatch):
 
 
 def test_average_utilized_cisco_device_cpu_and_memory(monkeypatch):
-    monkeypatch.setattr(logic, "get_average_utilized_cpu", lambda: 63)
+    monkeypatch.setattr(logic, "get_average_utilized_cpu", lambda: (63, "drop"))
     monkeypatch.setattr(logic, "get_average_utilized_ram", lambda total: 7890)
 
     dev = devices.AverageUtilizedCiscoDevice(
@@ -46,11 +48,12 @@ def test_average_utilized_cisco_device_cpu_and_memory(monkeypatch):
     )
 
     assert dev.get_cpu() == 63
+    assert dev.last_cpu_sim_event == "drop"
     assert dev.get_used_memory() == 7890
 
 
 def test_base_juniper_device_cpu_and_memory(monkeypatch):
-    monkeypatch.setattr(logic, "get_average_utilized_cpu", lambda: 55)
+    monkeypatch.setattr(logic, "get_average_utilized_cpu", lambda: (55, "none"))
     monkeypatch.setattr(logic, "get_average_utilized_ram", lambda total: 2468)
 
     dev = devices.BaseJuniperDevice(
@@ -60,8 +63,9 @@ def test_base_juniper_device_cpu_and_memory(monkeypatch):
     assert dev.get_cpu() == 55
     assert dev.get_used_memory() == 2468
 
+
 def test_high_utilized_juniper_device_cpu_and_memory(monkeypatch):
-    monkeypatch.setattr(logic, "get_high_utilized_cpu", lambda: 77)
+    monkeypatch.setattr(logic, "get_high_utilized_cpu", lambda: (77, "none"))
     monkeypatch.setattr(logic, "get_high_utilized_ram", lambda total: 1357)
 
     dev = devices.HighUtilizedJuniperDevice(
@@ -73,7 +77,7 @@ def test_high_utilized_juniper_device_cpu_and_memory(monkeypatch):
 
 
 def test_low_utilized_juniper_device_cpu_and_memory(monkeypatch):
-    monkeypatch.setattr(logic, "get_low_utilized_cpu", lambda: 33)
+    monkeypatch.setattr(logic, "get_low_utilized_cpu", lambda: (33, "spike"))
     monkeypatch.setattr(logic, "get_low_utilized_ram", lambda total: 8642)
 
     dev = devices.LowUtilizedJuniperDevice(
@@ -81,11 +85,12 @@ def test_low_utilized_juniper_device_cpu_and_memory(monkeypatch):
     )
 
     assert dev.get_cpu() == 33
+    assert dev.last_cpu_sim_event == "spike"
     assert dev.get_used_memory() == 8642
 
 
 def test_average_utilized_juniper_device_cpu_and_memory(monkeypatch):
-    monkeypatch.setattr(logic, "get_average_utilized_cpu", lambda: 44)
+    monkeypatch.setattr(logic, "get_average_utilized_cpu", lambda: (44, "none"))
     monkeypatch.setattr(logic, "get_average_utilized_ram", lambda total: 9753)
 
     dev = devices.AverageUtilizedJuniperDevice(
@@ -98,11 +103,12 @@ def test_average_utilized_juniper_device_cpu_and_memory(monkeypatch):
 
 def test_interfaces_update_with_stubbed_counters(monkeypatch):
     monkeypatch.setattr(logic, "increase_interface_counter", lambda prev, speed, key: prev + 100)
-    monkeypatch.setattr(logic, "increase_interface_counter_for_higher_utilized", lambda prev, speed, key: prev + 200)
+    monkeypatch.setattr(
+        logic, "increase_interface_counter_for_higher_utilized", lambda prev, speed, key: prev + 200
+    )
 
     dev = devices.BaseCiscoDevice("1.2.3.4", "cisco", "myhost", "model", "user", "pass", 8001, False)
     out = dev.get_interfaces()
-
 
     assert isinstance(out, list)
     assert len(out) >= 1
