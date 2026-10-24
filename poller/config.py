@@ -22,7 +22,7 @@ class Base(DeclarativeBase):
 # engine: Engine = create_engine("postgresql://admin:123@localhost:5432/applicationdb")
 
 # docker
-engine: Engine = create_engine("postgresql://admin:123@postgres:5432/applicationdb")
+engine: Engine = create_engine("postgresql+psycopg2://admin:123@postgres:5432/applicationdb")
 
 Session = sessionmaker(bind=engine)
 
